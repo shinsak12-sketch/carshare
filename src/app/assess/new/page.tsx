@@ -1,0 +1,139 @@
+"use client";
+
+import { useState } from "react";
+import { AssessmentResultView } from "@/components/AssessmentResultView";
+import type { AssessmentResult } from "@/lib/assessment-types";
+
+export default function NewAssessmentPage() {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<AssessmentResult | null>(null);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    const formData = new FormData(e.currentTarget);
+    try {
+      const res = await fetch("/api/assess", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "요청에 실패했습니다.");
+      setResult(data.result as AssessmentResult);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10">
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900">신규 진단</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          파손 사진과 (선택) 선견적을 첨부하면 경미손상 유형을 판정합니다.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">제조사</label>
+            <input
+              name="manufacturer"
+              required
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              placeholder="현대"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">모델</label>
+            <input
+              name="model"
+              required
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              placeholder="아반떼"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">연식</label>
+            <input
+              name="year"
+              type="number"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              placeholder="2022"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">손상부위</label>
+            <input
+              name="damagedPart"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              placeholder="프런트범퍼"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">사고 경위 메모</label>
+          <textarea
+            name="memo"
+            rows={2}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">
+            파손 사진 (필수, 여러 장 가능)
+          </label>
+          <input
+            name="images"
+            type="file"
+            accept="image/*"
+            multiple
+            required
+            className="w-full rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">
+            선견적 첨부 (선택, PDF)
+          </label>
+          <input
+            name="estimate"
+            type="file"
+            accept="application/pdf"
+            className="w-full rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm"
+          />
+        </div>
+
+        <input type="hidden" name="createdBy" value="담당자" />
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? "AI 진단 중… (수십 초 소요)" : "AI 진단 시작"}
+        </button>
+      </form>
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+
+      {result && (
+        <div>
+          <h2 className="mb-3 text-lg font-bold text-slate-900">진단 결과</h2>
+          <AssessmentResultView result={result} />
+        </div>
+      )}
+    </main>
+  );
+}

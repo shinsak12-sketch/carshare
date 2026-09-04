@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model PromptVersion {
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
+  createdBy     String
+  promptText    String
+  changeSummary String
+  isActive      Boolean  @default(false)
+
+  cases AssessmentCase[]
+}
+
+model AssessmentCase {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  createdBy String
+
+  manufacturer String
+  model        String
+  year         Int?
+  damagedPart  String?
+  memo         String?
+
+  imageUrls    String[]
+  estimateUrl  String?
+  estimateText String?
+
+  aiResult Json
+
+  groundTruthVerdict String?
+  groundTruthMemo    String?
+  confirmedBy        String?
+  confirmedAt        DateTime?
+
+  promptVersionId String?
+  promptVersion   PromptVersion? @relation(fields: [promptVersionId], references: [id])
+
+  @@index([createdAt])
+}
