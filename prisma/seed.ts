@@ -5,8 +5,8 @@ import type { AssessmentResult } from "../src/lib/assessment-types";
 const prisma = new PrismaClient();
 
 // 실제 접수된 선견적(202607765851)을 사람이 직접 검토해서 만든 샘플 케이스.
-// 사진은 채팅에 직접 붙여넣어진 것이라 파일로 저장할 경로가 없어 imageUrls는
-// 비워둠 — 실제 파일로 첨부되면 Vercel Blob에 올리고 URL을 채워 넣을 것.
+// 사진은 채팅에 직접 붙여넣어진 것이라 파일로 저장할 경로가 없어 이번 샘플엔
+// 이미지가 없음 — 실제 파일로 첨부되면 images 관계로 추가할 것.
 const NIRO_ESTIMATE_TEXT = `
 접수번호: 202607765851 / 사고일자: 2026-08-26 / 청구일자: 2026-08-31
 업체: 제이에스모터스 (울산 울주군) / 담보: 대물
@@ -111,7 +111,6 @@ async function main() {
       model: "니로 (부품코드 기준 추정)",
       damagedPart: "리어범퍼",
       memo: "공업사 선견적 접수번호 202607765851 기준 샘플 케이스. 사진은 채팅 첨부분이라 파일 미저장.",
-      imageUrls: [],
       estimateText: NIRO_ESTIMATE_TEXT,
       aiResult: NIRO_AI_RESULT as unknown as object,
       promptVersionId: promptVersion.id,

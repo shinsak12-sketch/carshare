@@ -30,8 +30,6 @@ model AssessmentCase {
   damagedPart  String?
   memo         String?
 
-  imageUrls    String[]
-  estimateUrl  String?
   estimateText String?
 
   aiResult Json
@@ -44,5 +42,19 @@ model AssessmentCase {
   promptVersionId String?
   promptVersion   PromptVersion? @relation(fields: [promptVersionId], references: [id])
 
+  images AssessmentImage[]
+
   @@index([createdAt])
+}
+
+model AssessmentImage {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  mimeType  String
+  data      Bytes
+
+  caseId String
+  case   AssessmentCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
 }

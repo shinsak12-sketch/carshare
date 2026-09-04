@@ -12,7 +12,10 @@ export default async function AssessmentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const item = await prisma.assessmentCase.findUnique({ where: { id } });
+  const item = await prisma.assessmentCase.findUnique({
+    where: { id },
+    include: { images: true },
+  });
   if (!item) notFound();
 
   const result = item.aiResult as unknown as AssessmentResult;
@@ -34,14 +37,14 @@ export default async function AssessmentDetailPage({
         {item.memo && <p className="mt-2 text-sm text-slate-600">{item.memo}</p>}
       </div>
 
-      {item.imageUrls.length > 0 && (
+      {item.images.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {item.imageUrls.map((url, i) => (
+          {item.images.map((img) => (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              key={i}
-              src={url}
-              alt={`손상 사진 ${i + 1}`}
+              key={img.id}
+              src={`data:${img.mimeType};base64,${Buffer.from(img.data).toString("base64")}`}
+              alt="손상 사진"
               className="aspect-square w-full rounded-lg border border-slate-200 object-cover"
             />
           ))}

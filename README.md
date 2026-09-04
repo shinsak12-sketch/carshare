@@ -6,16 +6,15 @@
 ## 스택
 
 - Next.js (App Router) — 프론트+백엔드, Vercel 배포
-- Neon (Postgres) + Prisma — 진단 이력 저장
-- Vercel Blob — 사진/선견적 파일 저장
-- OpenAI GPT-4o (Vision) — 손상유형 판정
+- Neon (Postgres) + Prisma — 진단 이력 + 사진(바이너리)까지 한 곳에 저장
+- OpenAI GPT-4o (Vision) — 손상유형 판정 (사진은 base64로 직접 전달)
 
 ## 로컬 실행
 
 ```bash
 npm install
 cp .env.example .env
-# .env에 OPENAI_API_KEY, DATABASE_URL, DIRECT_URL, BLOB_READ_WRITE_TOKEN 채우기
+# .env에 OPENAI_API_KEY, DATABASE_URL, DIRECT_URL 채우기
 npx prisma migrate dev --name init
 npm run dev
 ```
@@ -24,9 +23,8 @@ npm run dev
 
 1. Vercel에 이 저장소 연결
 2. 프로젝트 설정 → Storage → **Neon** 통합 추가 (DATABASE_URL / DIRECT_URL 자동 주입)
-3. 프로젝트 설정 → Storage → **Blob** 스토어 추가 (BLOB_READ_WRITE_TOKEN 자동 주입)
-4. 환경변수에 `OPENAI_API_KEY` 수동 추가
-5. 배포 시 빌드 커맨드에서 `prisma migrate deploy`가 실행되도록
+3. 환경변수에 `OPENAI_API_KEY` 수동 추가
+4. 배포 시 빌드 커맨드에서 `prisma migrate deploy`가 실행되도록
    `package.json`의 `build` 스크립트를 `prisma migrate deploy && next build`로
    맞추거나, 배포 전 `npx prisma migrate deploy`를 한 번 수동 실행
 

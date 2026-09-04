@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { put } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 import { getOpenAI } from "@/lib/openai";
 import {
@@ -58,22 +57,16 @@ export async function POST(req: NextRequest) {
   const estimateFile = form.get("estimate");
   const hasEstimate = estimateFile instanceof File && estimateFile.size > 0;
 
-  const [imageUploads, estimateUpload, estimateText, promptVersion] = await Promise.all([
+  const [images, estimateText, promptVersion] = await Promise.all([
     Promise.all(
-      imageFiles.map((file, i) =>
-        put(`assessments/${Date.now()}-${i}-${file.name}`, file, { access: "public" })
-      )
+      imageFiles.map(async (file) => ({
+        mimeType: file.type || "image/jpeg",
+        buffer: Buffer.from(await file.arrayBuffer()),
+      }))
     ),
-    hasEstimate
-      ? put(`estimates/${Date.now()}-${(estimateFile as File).name}`, estimateFile as File, {
-          access: "public",
-        })
-      : Promise.resolve(null),
     hasEstimate ? extractEstimateText(estimateFile as File) : Promise.resolve(null),
     getActivePromptVersion(),
   ]);
-
-  const imageUrls = imageUploads.map((u) => u.url);
 
   const contextLines = [
     `차량정보: ${vehicle.manufacturer} ${vehicle.model} ${vehicle.year ? vehicle.year + "년식" : ""}`.trim(),
@@ -94,9 +87,11 @@ export async function POST(req: NextRequest) {
         role: "user",
         content: [
           { type: "text", text: contextLines.join("\n\n") },
-          ...imageUrls.map((url) => ({
+          ...images.map((img) => ({
             type: "image_url" as const,
-            image_url: { url },
+            image_url: {
+              url: `data:${img.mimeType};base64,${img.buffer.toString("base64")}`,
+            },
           })),
         ],
       },
@@ -125,11 +120,12 @@ export async function POST(req: NextRequest) {
       year: vehicle.year,
       damagedPart: vehicle.damagedPart,
       memo: vehicle.memo,
-      imageUrls,
-      estimateUrl: estimateUpload?.url,
       estimateText: estimateText ?? undefined,
       aiResult: aiResult as unknown as object,
       promptVersionId: promptVersion.id,
+      images: {
+        create: images.map((img) => ({ mimeType: img.mimeType, data: img.buffer })),
+      },
     },
   });
 
