@@ -1,12 +1,19 @@
 import { PrismaClient } from "@prisma/client";
 import { PROMPT_VERSION_TAG, SYSTEM_PROMPT } from "../src/lib/assessment-prompt";
+import { hashPassword } from "../src/lib/password";
 import type { AssessmentResult } from "../src/lib/assessment-types";
 
 const prisma = new PrismaClient();
 
+// 최초 관리자 계정 부트스트랩. 이 값들은 반드시 배포 환경변수로 덮어써야 함
+// (기본값 그대로 두면 안 됨 — 첫 로그인 후 관리자 페이지에서 비밀번호를
+// 초기화하거나, 배포 시점에 ADMIN_INITIAL_PASSWORD를 강한 값으로 지정할 것).
+const ADMIN_EMPLOYEE_ID = process.env.ADMIN_EMPLOYEE_ID || "admin";
+const ADMIN_NAME = process.env.ADMIN_NAME || "시스템 관리자";
+const ADMIN_INITIAL_PASSWORD = process.env.ADMIN_INITIAL_PASSWORD || "changeme123!";
+
 // 실제 접수된 선견적(202607765851)을 사람이 직접 검토해서 만든 샘플 케이스.
-// 사진은 채팅에 직접 붙여넣어진 것이라 파일로 저장할 경로가 없어 이번 샘플엔
-// 이미지가 없음 — 실제 파일로 첨부되면 images 관계로 추가할 것.
+// 사진은 정책상 DB에 저장하지 않으므로 이 샘플에도 이미지가 없음.
 const NIRO_ESTIMATE_TEXT = `
 접수번호: 202607765851 / 사고일자: 2026-08-26 / 청구일자: 2026-08-31
 업체: 제이에스모터스 (울산 울주군) / 담보: 대물
@@ -114,6 +121,30 @@ const NIRO_AI_RESULT: AssessmentResult = {
 };
 
 async function main() {
+  if (!process.env.ADMIN_INITIAL_PASSWORD) {
+    console.warn(
+      "\n⚠ ADMIN_INITIAL_PASSWORD 환경변수가 설정되지 않아 기본 비밀번호(changeme123!)로 " +
+        "관리자 계정을 생성/유지합니다. 이 값은 이 저장소에 공개된 값이라 위험합니다 — " +
+        "지금 바로 Vercel 환경변수에 ADMIN_INITIAL_PASSWORD를 강한 값으로 지정하고 " +
+        "재배포하거나, 로그인 후 관리자 페이지에서 비밀번호를 초기화하세요.\n"
+    );
+  }
+  const adminPasswordHash = await hashPassword(ADMIN_INITIAL_PASSWORD);
+  const admin = await prisma.user.upsert({
+    where: { employeeId: ADMIN_EMPLOYEE_ID },
+    update: {},
+    create: {
+      employeeId: ADMIN_EMPLOYEE_ID,
+      name: ADMIN_NAME,
+      passwordHash: adminPasswordHash,
+      role: "ADMIN",
+      status: "ACTIVE",
+    },
+  });
+  console.log(
+    `관리자 계정 준비 완료: 사번 ${ADMIN_EMPLOYEE_ID} (환경변수 ADMIN_INITIAL_PASSWORD로 초기 비밀번호 지정 안 했으면 기본값이니 로그인 후 반드시 변경할 것)`
+  );
+
   const promptVersion = await prisma.promptVersion.upsert({
     where: { id: "seed-prompt-v1" },
     update: {},
@@ -131,7 +162,7 @@ async function main() {
     update: {},
     create: {
       id: "seed-case-niro-202607765851",
-      createdBy: "샘플 등록",
+      userId: admin.id,
       manufacturer: "기아",
       model: "니로 (부품코드 기준 추정)",
       damagedPart: "리어범퍼",

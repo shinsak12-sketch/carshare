@@ -8,6 +8,70 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum Role {
+  EMPLOYEE
+  ADMIN
+}
+
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  DISABLED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  employeeId   String        @unique
+  name         String
+  passwordHash String
+  role         Role          @default(EMPLOYEE)
+  status       AccountStatus @default(PENDING)
+  requestNote  String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  sessions Session[]
+  cases    AssessmentCase[]
+  auditLogs AuditLog[]
+
+  @@index([status])
+}
+
+model Session {
+  id        String   @id
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  ip        String?
+  userAgent String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  action    String
+
+  actorUserId     String?
+  actor           User?   @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorEmployeeId String?
+
+  targetType String?
+  targetId   String?
+  detail     String?
+
+  ip        String?
+  userAgent String?
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([actorEmployeeId])
+}
+
 model PromptVersion {
   id            String   @id @default(cuid())
   createdAt     DateTime @default(now())
@@ -22,7 +86,9 @@ model PromptVersion {
 model AssessmentCase {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())
-  createdBy String
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   manufacturer String
   model        String
@@ -42,19 +108,6 @@ model AssessmentCase {
   promptVersionId String?
   promptVersion   PromptVersion? @relation(fields: [promptVersionId], references: [id])
 
-  images AssessmentImage[]
-
+  // 사진은 GPT 호출 시점에만 메모리에서 쓰고 DB에는 저장하지 않음(저장소 절약).
   @@index([createdAt])
-}
-
-model AssessmentImage {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
-  mimeType  String
-  data      Bytes
-
-  caseId String
-  case   AssessmentCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
-
-  @@index([caseId])
 }

@@ -5,24 +5,17 @@ import type { AssessmentResult } from "@/lib/assessment-types";
 
 export const dynamic = "force-dynamic";
 
-export default async function HistoryPage() {
+export default async function AdminHistoryPage() {
   const cases = await prisma.assessmentCase.findMany({
     orderBy: { createdAt: "desc" },
+    include: { user: { select: { name: true, employeeId: true } } },
   });
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">진단 이력</h1>
-          <p className="mt-1 text-sm text-slate-500">총 {cases.length}건</p>
-        </div>
-        <Link
-          href="/assess/new"
-          className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.5)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_8px_20px_-6px_rgba(37,99,235,0.55)] active:translate-y-0 active:scale-95"
-        >
-          + 신규 진단
-        </Link>
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-xl font-bold text-slate-900">진단 이력</h1>
+        <p className="mt-1 text-sm text-slate-500">총 {cases.length}건 · 사진은 저장하지 않으며 판정 결과만 보관됩니다.</p>
       </div>
 
       {cases.length === 0 && (
@@ -38,7 +31,7 @@ export default async function HistoryPage() {
           return (
             <Link
               key={c.id}
-              href={`/assess/${c.id}`}
+              href={`/admin/history/${c.id}`}
               className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-md active:translate-y-0 active:scale-[0.98]"
             >
               <div>
@@ -46,7 +39,8 @@ export default async function HistoryPage() {
                   {c.manufacturer} {c.model} {c.year ? `· ${c.year}년식` : ""}
                 </div>
                 <div className="mt-1 text-sm text-slate-500">
-                  {derivedDamagedParts(result, c.damagedPart)} · {c.createdBy} ·{" "}
+                  {derivedDamagedParts(result, c.damagedPart)} ·{" "}
+                  {c.user ? `${c.user.name}(${c.user.employeeId})` : "알 수 없음"} ·{" "}
                   {c.createdAt.toLocaleDateString("ko-KR")}
                 </div>
               </div>
@@ -63,6 +57,6 @@ export default async function HistoryPage() {
           );
         })}
       </div>
-    </main>
+    </div>
   );
 }

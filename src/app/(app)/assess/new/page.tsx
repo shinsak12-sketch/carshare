@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { AssessmentResultView } from "@/components/AssessmentResultView";
 import { compressImage } from "@/lib/image-compress";
 import type { AssessmentResult } from "@/lib/assessment-types";
@@ -13,14 +12,12 @@ export default function NewAssessmentPage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [caseInfo, setCaseInfo] = useState<ReportCaseInfo | null>(null);
-  const [caseId, setCaseId] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setResult(null);
-    setCaseId(null);
 
     const form = e.currentTarget;
     const formData = new FormData(form);
@@ -50,7 +47,6 @@ export default function NewAssessmentPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "요청에 실패했습니다.");
       setResult(data.result as AssessmentResult);
-      setCaseId(data.id as string);
       setCaseInfo({
         manufacturer: String(formData.get("manufacturer") ?? ""),
         model: String(formData.get("model") ?? ""),
@@ -146,8 +142,6 @@ export default function NewAssessmentPage() {
           />
         </div>
 
-        <input type="hidden" name="createdBy" value="담당자" />
-
         <button
           type="submit"
           disabled={loading}
@@ -172,17 +166,7 @@ export default function NewAssessmentPage() {
 
       {result && caseInfo && (
         <div>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-slate-900">진단 결과</h2>
-            {caseId && (
-              <Link
-                href={`/assess/${caseId}`}
-                className="rounded-full px-3 py-1.5 text-sm font-semibold text-blue-600 transition-all duration-150 hover:bg-blue-50 active:scale-95"
-              >
-                이력에서 다시 보기 →
-              </Link>
-            )}
-          </div>
+          <h2 className="mb-3 text-lg font-bold text-slate-900">진단 결과</h2>
           <AssessmentResultView caseInfo={caseInfo} result={result} />
         </div>
       )}

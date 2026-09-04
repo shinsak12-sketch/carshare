@@ -8,6 +8,8 @@ import {
 } from "@/lib/assessment-prompt";
 import { matchReferenceSections } from "@/lib/reference-sections";
 import type { AssessmentResult, VehicleInfo } from "@/lib/assessment-types";
+import { getCurrentUser } from "@/lib/session";
+import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -52,6 +54,11 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleAssess(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  }
+
   const form = await req.formData();
 
   const vehicle: VehicleInfo = {
@@ -61,7 +68,6 @@ async function handleAssess(req: NextRequest) {
     damagedPart: form.get("damagedPart") ? String(form.get("damagedPart")) : undefined,
     memo: form.get("memo") ? String(form.get("memo")) : undefined,
   };
-  const createdBy = String(form.get("createdBy") ?? "익명");
 
   const imageFiles = form.getAll("images").filter((f): f is File => f instanceof File);
   if (imageFiles.length === 0) {
@@ -134,9 +140,10 @@ async function handleAssess(req: NextRequest) {
   }
   const aiResult: AssessmentResult = JSON.parse(raw);
 
+  // 사진은 위에서 GPT 호출에만 base64로 쓰고 DB에는 저장하지 않음(저장소 절약 방침).
   const created = await prisma.assessmentCase.create({
     data: {
-      createdBy,
+      userId: user.id,
       manufacturer: vehicle.manufacturer,
       model: vehicle.model,
       year: vehicle.year,
@@ -145,10 +152,19 @@ async function handleAssess(req: NextRequest) {
       estimateText: estimateText ?? undefined,
       aiResult: aiResult as unknown as object,
       promptVersionId: promptVersion.id,
-      images: {
-        create: images.map((img) => ({ mimeType: img.mimeType, data: img.buffer })),
-      },
     },
+  });
+
+  const { ip, userAgent } = getRequestMeta(req);
+  await logAudit({
+    action: AuditAction.ASSESSMENT_SUBMITTED,
+    actorUserId: user.id,
+    actorEmployeeId: user.employeeId,
+    targetType: "AssessmentCase",
+    targetId: created.id,
+    detail: `${vehicle.manufacturer} ${vehicle.model}`,
+    ip,
+    userAgent,
   });
 
   return NextResponse.json({ id: created.id, result: aiResult });

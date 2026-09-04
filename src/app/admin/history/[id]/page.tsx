@@ -6,7 +6,7 @@ import type { AssessmentResult } from "@/lib/assessment-types";
 
 export const dynamic = "force-dynamic";
 
-export default async function AssessmentDetailPage({
+export default async function AdminAssessmentDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -14,16 +14,16 @@ export default async function AssessmentDetailPage({
   const { id } = await params;
   const item = await prisma.assessmentCase.findUnique({
     where: { id },
-    include: { images: true },
+    include: { user: { select: { name: true, employeeId: true } } },
   });
   if (!item) notFound();
 
   const result = item.aiResult as unknown as AssessmentResult;
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10">
+    <div className="flex flex-col gap-6">
       <Link
-        href="/history"
+        href="/admin/history"
         className="self-start rounded-full px-3 py-1.5 text-sm font-semibold text-blue-600 transition-all duration-150 hover:bg-blue-50 active:scale-95"
       >
         ← 이력으로 돌아가기
@@ -34,28 +34,18 @@ export default async function AssessmentDetailPage({
           {item.manufacturer} {item.model} {item.year ? `· ${item.year}년식` : ""}
         </h1>
         <p className="mt-1 text-sm text-slate-500">
-          {item.createdBy} · {item.createdAt.toLocaleString("ko-KR")}
+          {item.user ? `${item.user.name}(${item.user.employeeId})` : "알 수 없음"} ·{" "}
+          {item.createdAt.toLocaleString("ko-KR")}
         </p>
         {item.memo && (
           <p className="mt-2 text-sm text-slate-600">
             <span className="font-semibold text-slate-700">담당자 추가 의견:</span> {item.memo}
           </p>
         )}
+        <p className="mt-2 text-xs text-slate-400">
+          파손 사진은 저장하지 않는 정책에 따라 이 화면에서 다시 볼 수 없습니다.
+        </p>
       </div>
-
-      {item.images.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {item.images.map((img) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={img.id}
-              src={`data:${img.mimeType};base64,${Buffer.from(img.data).toString("base64")}`}
-              alt="손상 사진"
-              className="aspect-square w-full rounded-lg border border-slate-200 object-cover"
-            />
-          ))}
-        </div>
-      )}
 
       {item.estimateText && (
         <details className="rounded-xl border border-slate-200 bg-white p-4 text-sm">
@@ -81,6 +71,6 @@ export default async function AssessmentDetailPage({
           result={result}
         />
       </div>
-    </main>
+    </div>
   );
 }
