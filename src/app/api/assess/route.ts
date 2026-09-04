@@ -13,15 +13,10 @@ export const maxDuration = 60;
 
 async function extractEstimateText(file: File): Promise<string | null> {
   if (file.type !== "application/pdf") return null;
-  const { PDFParse } = await import("pdf-parse");
-  const data = new Uint8Array(await file.arrayBuffer());
-  const parser = new PDFParse({ data });
-  try {
-    const result = await parser.getText();
-    return result.text;
-  } finally {
-    await parser.destroy();
-  }
+  const pdfParse = (await import("pdf-parse")).default;
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const result = await pdfParse(buffer);
+  return result.text;
 }
 
 async function getActivePromptVersion() {
