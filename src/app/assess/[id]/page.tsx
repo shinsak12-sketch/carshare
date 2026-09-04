@@ -22,7 +22,10 @@ export default async function AssessmentDetailPage({
 
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10">
-      <Link href="/history" className="text-sm font-medium text-blue-600 hover:underline">
+      <Link
+        href="/history"
+        className="self-start rounded-full px-3 py-1.5 text-sm font-semibold text-blue-600 transition-all duration-150 hover:bg-blue-50 active:scale-95"
+      >
         ← 이력으로 돌아가기
       </Link>
 
@@ -33,7 +36,11 @@ export default async function AssessmentDetailPage({
         <p className="mt-1 text-sm text-slate-500">
           {item.createdBy} · {item.createdAt.toLocaleString("ko-KR")}
         </p>
-        {item.memo && <p className="mt-2 text-sm text-slate-600">{item.memo}</p>}
+        {item.memo && (
+          <p className="mt-2 text-sm text-slate-600">
+            <span className="font-semibold text-slate-700">담당자 추가 의견:</span> {item.memo}
+          </p>
+        )}
       </div>
 
       {item.images.length > 0 && (

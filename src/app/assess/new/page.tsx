@@ -80,7 +80,7 @@ export default function NewAssessmentPage() {
             <input
               name="manufacturer"
               required
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               placeholder="현대"
             />
           </div>
@@ -89,7 +89,7 @@ export default function NewAssessmentPage() {
             <input
               name="model"
               required
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               placeholder="아반떼"
             />
           </div>
@@ -98,7 +98,7 @@ export default function NewAssessmentPage() {
             <input
               name="year"
               type="number"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
               placeholder="2022"
             />
           </div>
@@ -108,12 +108,16 @@ export default function NewAssessmentPage() {
         </p>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">사고 경위 메모</label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">담당자 추가 의견</label>
           <textarea
             name="memo"
             rows={2}
+            placeholder="예: 파손부위가 사진과 다르게 보임 / 사고 경위상 이 부위 손상이 이상함"
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
           />
+          <p className="mt-1 text-xs text-slate-400">
+            여기 적은 내용은 AI 검토 프롬프트에 그대로 전달되어 검토에 반영됩니다.
+          </p>
         </div>
 
         <div>
@@ -126,7 +130,7 @@ export default function NewAssessmentPage() {
             accept="image/*"
             multiple
             required
-            className="w-full rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 file:transition-colors hover:border-blue-400 hover:file:bg-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
 
@@ -138,7 +142,7 @@ export default function NewAssessmentPage() {
             name="estimate"
             type="file"
             accept="application/pdf"
-            className="w-full rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 file:transition-colors hover:border-blue-400 hover:file:bg-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
 
@@ -147,9 +151,16 @@ export default function NewAssessmentPage() {
         <button
           type="submit"
           disabled={loading}
-          className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
+          className="rounded-full bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-[0_6px_16px_-4px_rgba(37,99,235,0.5)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_10px_22px_-6px_rgba(37,99,235,0.55)] active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[0_6px_16px_-4px_rgba(37,99,235,0.5)]"
         >
-          {loading ? loadingStep || "처리 중…" : "AI 진단 시작"}
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              {loadingStep || "처리 중…"}
+            </span>
+          ) : (
+            "AI 진단 시작"
+          )}
         </button>
       </form>
 
@@ -164,7 +175,10 @@ export default function NewAssessmentPage() {
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900">진단 결과</h2>
             {caseId && (
-              <Link href={`/assess/${caseId}`} className="text-sm font-medium text-blue-600 hover:underline">
+              <Link
+                href={`/assess/${caseId}`}
+                className="rounded-full px-3 py-1.5 text-sm font-semibold text-blue-600 transition-all duration-150 hover:bg-blue-50 active:scale-95"
+              >
                 이력에서 다시 보기 →
               </Link>
             )}

@@ -11,13 +11,13 @@ export default function Home() {
       <div className="flex gap-3">
         <Link
           href="/assess/new"
-          className="rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+          className="rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.5)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_8px_20px_-6px_rgba(37,99,235,0.55)] active:translate-y-0 active:scale-95"
         >
           신규 진단 시작
         </Link>
         <Link
           href="/history"
-          className="rounded-lg border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          className="rounded-full border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-md active:translate-y-0 active:scale-95"
         >
           진단 이력 보기
         </Link>

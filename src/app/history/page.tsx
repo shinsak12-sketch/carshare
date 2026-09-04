@@ -19,7 +19,7 @@ export default async function HistoryPage() {
         </div>
         <Link
           href="/assess/new"
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+          className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.5)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_8px_20px_-6px_rgba(37,99,235,0.55)] active:translate-y-0 active:scale-95"
         >
           + 신규 진단
         </Link>
@@ -39,7 +39,7 @@ export default async function HistoryPage() {
             <Link
               key={c.id}
               href={`/assess/${c.id}`}
-              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-4 transition hover:border-blue-300 hover:bg-blue-50/40"
+              className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-md active:translate-y-0 active:scale-[0.98]"
             >
               <div>
                 <div className="font-semibold text-slate-900">
