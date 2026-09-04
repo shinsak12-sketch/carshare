@@ -53,24 +53,17 @@ export function buildReportText(caseInfo: ReportCaseInfo, result: AssessmentResu
     lines.push(verdictLine);
 
     if (part.labor_time_check.claimed_h !== null) {
+      const ref =
+        part.labor_time_check.reference_h !== null ? ` (참고 ${part.labor_time_check.reference_h}H)` : "";
       lines.push(
-        `  (작업시간 검토: 청구 ${part.labor_time_check.claimed_h}H / 사내기준 ${
-          part.labor_time_check.reference_h ?? "-"
-        }H → ${part.labor_time_check.reference_verdict} · 정비상식 → ${
-          part.labor_time_check.general_assessment
-        } — ${part.labor_time_check.note})`
+        `  작업시간: 청구 ${part.labor_time_check.claimed_h}H${ref} — ${part.labor_time_check.note}`
       );
     }
     if (part.ancillary_work_check.length > 0) {
-      const items = part.ancillary_work_check
-        .map((a) => {
-          const policy =
-            a.in_allowed_list === null ? "허용목록 미확인" : a.in_allowed_list ? "허용" : "허용목록 외";
-          const mech = a.mechanically_plausible ? "정비상 통상 필요" : "정비상 근거 약함";
-          return `${a.item}(${policy} · ${mech} — ${a.note})`;
-        })
-        .join(", ");
-      lines.push(`  (부수작업 검토: ${items})`);
+      lines.push("  부수작업:");
+      for (const a of part.ancillary_work_check) {
+        lines.push(`  · ${a.item}: ${a.note}`);
+      }
     }
     lines.push("");
   });
