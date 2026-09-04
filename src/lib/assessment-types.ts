@@ -1,4 +1,4 @@
-export type DamageType = "1유형" | "2유형" | "3유형" | "비대상(교환예외)" | "불명확" | "손상없음";
+export type DamageType = "1유형" | "2유형" | "3유형" | "비대상(교환예외)" | "손상없음";
 export type Confidence = "높음" | "중간" | "낮음";
 export type LaborVerdict = "적정" | "과다" | "과소" | "기준 미제공 - 확인 필요";
 export type PartVerdict = "인정가능" | "협의대상" | "불인정";
