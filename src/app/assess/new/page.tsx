@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { AssessmentResultView } from "@/components/AssessmentResultView";
 import type { AssessmentResult } from "@/lib/assessment-types";
 
@@ -8,12 +9,14 @@ export default function NewAssessmentPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AssessmentResult | null>(null);
+  const [caseId, setCaseId] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setResult(null);
+    setCaseId(null);
 
     const formData = new FormData(e.currentTarget);
     try {
@@ -21,6 +24,7 @@ export default function NewAssessmentPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "요청에 실패했습니다.");
       setResult(data.result as AssessmentResult);
+      setCaseId(data.id as string);
     } catch (err) {
       setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
     } finally {
@@ -130,7 +134,14 @@ export default function NewAssessmentPage() {
 
       {result && (
         <div>
-          <h2 className="mb-3 text-lg font-bold text-slate-900">진단 결과</h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-900">진단 결과</h2>
+            {caseId && (
+              <Link href={`/assess/${caseId}`} className="text-sm font-medium text-blue-600 hover:underline">
+                이력에서 다시 보기 →
+              </Link>
+            )}
+          </div>
           <AssessmentResultView result={result} />
         </div>
       )}
