@@ -38,6 +38,16 @@ async function getActivePromptVersion() {
 }
 
 export async function POST(req: NextRequest) {
+  try {
+    return await handleAssess(req);
+  } catch (err) {
+    console.error("[/api/assess] failed:", err);
+    const message = err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+async function handleAssess(req: NextRequest) {
   const form = await req.formData();
 
   const vehicle: VehicleInfo = {
