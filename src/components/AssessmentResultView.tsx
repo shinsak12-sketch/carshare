@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { buildReportText, type ReportCaseInfo } from "@/lib/format-report";
+import { buildReportText, derivedDamagedParts, type ReportCaseInfo } from "@/lib/format-report";
 import type { AssessmentResult, PartVerdict } from "@/lib/assessment-types";
 
 const verdictColor: Record<PartVerdict, string> = {
@@ -46,7 +46,7 @@ export function AssessmentResultView({
         <div className="text-slate-500">
           차량: {caseInfo.manufacturer} {caseInfo.model}
           {caseInfo.year ? ` ${caseInfo.year}년식` : ""} | 손상부위:{" "}
-          {caseInfo.damagedPart || "미기재"}
+          {derivedDamagedParts(result, caseInfo.damagedPart)}
         </div>
 
         {!result.estimate_provided && (
@@ -70,6 +70,30 @@ export function AssessmentResultView({
             </p>
             {part.evidence_confidence === "낮음" && (
               <p className="mt-1 text-xs text-slate-400">(사진 판독 신뢰도: 낮음)</p>
+            )}
+            {part.labor_time_check.claimed_h !== null && (
+              <p className="mt-1 text-xs text-slate-400">
+                (작업시간 검토: 청구 {part.labor_time_check.claimed_h}H / 기준{" "}
+                {part.labor_time_check.reference_h ?? "-"}H → {part.labor_time_check.verdict})
+              </p>
+            )}
+            {part.ancillary_work_check.length > 0 && (
+              <p className="mt-1 text-xs text-slate-400">
+                (부수작업 검토:{" "}
+                {part.ancillary_work_check
+                  .map(
+                    (a) =>
+                      `${a.item}(${
+                        a.in_allowed_list === null
+                          ? "허용목록 미확인"
+                          : a.in_allowed_list
+                            ? "허용"
+                            : "허용목록 외"
+                      })`
+                  )
+                  .join(", ")}
+                )
+              </p>
             )}
           </div>
         ))}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { derivedDamagedParts } from "@/lib/format-report";
 import type { AssessmentResult } from "@/lib/assessment-types";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +46,7 @@ export default async function HistoryPage() {
                   {c.manufacturer} {c.model} {c.year ? `· ${c.year}년식` : ""}
                 </div>
                 <div className="mt-1 text-sm text-slate-500">
-                  {c.damagedPart ?? "부위 미기재"} · {c.createdBy} ·{" "}
+                  {derivedDamagedParts(result, c.damagedPart)} · {c.createdBy} ·{" "}
                   {c.createdAt.toLocaleDateString("ko-KR")}
                 </div>
               </div>

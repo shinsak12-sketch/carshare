@@ -11,8 +11,13 @@ import type { AssessmentResult, VehicleInfo } from "@/lib/assessment-types";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-async function extractEstimateText(file: File): Promise<string | null> {
-  if (file.type !== "application/pdf") return null;
+function isPdfFile(file: File): boolean {
+  // 모바일 브라우저/파일 앱에 따라 PDF의 file.type이 빈 문자열이나
+  // "application/octet-stream"으로 잘못 잡히는 경우가 있어, 확장자도 같이 확인함.
+  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+}
+
+async function extractEstimateText(file: File): Promise<string> {
   // pdf-parse의 패키지 루트(index.js)는 require.main 체크가 번들러 환경에서
   // 오작동해 테스트용 하드코딩 파일을 읽으려다 ENOENT가 남 — 내부 구현을
   // 직접 import해서 그 부작용을 우회함.
@@ -64,6 +69,9 @@ async function handleAssess(req: NextRequest) {
 
   const estimateFile = form.get("estimate");
   const hasEstimate = estimateFile instanceof File && estimateFile.size > 0;
+  if (hasEstimate && !isPdfFile(estimateFile as File)) {
+    return NextResponse.json({ error: "선견적은 PDF 파일만 첨부 가능합니다." }, { status: 400 });
+  }
 
   const [images, estimateText, promptVersion] = await Promise.all([
     Promise.all(

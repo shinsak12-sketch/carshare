@@ -31,8 +31,7 @@ export default async function AssessmentDetailPage({
           {item.manufacturer} {item.model} {item.year ? `· ${item.year}년식` : ""}
         </h1>
         <p className="mt-1 text-sm text-slate-500">
-          {item.damagedPart ?? "부위 미기재"} · {item.createdBy} ·{" "}
-          {item.createdAt.toLocaleString("ko-KR")}
+          {item.createdBy} · {item.createdAt.toLocaleString("ko-KR")}
         </p>
         {item.memo && <p className="mt-2 text-sm text-slate-600">{item.memo}</p>}
       </div>

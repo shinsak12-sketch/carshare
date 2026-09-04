@@ -10,10 +10,17 @@ export interface ReportCaseInfo {
 
 // 화면에 보여주는 것과 "복사" 버튼으로 복사되는 텍스트가 항상 같은 내용을
 // 갖도록, 렌더링과 복사 양쪽에서 이 함수 하나로 텍스트를 만든다.
+// 사람이 입력한 손상부위 대신, AI가 실제로 판정한 부위 목록을 보여줌
+// (신고 내용을 그대로 되돌려주는 게 아니라 AI가 인식한 결과가 맞아야 함).
+export function derivedDamagedParts(result: AssessmentResult, fallback?: string | null): string {
+  const parts = result.parts.map((p) => p.part_name);
+  return parts.length > 0 ? parts.join(", ") : fallback || "미기재";
+}
+
 export function buildReportText(caseInfo: ReportCaseInfo, result: AssessmentResult): string {
   const vehicleLine = `차량: ${caseInfo.manufacturer} ${caseInfo.model}${
     caseInfo.year ? ` ${caseInfo.year}년식` : ""
-  } | 손상부위: ${caseInfo.damagedPart || "미기재"}${
+  } | 손상부위: ${derivedDamagedParts(result, caseInfo.damagedPart)}${
     caseInfo.createdAt ? ` | 진단일시: ${caseInfo.createdAt.toLocaleString("ko-KR")}` : ""
   }`;
 
@@ -27,6 +34,23 @@ export function buildReportText(caseInfo: ReportCaseInfo, result: AssessmentResu
         ? `→ 판정: ${part.damage_type} · 협의대상 — ${part.required_action}`
         : `→ 판정: ${part.damage_type} · ${part.verdict}`;
     lines.push(verdictLine);
+
+    if (part.labor_time_check.claimed_h !== null) {
+      lines.push(
+        `  (작업시간 검토: 청구 ${part.labor_time_check.claimed_h}H / 기준 ${
+          part.labor_time_check.reference_h ?? "-"
+        }H → ${part.labor_time_check.verdict})`
+      );
+    }
+    if (part.ancillary_work_check.length > 0) {
+      const items = part.ancillary_work_check
+        .map(
+          (a) =>
+            `${a.item}(${a.in_allowed_list === null ? "허용목록 미확인" : a.in_allowed_list ? "허용" : "허용목록 외"})`
+        )
+        .join(", ");
+      lines.push(`  (부수작업 검토: ${items})`);
+    }
     lines.push("");
   });
 

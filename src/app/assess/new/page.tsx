@@ -55,7 +55,6 @@ export default function NewAssessmentPage() {
         manufacturer: String(formData.get("manufacturer") ?? ""),
         model: String(formData.get("model") ?? ""),
         year: formData.get("year") ? Number(formData.get("year")) : undefined,
-        damagedPart: formData.get("damagedPart") ? String(formData.get("damagedPart")) : undefined,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
@@ -75,7 +74,7 @@ export default function NewAssessmentPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">제조사</label>
             <input
@@ -103,15 +102,10 @@ export default function NewAssessmentPage() {
               placeholder="2022"
             />
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">손상부위</label>
-            <input
-              name="damagedPart"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              placeholder="프런트범퍼"
-            />
-          </div>
         </div>
+        <p className="-mt-4 text-xs text-slate-400">
+          손상부위는 따로 입력할 필요 없이 사진·선견적을 보고 AI가 판단합니다.
+        </p>
 
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">사고 경위 메모</label>
