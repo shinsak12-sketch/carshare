@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getOpenAI } from "@/lib/openai";
+import { getModel, getOpenAI } from "@/lib/openai";
 import {
   ASSESSMENT_RESPONSE_SCHEMA,
   PROMPT_VERSION_TAG,
@@ -87,7 +87,7 @@ async function handleAssess(req: NextRequest) {
 
   const openai = getOpenAI();
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: getModel(),
     temperature: 0.1,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
