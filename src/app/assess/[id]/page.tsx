@@ -64,7 +64,16 @@ export default async function AssessmentDetailPage({
 
       <div>
         <h2 className="mb-3 text-lg font-bold text-slate-900">AI 진단 결과</h2>
-        <AssessmentResultView result={result} />
+        <AssessmentResultView
+          caseInfo={{
+            manufacturer: item.manufacturer,
+            model: item.model,
+            year: item.year,
+            damagedPart: item.damagedPart,
+            createdAt: item.createdAt,
+          }}
+          result={result}
+        />
       </div>
     </main>
   );
