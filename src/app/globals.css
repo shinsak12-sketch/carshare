@@ -37,3 +37,12 @@ body {
 .animate-fade-in-up {
   animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* 모바일 가로 스크롤 탭바(관리자 페이지 상단 탭 등)에서 스크롤바를 숨김 */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}

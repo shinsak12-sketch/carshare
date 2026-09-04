@@ -17,13 +17,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "사번과 비밀번호를 입력해주세요." }, { status: 400 });
   }
 
-  const recentFails = await prisma.auditLog.count({
-    where: {
-      action: AuditAction.LOGIN_FAIL,
-      actorEmployeeId: employeeId,
-      createdAt: { gte: new Date(Date.now() - FAIL_WINDOW_MS) },
-    },
-  });
+  // 차단 여부 조회와 계정 조회는 서로 의존하지 않으므로 병렬로 보내 왕복 횟수를 줄임
+  const [recentFails, user] = await Promise.all([
+    prisma.auditLog.count({
+      where: {
+        action: AuditAction.LOGIN_FAIL,
+        actorEmployeeId: employeeId,
+        createdAt: { gte: new Date(Date.now() - FAIL_WINDOW_MS) },
+      },
+    }),
+    prisma.user.findUnique({ where: { employeeId } }),
+  ]);
   if (recentFails >= MAX_FAILS) {
     await logAudit({
       action: AuditAction.LOGIN_BLOCKED,
@@ -38,7 +42,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const user = await prisma.user.findUnique({ where: { employeeId } });
   const passwordOk = user ? await verifyPassword(password, user.passwordHash) : false;
 
   if (!user || !passwordOk) {
