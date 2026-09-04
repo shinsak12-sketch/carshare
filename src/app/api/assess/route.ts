@@ -13,7 +13,10 @@ export const maxDuration = 60;
 
 async function extractEstimateText(file: File): Promise<string | null> {
   if (file.type !== "application/pdf") return null;
-  const pdfParse = (await import("pdf-parse")).default;
+  // pdf-parse의 패키지 루트(index.js)는 require.main 체크가 번들러 환경에서
+  // 오작동해 테스트용 하드코딩 파일을 읽으려다 ENOENT가 남 — 내부 구현을
+  // 직접 import해서 그 부작용을 우회함.
+  const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
   const buffer = Buffer.from(await file.arrayBuffer());
   const result = await pdfParse(buffer);
   return result.text;
