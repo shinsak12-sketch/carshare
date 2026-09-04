@@ -5,7 +5,8 @@ export type PartVerdict = "인정가능" | "협의대상" | "불인정";
 
 export interface AncillaryWorkCheck {
   item: string;
-  in_allowed_list: boolean | null;
+  in_allowed_list: boolean | null; // 회사 참고자료 기준 (자료 없으면 null)
+  mechanically_plausible: boolean; // 일반 자동차 정비 상식/공학적 판단 (항상 채움)
   note: string;
 }
 

@@ -50,22 +50,27 @@ const NIRO_AI_RESULT: AssessmentResult = {
         {
           item: "리어범퍼언더커버(사이드) 좌/우 탈착",
           in_allowed_list: null,
-          note: "범퍼 교환이 전제된 부수작업 — 교환 자체가 협의대상이므로 함께 재검토 필요",
+          mechanically_plausible: true,
+          note: "범퍼 탈거 시 언더커버가 겹치는 구조라 정비 절차상 통상 필요. 다만 범퍼 " +
+            "교환 자체가 협의대상이므로 함께 재검토 필요",
         },
         {
           item: "후방감지센서 탈착",
           in_allowed_list: null,
-          note: "범퍼 탈거 시 통상 수반되는 작업이나 상동 사유로 재검토 필요",
+          mechanically_plausible: true,
+          note: "범퍼에 매립된 센서라 범퍼 탈거 시 정비 절차상 통상 수반됨. 상동 사유로 재검토 필요",
         },
         {
           item: "리어컴비네이션램프 좌/우 탈착",
           in_allowed_list: null,
-          note: "상동",
+          mechanically_plausible: true,
+          note: "범퍼 코너와 결합부가 겹치는 차종이 많아 통상 필요. 상동",
         },
         {
           item: "머드가드(리어) 좌/우 탈착",
           in_allowed_list: null,
-          note: "상동",
+          mechanically_plausible: true,
+          note: "범퍼 하단 체결부와 겹쳐 통상 필요. 상동",
         },
       ],
       verdict: "협의대상",

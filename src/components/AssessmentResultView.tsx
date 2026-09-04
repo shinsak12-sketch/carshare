@@ -85,22 +85,24 @@ export function AssessmentResultView({
               </p>
             )}
             {part.ancillary_work_check.length > 0 && (
-              <p className="mt-1 text-xs text-slate-400">
-                (부수작업 검토:{" "}
-                {part.ancillary_work_check
-                  .map(
-                    (a) =>
-                      `${a.item}(${
-                        a.in_allowed_list === null
-                          ? "허용목록 미확인"
-                          : a.in_allowed_list
-                            ? "허용"
-                            : "허용목록 외"
-                      })`
-                  )
-                  .join(", ")}
-                )
-              </p>
+              <div className="mt-1 flex flex-col gap-0.5 text-xs text-slate-400">
+                <div>부수작업 검토:</div>
+                {part.ancillary_work_check.map((a, j) => (
+                  <div key={j}>
+                    · {a.item} — 사내기준:{" "}
+                    {a.in_allowed_list === null
+                      ? "허용목록 미확인"
+                      : a.in_allowed_list
+                        ? "허용"
+                        : "허용목록 외"}{" "}
+                    · 정비상식:{" "}
+                    <span className={a.mechanically_plausible ? "text-emerald-600" : "text-amber-600"}>
+                      {a.mechanically_plausible ? "통상 필요" : "근거 약함"}
+                    </span>{" "}
+                    ({a.note})
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         ))}
