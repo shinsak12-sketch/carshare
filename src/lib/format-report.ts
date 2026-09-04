@@ -17,6 +17,18 @@ export function derivedDamagedParts(result: AssessmentResult, fallback?: string 
   return parts.length > 0 ? parts.join(", ") : fallback || "미기재";
 }
 
+// 종합의견 카드 전용 복사 텍스트. 담당자가 선견적 회신에 그대로 붙여넣는
+// 용도라, 경미손상 유형·판정까지 포함된 overall_opinion 문장(프롬프트
+// 원칙 7)과 협의 필요 항목만 담아 바로 붙여넣기 좋은 형태로 만든다.
+export function buildOverallOpinionText(result: AssessmentResult): string {
+  const lines: string[] = [result.overall_opinion];
+  if (result.disputed_items.length > 0) {
+    lines.push("");
+    lines.push(`협의 필요 항목: ${result.disputed_items.join(", ")}`);
+  }
+  return lines.join("\n");
+}
+
 export function buildReportText(caseInfo: ReportCaseInfo, result: AssessmentResult): string {
   const vehicleLine = `차량: ${caseInfo.manufacturer} ${caseInfo.model}${
     caseInfo.year ? ` ${caseInfo.year}년식` : ""

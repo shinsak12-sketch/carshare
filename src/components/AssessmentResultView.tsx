@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { buildReportText, derivedDamagedParts, type ReportCaseInfo } from "@/lib/format-report";
+import { buildOverallOpinionText, buildReportText, derivedDamagedParts, type ReportCaseInfo } from "@/lib/format-report";
 import type { AssessmentResult, GeneralAssessment, PartVerdict } from "@/lib/assessment-types";
 
 const verdictBadge: Record<PartVerdict, string> = {
@@ -43,13 +43,25 @@ export function AssessmentResultView({
   result: AssessmentResult;
 }) {
   const [copied, setCopied] = useState(false);
+  const [opinionCopied, setOpinionCopied] = useState(false);
   const reportText = buildReportText(caseInfo, result);
+  const opinionText = buildOverallOpinionText(result);
 
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(reportText);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // 클립보드 권한이 없는 브라우저 등 — 조용히 무시
+    }
+  }
+
+  async function handleCopyOpinion() {
+    try {
+      await navigator.clipboard.writeText(opinionText);
+      setOpinionCopied(true);
+      setTimeout(() => setOpinionCopied(false), 1500);
     } catch {
       // 클립보드 권한이 없는 브라우저 등 — 조용히 무시
     }
@@ -240,7 +252,19 @@ export function AssessmentResultView({
         )}
 
         <div className="rounded-2xl bg-slate-900 px-5 py-4 text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)]">
-          <p className="text-xs font-bold uppercase tracking-wide text-slate-400">종합 의견</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+              종합 의견 <span className="normal-case text-slate-500">· 선견적 회신용</span>
+            </p>
+            <button
+              onClick={handleCopyOpinion}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
+                opinionCopied ? "bg-emerald-600" : "bg-white/15 hover:bg-white/25"
+              }`}
+            >
+              {opinionCopied ? "복사됨 ✓" : "복사"}
+            </button>
+          </div>
           <p className="mt-1.5 text-sm font-medium leading-relaxed text-slate-100">{result.overall_opinion}</p>
           {result.disputed_items.length > 0 && (
             <p className="mt-2.5 text-xs font-semibold text-amber-300">
