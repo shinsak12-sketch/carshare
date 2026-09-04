@@ -81,15 +81,6 @@ export function RequestAccessForm() {
           className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
         />
       </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">신청 사유 (선택)</label>
-        <textarea
-          name="requestNote"
-          rows={2}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-        />
-      </div>
-
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-700">
           {error}

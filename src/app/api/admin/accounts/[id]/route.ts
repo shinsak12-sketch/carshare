@@ -113,7 +113,6 @@ function sanitize(user: {
   name: string;
   role: string;
   status: string;
-  requestNote: string | null;
   createdAt: Date;
 }) {
   return {
@@ -122,7 +121,6 @@ function sanitize(user: {
     name: user.name,
     role: user.role,
     status: user.status,
-    requestNote: user.requestNote,
     createdAt: user.createdAt,
   };
 }

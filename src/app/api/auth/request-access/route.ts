@@ -10,7 +10,6 @@ export async function POST(req: NextRequest) {
   const name = String(form.get("name") ?? "").trim();
   const password = String(form.get("password") ?? "");
   const passwordConfirm = String(form.get("passwordConfirm") ?? "");
-  const requestNote = form.get("requestNote") ? String(form.get("requestNote")) : null;
 
   if (!employeeId || !name || !password) {
     return NextResponse.json({ error: "사번, 이름, 비밀번호를 모두 입력해주세요." }, { status: 400 });
@@ -32,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const passwordHash = await hashPassword(password);
   const user = await prisma.user.create({
-    data: { employeeId, name, passwordHash, requestNote, status: "PENDING" },
+    data: { employeeId, name, passwordHash, status: "PENDING" },
   });
 
   await logAudit({

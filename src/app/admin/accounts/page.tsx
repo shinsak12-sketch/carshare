@@ -23,7 +23,6 @@ export default async function AccountsPage() {
           name: u.name,
           role: u.role,
           status: u.status,
-          requestNote: u.requestNote,
           createdAt: u.createdAt.toISOString(),
         }))}
       />

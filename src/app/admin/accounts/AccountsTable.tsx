@@ -11,7 +11,6 @@ interface AccountRow {
   name: string;
   role: Role;
   status: Status;
-  requestNote: string | null;
   createdAt: string;
 }
 
@@ -95,7 +94,6 @@ export function AccountsTable({ initialUsers }: { initialUsers: AccountRow[] }) 
                   <span className="font-bold text-slate-900">{u.name}</span>
                   <span className="font-mono text-xs text-slate-500">{u.employeeId}</span>
                 </div>
-                {u.requestNote && <p className="mt-1 text-xs text-slate-600">신청 사유: {u.requestNote}</p>}
                 <p className="mt-1 text-xs text-slate-400">
                   신청일 {new Date(u.createdAt).toLocaleString("ko-KR")}
                 </p>
