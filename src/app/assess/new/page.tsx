@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { AssessmentResultView } from "@/components/AssessmentResultView";
+import { compressImage } from "@/lib/image-compress";
 import type { AssessmentResult } from "@/lib/assessment-types";
 
 export default function NewAssessmentPage() {
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [caseId, setCaseId] = useState<string | null>(null);
@@ -18,9 +20,31 @@ export default function NewAssessmentPage() {
     setResult(null);
     setCaseId(null);
 
-    const formData = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
     try {
+      const imageInput = form.elements.namedItem("images") as HTMLInputElement;
+      const rawImages = imageInput.files ? Array.from(imageInput.files) : [];
+      formData.delete("images");
+      setLoadingStep("사진 압축 중…");
+      for (const file of rawImages) {
+        formData.append("images", await compressImage(file));
+      }
+
+      setLoadingStep("AI 진단 중… (수십 초 소요)");
       const res = await fetch("/api/assess", { method: "POST", body: formData });
+
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        const text = await res.text();
+        throw new Error(
+          res.status === 413
+            ? "첨부 용량이 너무 큽니다. 사진 수를 줄이거나 다시 시도해주세요."
+            : `서버 오류 (${res.status}): ${text.slice(0, 200)}`
+        );
+      }
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "요청에 실패했습니다.");
       setResult(data.result as AssessmentResult);
@@ -29,6 +53,7 @@ export default function NewAssessmentPage() {
       setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
     } finally {
       setLoading(false);
+      setLoadingStep("");
     }
   }
 
@@ -122,7 +147,7 @@ export default function NewAssessmentPage() {
           disabled={loading}
           className="rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
         >
-          {loading ? "AI 진단 중… (수십 초 소요)" : "AI 진단 시작"}
+          {loading ? loadingStep || "처리 중…" : "AI 진단 시작"}
         </button>
       </form>
 
