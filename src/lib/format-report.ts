@@ -31,6 +31,18 @@ export function buildReportText(caseInfo: ReportCaseInfo, result: AssessmentResu
     lines.push("");
   }
 
+  lines.push("[1단계] 전체 수리범위 적정성 검토");
+  if (result.overall_repair_scope_review.appropriate) {
+    lines.push("전체 청구 범위는 손상 정도에 비해 적정한 것으로 판단됩니다.");
+  } else {
+    for (const c of result.overall_repair_scope_review.concerns) {
+      lines.push(`- ${c.item}: ${c.issue} — ${c.reasoning}`);
+    }
+  }
+  lines.push("");
+  lines.push("[2단계] 부위별 작업 정도 판정");
+  lines.push("");
+
   result.parts.forEach((part, i) => {
     lines.push(`${i + 1}. ${part.part_name} (청구: ${part.claimed_action})`);
     lines.push(part.reasoning);
@@ -42,9 +54,11 @@ export function buildReportText(caseInfo: ReportCaseInfo, result: AssessmentResu
 
     if (part.labor_time_check.claimed_h !== null) {
       lines.push(
-        `  (작업시간 검토: 청구 ${part.labor_time_check.claimed_h}H / 기준 ${
+        `  (작업시간 검토: 청구 ${part.labor_time_check.claimed_h}H / 사내기준 ${
           part.labor_time_check.reference_h ?? "-"
-        }H → ${part.labor_time_check.verdict})`
+        }H → ${part.labor_time_check.reference_verdict} · 정비상식 → ${
+          part.labor_time_check.general_assessment
+        } — ${part.labor_time_check.note})`
       );
     }
     if (part.ancillary_work_check.length > 0) {

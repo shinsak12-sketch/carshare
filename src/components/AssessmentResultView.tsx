@@ -63,6 +63,27 @@ export function AssessmentResultView({
           </div>
         )}
 
+        <div>
+          <div className="font-semibold text-slate-900">[1단계] 전체 수리범위 적정성 검토</div>
+          {result.overall_repair_scope_review.appropriate ? (
+            <p className="mt-1.5 text-emerald-700">
+              전체 청구 범위는 손상 정도에 비해 적정한 것으로 판단됩니다.
+            </p>
+          ) : (
+            <ul className="mt-1.5 flex flex-col gap-2">
+              {result.overall_repair_scope_review.concerns.map((c, i) => (
+                <li key={i} className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                  <span className="font-medium text-amber-800">{c.item}</span>
+                  <span className="text-amber-700"> — {c.issue}</span>
+                  <p className="mt-0.5 text-xs text-amber-600">{c.reasoning}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="font-semibold text-slate-900">[2단계] 부위별 작업 정도 판정</div>
+
         {result.parts.map((part, i) => (
           <div key={i}>
             <div className="font-semibold text-slate-900">
@@ -80,8 +101,19 @@ export function AssessmentResultView({
             )}
             {part.labor_time_check.claimed_h !== null && (
               <p className="mt-1 text-xs text-slate-400">
-                (작업시간 검토: 청구 {part.labor_time_check.claimed_h}H / 기준{" "}
-                {part.labor_time_check.reference_h ?? "-"}H → {part.labor_time_check.verdict})
+                (작업시간 검토: 청구 {part.labor_time_check.claimed_h}H / 사내기준{" "}
+                {part.labor_time_check.reference_h ?? "-"}H → {part.labor_time_check.reference_verdict}{" "}
+                · 정비상식 →{" "}
+                <span
+                  className={
+                    part.labor_time_check.general_assessment === "적정"
+                      ? "text-emerald-600"
+                      : "text-amber-600"
+                  }
+                >
+                  {part.labor_time_check.general_assessment}
+                </span>{" "}
+                — {part.labor_time_check.note})
               </p>
             )}
             {part.ancillary_work_check.length > 0 && (

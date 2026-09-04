@@ -28,6 +28,18 @@ const NIRO_ESTIMATE_TEXT = `
 
 const NIRO_AI_RESULT: AssessmentResult = {
   estimate_provided: true,
+  overall_repair_scope_review: {
+    appropriate: false,
+    concerns: [
+      {
+        item: "리어범퍼어셈블리 전체 교환",
+        issue: "사진상 확인되는 손상은 표면 스크래치 수준으로, 범퍼 전체를 교환할 정도의 " +
+          "소재 손상(구멍, 파단 등)이 보이지 않습니다.",
+        reasoning: "일반적인 충돌수리 정비 절차상 이 정도의 표면 손상은 판금·도장 복원으로 " +
+          "처리 가능한 범위이며, 전체 교환은 손상 규모 대비 과잉수리로 판단됩니다.",
+      },
+    ],
+  },
   parts: [
     {
       part_name: "리어범퍼어셈블리",
@@ -44,7 +56,10 @@ const NIRO_AI_RESULT: AssessmentResult = {
       labor_time_check: {
         claimed_h: 2.9,
         reference_h: null,
-        verdict: "기준 미제공 - 확인 필요",
+        reference_verdict: "기준 미제공 - 확인 필요",
+        general_assessment: "과다 의심",
+        note: "표면 스크래치 수준의 손상 대비 전체 교환(탈부착 2.9H)은 정비 절차상 " +
+          "과다한 작업범위로 판단됩니다. 판금·도장 복원으로 대체 가능할 것으로 보입니다.",
       },
       ancillary_work_check: [
         {
