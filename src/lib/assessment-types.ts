@@ -25,11 +25,27 @@ export interface PartAssessment {
   required_action: string;
 }
 
+export type OtherFindingVerdict = "인정가능" | "협의대상" | "불인정" | "확인불가";
+
+export interface OtherFinding {
+  category: string;
+  description: string;
+  reference_basis: string;
+  verdict: OtherFindingVerdict;
+}
+
+export interface PhysicalConsistency {
+  consistent: boolean;
+  warning: string;
+}
+
 export interface AssessmentResult {
   estimate_provided: boolean;
   parts: PartAssessment[];
   claimed_but_not_visible: string[];
   damage_but_not_claimed: string[];
+  other_findings: OtherFinding[];
+  physical_consistency: PhysicalConsistency;
   overall_opinion: string;
   disputed_items: string[];
 }

@@ -26,6 +26,11 @@ export function buildReportText(caseInfo: ReportCaseInfo, result: AssessmentResu
 
   const lines: string[] = ["손해사정 검토 결과 (AI 초안)", "", vehicleLine, ""];
 
+  if (!result.physical_consistency.consistent) {
+    lines.push(`⚠ 사고 정합성 경고: ${result.physical_consistency.warning}`);
+    lines.push("");
+  }
+
   result.parts.forEach((part, i) => {
     lines.push(`${i + 1}. ${part.part_name} (청구: ${part.claimed_action})`);
     lines.push(part.reasoning);
@@ -61,6 +66,14 @@ export function buildReportText(caseInfo: ReportCaseInfo, result: AssessmentResu
     }
     for (const x of result.damage_but_not_claimed) {
       lines.push(`- 사진상 확인되나 청구 누락 가능성: ${x}`);
+    }
+    lines.push("");
+  }
+
+  if (result.other_findings.length > 0) {
+    lines.push("[기타 항목 검토]");
+    for (const f of result.other_findings) {
+      lines.push(`- ${f.category}: ${f.description} (${f.reference_basis}) → ${f.verdict}`);
     }
     lines.push("");
   }

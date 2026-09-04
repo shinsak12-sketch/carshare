@@ -56,6 +56,13 @@ export function AssessmentResultView({
           </div>
         )}
 
+        {!result.physical_consistency.consistent && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+            <span className="font-semibold">⚠ 사고 정합성 경고</span>
+            <p className="mt-1">{result.physical_consistency.warning}</p>
+          </div>
+        )}
+
         {result.parts.map((part, i) => (
           <div key={i}>
             <div className="font-semibold text-slate-900">
@@ -107,6 +114,33 @@ export function AssessmentResultView({
               ))}
               {result.damage_but_not_claimed.map((x, i) => (
                 <li key={`c${i}`}>사진상 확인되나 청구 누락 가능성: {x}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {result.other_findings.length > 0 && (
+          <div>
+            <div className="font-semibold text-slate-900">기타 항목 검토</div>
+            <ul className="mt-1.5 flex flex-col gap-2">
+              {result.other_findings.map((f, i) => (
+                <li key={i}>
+                  <span className="font-medium">{f.category}</span>: {f.description}{" "}
+                  <span className="text-xs text-slate-400">({f.reference_basis})</span>{" "}
+                  <span
+                    className={`font-semibold ${
+                      f.verdict === "인정가능"
+                        ? "text-emerald-700"
+                        : f.verdict === "협의대상"
+                          ? "text-amber-700"
+                          : f.verdict === "불인정"
+                            ? "text-red-700"
+                            : "text-slate-400"
+                    }`}
+                  >
+                    → {f.verdict}
+                  </span>
+                </li>
               ))}
             </ul>
           </div>

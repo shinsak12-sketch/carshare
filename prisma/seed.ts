@@ -79,6 +79,8 @@ const NIRO_AI_RESULT: AssessmentResult = {
       "소재 파손·변형 흔적은 확인되지 않음",
   ],
   damage_but_not_claimed: [],
+  other_findings: [],
+  physical_consistency: { consistent: true, warning: "" },
   overall_opinion:
     "청구액 557,006원 중 대부분(범퍼 부품비 129,800원 + 교환·도장 공임 다수)이 '전체 교환' " +
     "전제로 산정되어 있으나, 제공된 사진 근거로는 경미손상 기준상 교환을 정당화할 손상(소재 " +

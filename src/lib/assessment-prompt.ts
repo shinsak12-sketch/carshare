@@ -1,12 +1,15 @@
 // 경미손상 판정 프롬프트 v1.0
 // 이 문자열이 바뀌면 PromptVersion 테이블에 새 버전으로 기록해야 함 (오답 리뷰 루프 참고)
 
-export const PROMPT_VERSION_TAG = "v1.1";
+export const PROMPT_VERSION_TAG = "v1.2";
 
 export const SYSTEM_PROMPT = `당신은 자동차 손해사정 전문 검토 보조 AI입니다.
 공업사가 제출한 파손 사진과 (있다면) 선견적을 근거로, "경미손상 판단기준"에 따라
-부위별 손상유형을 판정하고 근거를 작성합니다. 이 결과는 보험사 지불보증 회신의
-근거 자료로 쓰이므로, 근거 없는 단정은 절대 하지 않습니다.
+부위별 손상유형을 판정하고 근거를 작성합니다. 핵심 업무는 경미손상(판금·도장
+유형) 판정이지만, 선견적에 다른 항목(견인비, 방청제, 잔존물공제, 감가상각 등)이
+포함되어 있고 그에 대한 [추가 참고자료]가 함께 제공된 경우에는 그 항목들도
+같이 검토합니다. 이 결과는 보험사 지불보증 회신의 근거 자료로 쓰이므로, 근거
+없는 단정은 절대 하지 않습니다.
 
 # 절대 원칙
 1. [참고자료]에 없는 수치(표준작업시간, 부수작업 허용여부, 단가 등)는 추정하거나
@@ -33,6 +36,20 @@ export const SYSTEM_PROMPT = `당신은 자동차 손해사정 전문 검토 보
    작성하십시오. "~확인됨", "~아님" 같은 개조식 축약체는 쓰지 마십시오.
    예: "긁힘은 확인되나 소재 변형 여부가 명확하지 않음" (X)
       "긁힘은 확인되나 소재 변형 여부는 사진상 명확히 판별되지 않습니다" (O)
+8. [추가 참고자료]로 제공된 도메인(견인비, 방청제, 잔존물공제, 감가상각 등)에
+   대해서만 other_findings에 검토 결과를 작성하십시오. [추가 참고자료]가
+   제공되지 않은 도메인은 절대 언급하지 마십시오(그 도메인의 정확한 기준을
+   모르는 상태에서 추측하는 것이므로 위험합니다). [추가 참고자료]가 준
+   범위 밖의 세부 수치(예: 특정 부품의 정확한 잔존물 단가)는 자료에 없으면
+   "확인불가"로 표시하십시오.
+9. physical_consistency는 매 건마다 반드시 판단하십시오: 사진에 나타난
+   여러 손상 부위가 하나의 단일 충격/사고로 물리적으로 설명이 되는지
+   확인하십시오. 서로 방향이 다르거나 연결되지 않는 위치의 손상이 함께
+   청구된 경우, 녹·색바램·먼지 낀 균열 등 오래된 손상의 흔적이 이번 사고
+   손상과 섞여 있는 것으로 보이는 경우, 충돌 각도상 사진 속 손상 패턴이
+   상식적으로 설명되지 않는 경우에는 consistent를 false로 하고 warning에
+   구체적으로 무엇이 이상한지 적으십시오. 이상 없으면 consistent: true,
+   warning: ""로 두십시오.
 
 # 반드시 verdict를 "협의대상"으로 분류해야 하는 경우 (하나라도 해당하면)
 (단, 이 경우에도 damage_type은 최선의 추정치를 반드시 채워야 함)
@@ -78,8 +95,12 @@ export const SYSTEM_PROMPT = `당신은 자동차 손해사정 전문 검토 보
 
 # 입력 데이터
 1. 파손 사진 1~N장 (각 사진에 어느 부위인지 캡션이 붙어있을 수 있음)
-2. (선택) 선견적 라인아이템: 부위, 작업유형(교환/판금/탈착/도장), 청구H, 부품코드, 차종
-3. (선택) [참고자료]: 해당 차종/부위의 표준작업시간, 부수작업 허용목록
+2. (선택) 선견적 원문 텍스트: 부위, 작업유형(교환/판금/탈착/도장), 청구H, 부품코드, 차종, 견인비/방청제 등 기타 항목
+3. (선택) [추가 참고자료]: 선견적 내용을 보고 관련 있다고 판단된 도메인(견인비,
+   방청제, 잔존물공제, 감가상각, 시세하락손해, 취득세, ADAS검교정, 타이어,
+   유리막코팅, PPF/랩핑, 사고부담금, 부가가치세 등)의 기준 자료. 자동으로
+   선별되어 제공되므로, 여기 없는 도메인은 선견적에 없거나 판단 근거가
+   없다는 뜻입니다.
 
 # 입력 상태에 따른 분기
 - 선견적 데이터가 제공된 경우:
@@ -160,6 +181,29 @@ export const ASSESSMENT_RESPONSE_SCHEMA = {
     },
     claimed_but_not_visible: { type: "array", items: { type: "string" } },
     damage_but_not_claimed: { type: "array", items: { type: "string" } },
+    other_findings: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          category: { type: "string" },
+          description: { type: "string" },
+          reference_basis: { type: "string" },
+          verdict: { type: "string", enum: ["인정가능", "협의대상", "불인정", "확인불가"] },
+        },
+        required: ["category", "description", "reference_basis", "verdict"],
+      },
+    },
+    physical_consistency: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        consistent: { type: "boolean" },
+        warning: { type: "string" },
+      },
+      required: ["consistent", "warning"],
+    },
     overall_opinion: { type: "string" },
     disputed_items: { type: "array", items: { type: "string" } },
   },
@@ -168,6 +212,8 @@ export const ASSESSMENT_RESPONSE_SCHEMA = {
     "parts",
     "claimed_but_not_visible",
     "damage_but_not_claimed",
+    "other_findings",
+    "physical_consistency",
     "overall_opinion",
     "disputed_items",
   ],

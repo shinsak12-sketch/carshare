@@ -6,6 +6,7 @@ import {
   PROMPT_VERSION_TAG,
   SYSTEM_PROMPT,
 } from "@/lib/assessment-prompt";
+import { matchReferenceSections } from "@/lib/reference-sections";
 import type { AssessmentResult, VehicleInfo } from "@/lib/assessment-types";
 
 export const runtime = "nodejs";
@@ -84,6 +85,8 @@ async function handleAssess(req: NextRequest) {
     getActivePromptVersion(),
   ]);
 
+  const matchedSections = matchReferenceSections(estimateText);
+
   const contextLines = [
     `차량정보: ${vehicle.manufacturer} ${vehicle.model} ${vehicle.year ? vehicle.year + "년식" : ""}`.trim(),
     vehicle.damagedPart ? `신고된 손상부위: ${vehicle.damagedPart}` : null,
@@ -91,6 +94,9 @@ async function handleAssess(req: NextRequest) {
     estimateText
       ? `[선견적 원문 텍스트]\n${estimateText}`
       : "선견적 데이터가 제공되지 않았습니다. 사진 기반 손상유형 판독만 수행하십시오.",
+    ...matchedSections.map(
+      (s) => `[추가 참고자료: ${s.name}]\n${s.content}`
+    ),
   ].filter(Boolean);
 
   const openai = getOpenAI();
