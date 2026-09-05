@@ -16,7 +16,6 @@ export default function NewAssessmentPage() {
   const [caseInfo, setCaseInfo] = useState<ReportCaseInfo | null>(null);
 
   const [parseStatus, setParseStatus] = useState<ParseStatus>("idle");
-  const [claimNumber, setClaimNumber] = useState("");
   const [manufacturer, setManufacturer] = useState("");
   const [model, setModel] = useState("");
   const [year, setYear] = useState("");
@@ -33,10 +32,6 @@ export default function NewAssessmentPage() {
       const data = await res.json();
 
       let filledAny = false;
-      if (data.claimNumber && !claimNumber) {
-        setClaimNumber(data.claimNumber);
-        filledAny = true;
-      }
       if (data.manufacturer && !manufacturer) {
         setManufacturer(data.manufacturer);
         filledAny = true;
@@ -93,7 +88,6 @@ export default function NewAssessmentPage() {
         manufacturer: String(formData.get("manufacturer") ?? ""),
         model: String(formData.get("model") ?? ""),
         year: formData.get("year") ? Number(formData.get("year")) : undefined,
-        claimNumber: formData.get("claimNumber") ? String(formData.get("claimNumber")) : undefined,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
@@ -113,7 +107,7 @@ export default function NewAssessmentPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">신규 진단</h1>
         <p className="mt-1 text-sm text-slate-500">
-          선견적과 파손 사진을 먼저 첨부하면 접수번호·차량정보를 자동으로 채워줍니다.
+          선견적과 파손 사진을 먼저 첨부하면 차량정보를 자동으로 채워줍니다.
         </p>
       </div>
 
@@ -137,7 +131,7 @@ export default function NewAssessmentPage() {
           )}
           {parseStatus === "done" && (
             <p className="mt-1.5 text-xs font-medium text-emerald-600">
-              ✓ 접수번호·차량정보를 자동으로 인식했습니다. 필요하면 아래에서 수정하세요.
+              ✓ 차량정보를 자동으로 인식했습니다. 필요하면 아래에서 수정하세요.
             </p>
           )}
           {parseStatus === "error" && (
@@ -158,17 +152,6 @@ export default function NewAssessmentPage() {
             multiple
             required
             className={fileInputClass}
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">접수번호 (선택)</label>
-          <input
-            name="claimNumber"
-            value={claimNumber}
-            onChange={(e) => setClaimNumber(e.target.value)}
-            placeholder="선견적에서 자동 인식됨"
-            className={`${textInputClass} font-mono`}
           />
         </div>
 

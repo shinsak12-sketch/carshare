@@ -7,7 +7,6 @@ import { ESTIMATE_PARSE_PROMPT, ESTIMATE_PARSE_SCHEMA, type ParsedEstimateInfo }
 export const runtime = "nodejs";
 
 const EMPTY_RESULT: ParsedEstimateInfo = {
-  claimNumber: null,
   manufacturer: null,
   model: null,
   year: null,

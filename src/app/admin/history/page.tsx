@@ -36,7 +36,6 @@ export default async function AdminHistoryPage() {
             >
               <div>
                 <div className="font-semibold text-slate-900">
-                  {c.claimNumber ? `[${c.claimNumber}] ` : ""}
                   {c.manufacturer} {c.model} {c.year ? `· ${c.year}년식` : ""}
                 </div>
                 <div className="mt-1 text-sm text-slate-500">

@@ -86,11 +86,6 @@ export function AssessmentResultView({
 
       <div className="flex flex-col gap-6 px-5 py-5 text-[14px] leading-relaxed text-slate-800">
         <div className="flex flex-wrap gap-1.5">
-          {caseInfo.claimNumber && (
-            <span className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-bold text-white">
-              접수번호 {caseInfo.claimNumber}
-            </span>
-          )}
           <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
             {caseInfo.manufacturer} {caseInfo.model}
             {caseInfo.year ? ` · ${caseInfo.year}년식` : ""}

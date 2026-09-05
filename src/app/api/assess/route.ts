@@ -53,7 +53,6 @@ async function handleAssess(req: NextRequest) {
     damagedPart: form.get("damagedPart") ? String(form.get("damagedPart")) : undefined,
     memo: form.get("memo") ? String(form.get("memo")) : undefined,
   };
-  const claimNumber = form.get("claimNumber") ? String(form.get("claimNumber")) : undefined;
 
   const imageFiles = form.getAll("images").filter((f): f is File => f instanceof File);
   if (imageFiles.length === 0) {
@@ -81,7 +80,6 @@ async function handleAssess(req: NextRequest) {
 
   const contextLines = [
     `차량정보: ${vehicle.manufacturer} ${vehicle.model} ${vehicle.year ? vehicle.year + "년식" : ""}`.trim(),
-    claimNumber ? `접수번호: ${claimNumber}` : null,
     vehicle.damagedPart ? `신고된 손상부위: ${vehicle.damagedPart}` : null,
     vehicle.memo ? `[담당자 추가 의견]\n${vehicle.memo}` : null,
     estimateText
@@ -131,7 +129,6 @@ async function handleAssess(req: NextRequest) {
   const created = await prisma.assessmentCase.create({
     data: {
       userId: user.id,
-      claimNumber,
       manufacturer: vehicle.manufacturer,
       model: vehicle.model,
       year: vehicle.year,
@@ -150,7 +147,7 @@ async function handleAssess(req: NextRequest) {
     actorEmployeeId: user.employeeId,
     targetType: "AssessmentCase",
     targetId: created.id,
-    detail: `${vehicle.manufacturer} ${vehicle.model}${claimNumber ? ` (접수번호 ${claimNumber})` : ""}`,
+    detail: `${vehicle.manufacturer} ${vehicle.model}`,
     ip,
     userAgent,
   });
