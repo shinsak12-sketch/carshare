@@ -80,44 +80,42 @@ export function ProcedureResultView({
           </div>
         )}
 
-        <div className="flex flex-col gap-3">
-          {result.parts.map((part, i) => (
-            <div key={i} className="rounded-2xl bg-slate-50 p-4 shadow-[inset_0_1px_2px_rgba(15,23,42,0.05)]">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-bold text-slate-900">
-                  {i + 1}. {part.part_name}
-                </p>
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-bold text-slate-600">
+        <div className="flex flex-col gap-2">
+          <h3 className="text-sm font-bold text-slate-900">손상 부위</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {result.damaged_parts.map((part, i) => (
+              <span
+                key={i}
+                className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700"
+                title={part.reasoning}
+              >
+                {part.part_name}
+                <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
                   {part.damage_type}
                 </span>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <h3 className="text-sm font-bold text-slate-900">작업 공정</h3>
+          {result.process_stages.map((stage, i) => (
+            <div key={i} className="rounded-2xl bg-slate-50 p-4 shadow-[inset_0_1px_2px_rgba(15,23,42,0.05)]">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-600 text-[12px] font-bold text-white">
+                  {i + 1}
+                </span>
+                <p className="text-sm font-bold text-slate-900">{stage.stage_name}</p>
               </div>
-
-              <p className="mt-2 rounded-lg bg-blue-50 px-3 py-2 text-sm font-bold text-blue-900">
-                권장 작업: {part.recommended_action}
-              </p>
-
-              <p className="mt-2.5 text-sm font-medium text-slate-700">{part.reasoning}</p>
-
-              {part.evidence_confidence === "낮음" && (
-                <p className="mt-2 text-xs font-medium text-slate-500">사진 판독 신뢰도: 낮음</p>
-              )}
-
-              <div className="mt-2.5 border-t border-slate-200 pt-2.5">
-                <p className="text-xs font-medium text-slate-600">{part.labor_estimate_note}</p>
+              <div className="mt-3 flex flex-col gap-2.5 border-l-2 border-orange-200 pl-4">
+                {stage.steps.map((step, j) => (
+                  <div key={j}>
+                    <p className="text-sm font-bold text-slate-800">{step.title}</p>
+                    <p className="mt-0.5 text-xs font-medium text-slate-600">{step.detail}</p>
+                  </div>
+                ))}
               </div>
-
-              {part.ancillary_work.length > 0 && (
-                <div className="mt-2 flex flex-col gap-1.5 border-t border-slate-200 pt-2.5">
-                  {part.ancillary_work.map((a, j) => (
-                    <div key={j} className="flex items-start gap-2">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue-500" />
-                      <p className="text-xs font-medium text-slate-600">
-                        <span className="font-bold text-slate-700">{a.item}</span> — {a.note}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           ))}
         </div>

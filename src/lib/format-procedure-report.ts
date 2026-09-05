@@ -22,17 +22,18 @@ export function buildProcedureReportText(caseInfo: ProcedureCaseInfo, result: Pr
     lines.push("");
   }
 
-  result.parts.forEach((part, i) => {
-    lines.push(`${i + 1}. ${part.part_name} — ${part.damage_type}`);
-    lines.push(`권장 작업: ${part.recommended_action}`);
-    lines.push(part.reasoning);
-    lines.push(`  작업시간 참고: ${part.labor_estimate_note}`);
-    if (part.ancillary_work.length > 0) {
-      lines.push("  부수작업:");
-      for (const a of part.ancillary_work) {
-        lines.push(`  · ${a.item}: ${a.note}`);
-      }
-    }
+  lines.push("[손상 부위]");
+  result.damaged_parts.forEach((part) => {
+    lines.push(`- ${part.part_name} (${part.damage_type}): ${part.reasoning}`);
+  });
+  lines.push("");
+
+  lines.push("[작업 공정]");
+  result.process_stages.forEach((stage) => {
+    lines.push(stage.stage_name);
+    stage.steps.forEach((step, i) => {
+      lines.push(`  ${i + 1}. ${step.title} — ${step.detail}`);
+    });
     lines.push("");
   });
 

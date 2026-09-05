@@ -1,18 +1,20 @@
 import type { Confidence, DamageType } from "./assessment-types";
 
-export interface ProcedureAncillaryWork {
-  item: string;
-  note: string;
-}
-
-export interface ProcedurePart {
+export interface DamagedPartSummary {
   part_name: string;
   damage_type: DamageType;
-  recommended_action: string;
   reasoning: string;
   evidence_confidence: Confidence;
-  ancillary_work: ProcedureAncillaryWork[];
-  labor_estimate_note: string;
+}
+
+export interface ProcedureStep {
+  title: string;
+  detail: string;
+}
+
+export interface ProcedureStage {
+  stage_name: string;
+  steps: ProcedureStep[];
 }
 
 export interface ProcedurePhysicalConsistency {
@@ -21,7 +23,8 @@ export interface ProcedurePhysicalConsistency {
 }
 
 export interface ProcedureResult {
-  parts: ProcedurePart[];
+  damaged_parts: DamagedPartSummary[];
+  process_stages: ProcedureStage[];
   physical_consistency: ProcedurePhysicalConsistency;
   overall_summary: string;
 }
