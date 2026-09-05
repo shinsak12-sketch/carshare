@@ -163,6 +163,7 @@ async function main() {
     create: {
       id: "seed-case-niro-202607765851",
       userId: admin.id,
+      claimNumber: "202607765851",
       manufacturer: "기아",
       model: "니로 (부품코드 기준 추정)",
       damagedPart: "리어범퍼",

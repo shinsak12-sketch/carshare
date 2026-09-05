@@ -30,6 +30,9 @@ export default async function AdminAssessmentDetailPage({
       </Link>
 
       <div>
+        {item.claimNumber && (
+          <p className="mb-1 font-mono text-xs font-semibold text-slate-400">접수번호 {item.claimNumber}</p>
+        )}
         <h1 className="text-2xl font-bold text-slate-900">
           {item.manufacturer} {item.model} {item.year ? `· ${item.year}년식` : ""}
         </h1>
@@ -66,6 +69,7 @@ export default async function AdminAssessmentDetailPage({
             model: item.model,
             year: item.year,
             damagedPart: item.damagedPart,
+            claimNumber: item.claimNumber,
             createdAt: item.createdAt,
           }}
           result={result}

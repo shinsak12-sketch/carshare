@@ -6,12 +6,54 @@ import { compressImage } from "@/lib/image-compress";
 import type { AssessmentResult } from "@/lib/assessment-types";
 import type { ReportCaseInfo } from "@/lib/format-report";
 
+type ParseStatus = "idle" | "parsing" | "done" | "error";
+
 export default function NewAssessmentPage() {
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [caseInfo, setCaseInfo] = useState<ReportCaseInfo | null>(null);
+
+  const [parseStatus, setParseStatus] = useState<ParseStatus>("idle");
+  const [claimNumber, setClaimNumber] = useState("");
+  const [manufacturer, setManufacturer] = useState("");
+  const [model, setModel] = useState("");
+  const [year, setYear] = useState("");
+
+  async function handleEstimateChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setParseStatus("parsing");
+    try {
+      const formData = new FormData();
+      formData.append("estimate", file);
+      const res = await fetch("/api/parse-estimate", { method: "POST", body: formData });
+      const data = await res.json();
+
+      let filledAny = false;
+      if (data.claimNumber && !claimNumber) {
+        setClaimNumber(data.claimNumber);
+        filledAny = true;
+      }
+      if (data.manufacturer && !manufacturer) {
+        setManufacturer(data.manufacturer);
+        filledAny = true;
+      }
+      if (data.model && !model) {
+        setModel(data.model);
+        filledAny = true;
+      }
+      if (data.year && !year) {
+        setYear(String(data.year));
+        filledAny = true;
+      }
+      setParseStatus(filledAny ? "done" : "error");
+    } catch {
+      setParseStatus("error");
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -51,6 +93,7 @@ export default function NewAssessmentPage() {
         manufacturer: String(formData.get("manufacturer") ?? ""),
         model: String(formData.get("model") ?? ""),
         year: formData.get("year") ? Number(formData.get("year")) : undefined,
+        claimNumber: formData.get("claimNumber") ? String(formData.get("claimNumber")) : undefined,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
@@ -60,60 +103,48 @@ export default function NewAssessmentPage() {
     }
   }
 
+  const fileInputClass =
+    "w-full rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 file:transition-colors hover:border-blue-400 hover:file:bg-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
+  const textInputClass =
+    "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
+
   return (
     <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">신규 진단</h1>
         <p className="mt-1 text-sm text-slate-500">
-          파손 사진과 (선택) 선견적을 첨부하면 경미손상 유형을 판정합니다.
+          선견적과 파손 사진을 먼저 첨부하면 접수번호·차량정보를 자동으로 채워줍니다.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">제조사</label>
-            <input
-              name="manufacturer"
-              required
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-              placeholder="현대"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">모델</label>
-            <input
-              name="model"
-              required
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-              placeholder="아반떼"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">연식</label>
-            <input
-              name="year"
-              type="number"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
-              placeholder="2022"
-            />
-          </div>
-        </div>
-        <p className="-mt-4 text-xs text-slate-400">
-          손상부위는 따로 입력할 필요 없이 사진·선견적을 보고 AI가 판단합니다.
-        </p>
-
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">담당자 추가 의견</label>
-          <textarea
-            name="memo"
-            rows={2}
-            placeholder="예: 파손부위가 사진과 다르게 보임 / 사고 경위상 이 부위 손상이 이상함"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          <label className="mb-1 block text-sm font-medium text-slate-700">
+            선견적 첨부 (선택, PDF)
+          </label>
+          <input
+            name="estimate"
+            type="file"
+            accept="application/pdf"
+            onChange={handleEstimateChange}
+            className={fileInputClass}
           />
-          <p className="mt-1 text-xs text-slate-400">
-            여기 적은 내용은 AI 검토 프롬프트에 그대로 전달되어 검토에 반영됩니다.
-          </p>
+          {parseStatus === "parsing" && (
+            <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-blue-600">
+              <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600" />
+              선견적 분석 중…
+            </p>
+          )}
+          {parseStatus === "done" && (
+            <p className="mt-1.5 text-xs font-medium text-emerald-600">
+              ✓ 접수번호·차량정보를 자동으로 인식했습니다. 필요하면 아래에서 수정하세요.
+            </p>
+          )}
+          {parseStatus === "error" && (
+            <p className="mt-1.5 text-xs text-slate-400">
+              이 선견적에서는 자동 인식된 정보가 없습니다. 아래 항목을 직접 입력해주세요.
+            </p>
+          )}
         </div>
 
         <div>
@@ -126,20 +157,71 @@ export default function NewAssessmentPage() {
             accept="image/*"
             multiple
             required
-            className="w-full rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 file:transition-colors hover:border-blue-400 hover:file:bg-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            className={fileInputClass}
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            선견적 첨부 (선택, PDF)
-          </label>
+          <label className="mb-1 block text-sm font-medium text-slate-700">접수번호 (선택)</label>
           <input
-            name="estimate"
-            type="file"
-            accept="application/pdf"
-            className="w-full rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 file:transition-colors hover:border-blue-400 hover:file:bg-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+            name="claimNumber"
+            value={claimNumber}
+            onChange={(e) => setClaimNumber(e.target.value)}
+            placeholder="선견적에서 자동 인식됨"
+            className={`${textInputClass} font-mono`}
           />
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">제조사</label>
+            <input
+              name="manufacturer"
+              required
+              value={manufacturer}
+              onChange={(e) => setManufacturer(e.target.value)}
+              className={textInputClass}
+              placeholder="현대"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">모델</label>
+            <input
+              name="model"
+              required
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className={textInputClass}
+              placeholder="아반떼"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">연식</label>
+            <input
+              name="year"
+              type="number"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              className={textInputClass}
+              placeholder="2022"
+            />
+          </div>
+        </div>
+        <p className="-mt-4 text-xs text-slate-400">
+          이 견적서 양식에는 제조사/모델/연식이 인쇄되지 않는 경우가 많습니다 — 그럴 땐 직접 입력해주세요.
+        </p>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-700">담당자 추가 의견</label>
+          <textarea
+            name="memo"
+            rows={2}
+            placeholder="예: 파손부위가 사진과 다르게 보임 / 사고 경위상 이 부위 손상이 이상함"
+            className={textInputClass}
+          />
+          <p className="mt-1 text-xs text-slate-400">
+            여기 적은 내용은 AI 검토 프롬프트에 그대로 전달되어 검토에 반영됩니다.
+          </p>
         </div>
 
         <button

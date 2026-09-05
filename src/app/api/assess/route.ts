@@ -10,25 +10,10 @@ import { matchReferenceSections } from "@/lib/reference-sections";
 import type { AssessmentResult, VehicleInfo } from "@/lib/assessment-types";
 import { getCurrentUser } from "@/lib/session";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
+import { isPdfFile, extractEstimateText } from "@/lib/estimate-pdf";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-function isPdfFile(file: File): boolean {
-  // 모바일 브라우저/파일 앱에 따라 PDF의 file.type이 빈 문자열이나
-  // "application/octet-stream"으로 잘못 잡히는 경우가 있어, 확장자도 같이 확인함.
-  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-}
-
-async function extractEstimateText(file: File): Promise<string> {
-  // pdf-parse의 패키지 루트(index.js)는 require.main 체크가 번들러 환경에서
-  // 오작동해 테스트용 하드코딩 파일을 읽으려다 ENOENT가 남 — 내부 구현을
-  // 직접 import해서 그 부작용을 우회함.
-  const pdfParse = (await import("pdf-parse/lib/pdf-parse.js")).default;
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const result = await pdfParse(buffer);
-  return result.text;
-}
 
 async function getActivePromptVersion() {
   const active = await prisma.promptVersion.findFirst({ where: { isActive: true } });
@@ -68,6 +53,7 @@ async function handleAssess(req: NextRequest) {
     damagedPart: form.get("damagedPart") ? String(form.get("damagedPart")) : undefined,
     memo: form.get("memo") ? String(form.get("memo")) : undefined,
   };
+  const claimNumber = form.get("claimNumber") ? String(form.get("claimNumber")) : undefined;
 
   const imageFiles = form.getAll("images").filter((f): f is File => f instanceof File);
   if (imageFiles.length === 0) {
@@ -95,6 +81,7 @@ async function handleAssess(req: NextRequest) {
 
   const contextLines = [
     `차량정보: ${vehicle.manufacturer} ${vehicle.model} ${vehicle.year ? vehicle.year + "년식" : ""}`.trim(),
+    claimNumber ? `접수번호: ${claimNumber}` : null,
     vehicle.damagedPart ? `신고된 손상부위: ${vehicle.damagedPart}` : null,
     vehicle.memo ? `[담당자 추가 의견]\n${vehicle.memo}` : null,
     estimateText
@@ -144,6 +131,7 @@ async function handleAssess(req: NextRequest) {
   const created = await prisma.assessmentCase.create({
     data: {
       userId: user.id,
+      claimNumber,
       manufacturer: vehicle.manufacturer,
       model: vehicle.model,
       year: vehicle.year,
@@ -162,7 +150,7 @@ async function handleAssess(req: NextRequest) {
     actorEmployeeId: user.employeeId,
     targetType: "AssessmentCase",
     targetId: created.id,
-    detail: `${vehicle.manufacturer} ${vehicle.model}`,
+    detail: `${vehicle.manufacturer} ${vehicle.model}${claimNumber ? ` (접수번호 ${claimNumber})` : ""}`,
     ip,
     userAgent,
   });

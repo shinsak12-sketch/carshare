@@ -89,6 +89,8 @@ model AssessmentCase {
   userId String?
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
+  claimNumber String?
+
   manufacturer String
   model        String
   year         Int?
@@ -109,4 +111,5 @@ model AssessmentCase {
 
   // 사진은 GPT 호출 시점에만 메모리에서 쓰고 DB에는 저장하지 않음(저장소 절약).
   @@index([createdAt])
+  @@index([claimNumber])
 }

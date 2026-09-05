@@ -1,19 +1,37 @@
 import Link from "next/link";
 
+interface AppTile {
+  href: string;
+  label: string;
+  icon: string;
+  gradient: string;
+}
+
+// 나중에 기능이 늘어나면 여기에 항목만 추가하면 홈 화면 아이콘이 늘어남.
+const APPS: AppTile[] = [
+  {
+    href: "/assess/new",
+    label: "선견적진단",
+    icon: "🚗",
+    gradient: "from-blue-500 to-blue-700",
+  },
+];
+
 export default function Home() {
   return (
-    <main className="mx-auto flex max-w-3xl flex-1 flex-col items-center justify-center gap-6 px-6 text-center">
-      <h1 className="text-3xl font-bold text-slate-900">차량 손상 AI 진단</h1>
-      <p className="text-slate-500">
-        경미손상 판정기준에 따라 사진과 선견적을 검토하고, 근거를 갖춘 판정 결과를
-        생성합니다.
-      </p>
-      <Link
-        href="/assess/new"
-        className="rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-[0_4px_14px_-4px_rgba(37,99,235,0.5)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_8px_20px_-6px_rgba(37,99,235,0.55)] active:translate-y-0 active:scale-95"
-      >
-        신규 진단 시작
-      </Link>
+    <main className="mx-auto max-w-3xl px-6 py-8">
+      <div className="grid grid-cols-4 gap-x-4 gap-y-7 sm:grid-cols-5">
+        {APPS.map((app) => (
+          <Link key={app.href} href={app.href} className="group flex flex-col items-center gap-2">
+            <div
+              className={`flex h-16 w-16 items-center justify-center rounded-[22px] bg-gradient-to-br ${app.gradient} text-3xl shadow-[0_1px_0_rgba(255,255,255,0.3)_inset,0_8px_18px_-6px_rgba(15,23,42,0.45)] transition-all duration-150 group-hover:-translate-y-1 group-hover:shadow-[0_12px_22px_-6px_rgba(15,23,42,0.5)] group-active:translate-y-0 group-active:scale-90`}
+            >
+              <span aria-hidden="true">{app.icon}</span>
+            </div>
+            <span className="text-center text-xs font-medium text-slate-700">{app.label}</span>
+          </Link>
+        ))}
+      </div>
     </main>
   );
 }

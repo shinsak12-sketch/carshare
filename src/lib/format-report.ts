@@ -5,6 +5,7 @@ export interface ReportCaseInfo {
   model: string;
   year?: number | null;
   damagedPart?: string | null;
+  claimNumber?: string | null;
   createdAt?: Date;
 }
 
@@ -30,7 +31,9 @@ export function buildOverallOpinionText(result: AssessmentResult): string {
 }
 
 export function buildReportText(caseInfo: ReportCaseInfo, result: AssessmentResult): string {
-  const vehicleLine = `차량: ${caseInfo.manufacturer} ${caseInfo.model}${
+  const vehicleLine = `${caseInfo.claimNumber ? `접수번호: ${caseInfo.claimNumber} | ` : ""}차량: ${
+    caseInfo.manufacturer
+  } ${caseInfo.model}${
     caseInfo.year ? ` ${caseInfo.year}년식` : ""
   } | 손상부위: ${derivedDamagedParts(result, caseInfo.damagedPart)}${
     caseInfo.createdAt ? ` | 진단일시: ${caseInfo.createdAt.toLocaleString("ko-KR")}` : ""
