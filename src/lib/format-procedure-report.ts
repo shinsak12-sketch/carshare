@@ -28,6 +28,15 @@ export function buildProcedureReportText(caseInfo: ProcedureCaseInfo, result: Pr
   });
   lines.push("");
 
+  if (result.suspected_hidden_damage.length > 0) {
+    lines.push("[정밀점검 필요 — 추정 손상, 사람 확인 필요]");
+    result.suspected_hidden_damage.forEach((issue) => {
+      lines.push(`- ${issue.item} (의심도: ${issue.suspicion_level}): ${issue.reasoning}`);
+      lines.push(`  확인방법: ${issue.recommended_check}`);
+    });
+    lines.push("");
+  }
+
   lines.push("[작업 공정]");
   result.process_stages.forEach((stage) => {
     lines.push(stage.stage_name);
