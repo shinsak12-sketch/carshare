@@ -9,7 +9,7 @@ export async function POST(req: NextRequest) {
   await destroySession();
 
   if (user) {
-    await logAudit({
+    void logAudit({
       action: AuditAction.LOGOUT,
       actorUserId: user.id,
       actorEmployeeId: user.employeeId,

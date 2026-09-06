@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     data: { employeeId, name, passwordHash, status: "PENDING" },
   });
 
-  await logAudit({
+  void logAudit({
     action: AuditAction.ACCOUNT_REQUESTED,
     actorUserId: user.id,
     actorEmployeeId: user.employeeId,

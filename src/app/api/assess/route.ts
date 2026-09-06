@@ -141,7 +141,7 @@ async function handleAssess(req: NextRequest) {
   });
 
   const { ip, userAgent } = getRequestMeta(req);
-  await logAudit({
+  void logAudit({
     action: AuditAction.ASSESSMENT_SUBMITTED,
     actorUserId: user.id,
     actorEmployeeId: user.employeeId,

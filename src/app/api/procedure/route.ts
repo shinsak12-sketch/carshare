@@ -77,7 +77,7 @@ async function handleProcedure(req: NextRequest) {
   const result: ProcedureResult = JSON.parse(raw);
 
   const { ip, userAgent } = getRequestMeta(req);
-  await logAudit({
+  void logAudit({
     action: AuditAction.PROCEDURE_CHECKED,
     actorUserId: user.id,
     actorEmployeeId: user.employeeId,

@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
     prisma.user.findUnique({ where: { employeeId } }),
   ]);
   if (recentFails >= MAX_FAILS) {
-    await logAudit({
+    // 로그 적재는 응답을 늦출 이유가 없어 기다리지 않고 흘려보냄(실패해도 로그인 자체엔 무해)
+    void logAudit({
       action: AuditAction.LOGIN_BLOCKED,
       actorEmployeeId: employeeId,
       detail: `최근 ${FAIL_WINDOW_MS / 60000}분 내 실패 ${recentFails}회로 임시 차단`,
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
   const passwordOk = user ? await verifyPassword(password, user.passwordHash) : false;
 
   if (!user || !passwordOk) {
-    await logAudit({
+    void logAudit({
       action: AuditAction.LOGIN_FAIL,
       actorEmployeeId: employeeId,
       ip,
@@ -71,7 +72,7 @@ export async function POST(req: NextRequest) {
   }
 
   await createSession(user.id, { ip, userAgent });
-  await logAudit({
+  void logAudit({
     action: AuditAction.LOGIN_SUCCESS,
     actorUserId: user.id,
     actorEmployeeId: user.employeeId,

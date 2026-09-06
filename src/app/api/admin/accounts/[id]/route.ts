@@ -40,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   switch (body.action) {
     case "approve": {
       const updated = await prisma.user.update({ where: { id }, data: { status: "ACTIVE" } });
-      await logAudit({
+      void logAudit({
         ...auditBase,
         action: AuditAction.ACCOUNT_APPROVED,
         detail: `${target.employeeId}(${target.name}) 승인`,
@@ -49,7 +49,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
     case "reject": {
       const updated = await prisma.user.update({ where: { id }, data: { status: "REJECTED" } });
-      await logAudit({
+      void logAudit({
         ...auditBase,
         action: AuditAction.ACCOUNT_REJECTED,
         detail: `${target.employeeId}(${target.name}) 거절`,
@@ -59,7 +59,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     case "disable": {
       const updated = await prisma.user.update({ where: { id }, data: { status: "DISABLED" } });
       await prisma.session.deleteMany({ where: { userId: id } });
-      await logAudit({
+      void logAudit({
         ...auditBase,
         action: AuditAction.ACCOUNT_DISABLED,
         detail: `${target.employeeId}(${target.name}) 비활성화 (세션 강제 종료 포함)`,
@@ -68,7 +68,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
     case "enable": {
       const updated = await prisma.user.update({ where: { id }, data: { status: "ACTIVE" } });
-      await logAudit({
+      void logAudit({
         ...auditBase,
         action: AuditAction.ACCOUNT_ENABLED,
         detail: `${target.employeeId}(${target.name}) 재활성화`,
@@ -83,7 +83,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const passwordHash = await hashPassword(newPassword);
       await prisma.user.update({ where: { id }, data: { passwordHash } });
       await prisma.session.deleteMany({ where: { userId: id } });
-      await logAudit({
+      void logAudit({
         ...auditBase,
         action: AuditAction.ACCOUNT_PASSWORD_RESET,
         detail: `${target.employeeId}(${target.name}) 비밀번호 관리자 초기화`,
@@ -95,7 +95,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         return NextResponse.json({ error: "role 값이 올바르지 않습니다." }, { status: 400 });
       }
       const updated = await prisma.user.update({ where: { id }, data: { role: body.role } });
-      await logAudit({
+      void logAudit({
         ...auditBase,
         action: AuditAction.ACCOUNT_ROLE_CHANGED,
         detail: `${target.employeeId}(${target.name}) 역할 → ${body.role}`,
