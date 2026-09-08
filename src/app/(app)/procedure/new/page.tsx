@@ -65,8 +65,8 @@ export default function NewProcedurePage() {
     "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10 lg:max-w-4xl lg:py-14">
-      <div>
+    <main className="mx-auto max-w-6xl px-6 py-10 lg:py-14">
+      <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900 lg:text-3xl">정비공정 판단</h1>
         <p className="mt-1 text-sm text-slate-500">
           선견적 없이 파손 사진만으로 어떤 작업이 필요한지 AI가 먼저 판단합니다.
@@ -74,66 +74,87 @@ export default function NewProcedurePage() {
         </p>
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)] lg:p-8"
-      >
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            파손 사진 (필수, 여러 장 가능)
-          </label>
-          <input name="images" type="file" accept="image/*" multiple required className={fileInputClass} />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">제조사 (선택)</label>
-            <input name="manufacturer" className={textInputClass} placeholder="현대" />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">모델 (선택)</label>
-            <input name="model" className={textInputClass} placeholder="아반떼" />
-          </div>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">메모 (선택)</label>
-          <textarea
-            name="memo"
-            rows={2}
-            placeholder="예: 사고 경위, 확인이 필요한 부분 등"
-            className={textInputClass}
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-full bg-orange-600 px-4 py-3.5 text-sm font-bold text-white shadow-[0_6px_16px_-4px_rgba(234,88,12,0.5)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-orange-700 hover:shadow-[0_10px_22px_-6px_rgba(234,88,12,0.55)] active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[440px_1fr] lg:items-start">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)] lg:sticky lg:top-6"
         >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-              {loadingStep || "처리 중…"}
-            </span>
-          ) : (
-            "AI 판단 시작"
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              파손 사진 (필수, 여러 장 가능)
+            </label>
+            <input name="images" type="file" accept="image/*" multiple required className={fileInputClass} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">제조사 (선택)</label>
+              <input name="manufacturer" className={textInputClass} placeholder="현대" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">모델 (선택)</label>
+              <input name="model" className={textInputClass} placeholder="아반떼" />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">메모 (선택)</label>
+            <textarea
+              name="memo"
+              rows={2}
+              placeholder="예: 사고 경위, 확인이 필요한 부분 등"
+              className={textInputClass}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="rounded-full bg-orange-600 px-4 py-3.5 text-sm font-bold text-white shadow-[0_6px_16px_-4px_rgba(234,88,12,0.5)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-orange-700 hover:shadow-[0_10px_22px_-6px_rgba(234,88,12,0.55)] active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                {loadingStep || "처리 중…"}
+              </span>
+            ) : (
+              "AI 판단 시작"
+            )}
+          </button>
+        </form>
+
+        <div className="flex flex-col gap-4">
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
           )}
-        </button>
-      </form>
 
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+          {result && caseInfo ? (
+            <div>
+              <h2 className="mb-3 text-lg font-bold text-slate-900">판단 결과</h2>
+              <ProcedureResultView caseInfo={caseInfo} result={result} />
+            </div>
+          ) : (
+            <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-16 text-center shadow-[0_1px_0_rgba(255,255,255,0.6)_inset]">
+              {loading ? (
+                <>
+                  <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-orange-200 border-t-orange-600" />
+                  <p className="text-sm font-medium text-slate-600">{loadingStep || "처리 중…"}</p>
+                </>
+              ) : (
+                <>
+                  <span aria-hidden="true" className="text-4xl opacity-50">🛠️</span>
+                  <p className="text-sm text-slate-400">
+                    왼쪽에서 파손 사진을 첨부하고 판단을 시작하면
+                    <br />이 자리에 정비공정 결과가 표시됩니다.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
         </div>
-      )}
-
-      {result && caseInfo && (
-        <div>
-          <h2 className="mb-3 text-lg font-bold text-slate-900">판단 결과</h2>
-          <ProcedureResultView caseInfo={caseInfo} result={result} />
-        </div>
-      )}
+      </div>
     </main>
   );
 }

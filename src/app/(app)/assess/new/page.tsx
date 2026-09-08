@@ -103,19 +103,19 @@ export default function NewAssessmentPage() {
     "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10 lg:max-w-4xl lg:py-14">
-      <div>
+    <main className="mx-auto max-w-6xl px-6 py-10 lg:py-14">
+      <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900 lg:text-3xl">신규 진단</h1>
         <p className="mt-1 text-sm text-slate-500">
           선견적과 파손 사진을 먼저 첨부하면 차량정보를 자동으로 채워줍니다.
         </p>
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)] lg:p-8"
-      >
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[440px_1fr] lg:items-start">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)] lg:sticky lg:top-6"
+        >
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">
               선견적 첨부 (선택, PDF)
@@ -158,88 +158,107 @@ export default function NewAssessmentPage() {
               className={fileInputClass}
             />
           </div>
-        </div>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">제조사</label>
-            <input
-              name="manufacturer"
-              required
-              value={manufacturer}
-              onChange={(e) => setManufacturer(e.target.value)}
-              className={textInputClass}
-              placeholder="현대"
-            />
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">제조사</label>
+              <input
+                name="manufacturer"
+                required
+                value={manufacturer}
+                onChange={(e) => setManufacturer(e.target.value)}
+                className={textInputClass}
+                placeholder="현대"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">모델</label>
+              <input
+                name="model"
+                required
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                className={textInputClass}
+                placeholder="아반떼"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">연식</label>
+              <input
+                name="year"
+                type="number"
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                className={textInputClass}
+                placeholder="2022"
+              />
+            </div>
           </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">모델</label>
-            <input
-              name="model"
-              required
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className={textInputClass}
-              placeholder="아반떼"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">연식</label>
-            <input
-              name="year"
-              type="number"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              className={textInputClass}
-              placeholder="2022"
-            />
-          </div>
-        </div>
-        <p className="-mt-4 text-xs text-slate-400">
-          이 견적서 양식에는 제조사/모델/연식이 인쇄되지 않는 경우가 많습니다 — 그럴 땐 직접 입력해주세요.
-        </p>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">담당자 추가 의견</label>
-          <textarea
-            name="memo"
-            rows={2}
-            placeholder="예: 파손부위가 사진과 다르게 보임 / 사고 경위상 이 부위 손상이 이상함"
-            className={textInputClass}
-          />
-          <p className="mt-1 text-xs text-slate-400">
-            여기 적은 내용은 AI 검토 프롬프트에 그대로 전달되어 검토에 반영됩니다.
+          <p className="-mt-4 text-xs text-slate-400">
+            이 견적서 양식에는 제조사/모델/연식이 인쇄되지 않는 경우가 많습니다 — 그럴 땐 직접 입력해주세요.
           </p>
-        </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-full bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-[0_6px_16px_-4px_rgba(37,99,235,0.5)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_10px_22px_-6px_rgba(37,99,235,0.55)] active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[0_6px_16px_-4px_rgba(37,99,235,0.5)]"
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-              {loadingStep || "처리 중…"}
-            </span>
-          ) : (
-            "AI 진단 시작"
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">담당자 추가 의견</label>
+            <textarea
+              name="memo"
+              rows={2}
+              placeholder="예: 파손부위가 사진과 다르게 보임 / 사고 경위상 이 부위 손상이 이상함"
+              className={textInputClass}
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              여기 적은 내용은 AI 검토 프롬프트에 그대로 전달되어 검토에 반영됩니다.
+            </p>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="rounded-full bg-blue-600 px-4 py-3.5 text-sm font-bold text-white shadow-[0_6px_16px_-4px_rgba(37,99,235,0.5)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_10px_22px_-6px_rgba(37,99,235,0.55)] active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[0_6px_16px_-4px_rgba(37,99,235,0.5)]"
+          >
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                {loadingStep || "처리 중…"}
+              </span>
+            ) : (
+              "AI 진단 시작"
+            )}
+          </button>
+        </form>
+
+        <div className="flex flex-col gap-4">
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
           )}
-        </button>
-      </form>
 
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
+          {result && caseInfo ? (
+            <div>
+              <h2 className="mb-3 text-lg font-bold text-slate-900">진단 결과</h2>
+              <AssessmentResultView caseInfo={caseInfo} result={result} />
+            </div>
+          ) : (
+            <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-16 text-center shadow-[0_1px_0_rgba(255,255,255,0.6)_inset]">
+              {loading ? (
+                <>
+                  <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-blue-200 border-t-blue-600" />
+                  <p className="text-sm font-medium text-slate-600">{loadingStep || "처리 중…"}</p>
+                </>
+              ) : (
+                <>
+                  <span aria-hidden="true" className="text-4xl opacity-50">📋</span>
+                  <p className="text-sm text-slate-400">
+                    왼쪽에서 파손 사진을 첨부하고 진단을 시작하면
+                    <br />이 자리에 결과 보고서가 표시됩니다.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
         </div>
-      )}
-
-      {result && caseInfo && (
-        <div>
-          <h2 className="mb-3 text-lg font-bold text-slate-900">진단 결과</h2>
-          <AssessmentResultView caseInfo={caseInfo} result={result} />
-        </div>
-      )}
+      </div>
     </main>
   );
 }
