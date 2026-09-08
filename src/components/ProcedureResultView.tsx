@@ -7,6 +7,7 @@ import {
   type ProcedureCaseInfo,
 } from "@/lib/format-procedure-report";
 import type { ProcedureResult, SuspicionLevel } from "@/lib/procedure-types";
+import { DamageDiagram } from "./DamageDiagram";
 
 const suspicionBadge: Record<SuspicionLevel, string> = {
   높음: "bg-red-600",
@@ -85,6 +86,11 @@ export function ProcedureResultView({
             </div>
           </div>
         )}
+
+        <div className="flex flex-col gap-2">
+          <h3 className="text-center text-sm font-bold text-slate-900">손상 위치 도해</h3>
+          <DamageDiagram damagedParts={result.damaged_parts} suspectedHiddenDamage={result.suspected_hidden_damage} />
+        </div>
 
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-bold text-slate-900">손상 부위</h3>
