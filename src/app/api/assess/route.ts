@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getModel, getOpenAI } from "@/lib/openai";
+import { getModel, getOpenAI, getReasoningEffort } from "@/lib/openai";
 import {
   ASSESSMENT_RESPONSE_SCHEMA,
   PROMPT_VERSION_TAG,
@@ -13,7 +13,7 @@ import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 import { isPdfFile, extractEstimateText } from "@/lib/estimate-pdf";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 async function getActivePromptVersion() {
   const active = await prisma.promptVersion.findFirst({ where: { isActive: true } });
@@ -91,8 +91,10 @@ async function handleAssess(req: NextRequest) {
   ].filter(Boolean);
 
   const openai = getOpenAI();
+  const reasoningEffort = getReasoningEffort("low");
   const completion = await openai.chat.completions.create({
     model: getModel(),
+    ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       {

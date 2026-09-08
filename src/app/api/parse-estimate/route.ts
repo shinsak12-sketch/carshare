@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
-import { getModel, getOpenAI } from "@/lib/openai";
+import { getModel, getOpenAI, getReasoningEffort } from "@/lib/openai";
 import { isPdfFile, extractEstimateText } from "@/lib/estimate-pdf";
 import { ESTIMATE_PARSE_PROMPT, ESTIMATE_PARSE_SCHEMA, type ParsedEstimateInfo } from "@/lib/estimate-parse";
 
 export const runtime = "nodejs";
+export const maxDuration = 45;
 
 const EMPTY_RESULT: ParsedEstimateInfo = {
   manufacturer: null,
@@ -34,8 +35,10 @@ export async function POST(req: NextRequest) {
     }
 
     const openai = getOpenAI();
+    const reasoningEffort = getReasoningEffort("none");
     const completion = await openai.chat.completions.create({
       model: getModel(),
+      ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
       messages: [
         { role: "system", content: ESTIMATE_PARSE_PROMPT },
         { role: "user", content: estimateText },

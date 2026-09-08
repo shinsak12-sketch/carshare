@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getModel, getOpenAI } from "@/lib/openai";
+import { getModel, getOpenAI, getReasoningEffort } from "@/lib/openai";
 import { PROCEDURE_RESPONSE_SCHEMA, PROCEDURE_SYSTEM_PROMPT } from "@/lib/procedure-prompt";
 import type { ProcedureResult } from "@/lib/procedure-types";
 import { getCurrentUser } from "@/lib/session";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,8 +48,10 @@ async function handleProcedure(req: NextRequest) {
   ].filter(Boolean);
 
   const openai = getOpenAI();
+  const reasoningEffort = getReasoningEffort("low");
   const completion = await openai.chat.completions.create({
     model: getModel(),
+    ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
     messages: [
       { role: "system", content: PROCEDURE_SYSTEM_PROMPT },
       {

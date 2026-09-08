@@ -34,3 +34,12 @@ export function getModel() {
   // 언제든 다른 모델로 덮어쓸 수 있음.
   return process.env.GROQ_API_KEY ? "qwen/qwen3-vl-32b-instruct" : "gpt-5.6-sol";
 }
+
+// gpt-5.6-sol 같은 추론형 모델은 reasoning.effort 기본값(medium)만으로도
+// Vercel 서버리스 함수 제한시간(맥스 60초 근처)을 넘겨 타임아웃(504)이 나서
+// 낮춰서 씀. Groq(qwen3-vl)는 이 파라미터 자체를 모르는 다른 모델이라
+// 붙이면 오류가 나므로, OpenAI를 쓸 때만 반환하고 아니면 undefined.
+export function getReasoningEffort(effort: "none" | "low"): "none" | "low" | undefined {
+  if (process.env.GROQ_API_KEY) return undefined;
+  return effort;
+}
