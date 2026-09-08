@@ -36,7 +36,6 @@ export async function POST(req: NextRequest) {
     const openai = getOpenAI();
     const completion = await openai.chat.completions.create({
       model: getModel(),
-      temperature: 0,
       messages: [
         { role: "system", content: ESTIMATE_PARSE_PROMPT },
         { role: "user", content: estimateText },

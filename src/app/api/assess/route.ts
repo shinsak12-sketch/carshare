@@ -93,7 +93,6 @@ async function handleAssess(req: NextRequest) {
   const openai = getOpenAI();
   const completion = await openai.chat.completions.create({
     model: getModel(),
-    temperature: 0.1,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       {
