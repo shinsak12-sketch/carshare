@@ -65,16 +65,19 @@ export default function NewProcedurePage() {
     "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10">
+    <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10 lg:max-w-4xl lg:py-14">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">정비공정 판단</h1>
+        <h1 className="text-2xl font-bold text-slate-900 lg:text-3xl">정비공정 판단</h1>
         <p className="mt-1 text-sm text-slate-500">
           선견적 없이 파손 사진만으로 어떤 작업이 필요한지 AI가 먼저 판단합니다.
           (선견적 접수 후에는 [선견적진단]으로 다시 검증하세요.)
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)] lg:p-8"
+      >
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">
             파손 사진 (필수, 여러 장 가능)

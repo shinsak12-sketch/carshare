@@ -103,56 +103,61 @@ export default function NewAssessmentPage() {
     "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
 
   return (
-    <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10">
+    <main className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-10 lg:max-w-4xl lg:py-14">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">신규 진단</h1>
+        <h1 className="text-2xl font-bold text-slate-900 lg:text-3xl">신규 진단</h1>
         <p className="mt-1 text-sm text-slate-500">
           선견적과 파손 사진을 먼저 첨부하면 차량정보를 자동으로 채워줍니다.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            선견적 첨부 (선택, PDF)
-          </label>
-          <input
-            name="estimate"
-            type="file"
-            accept="application/pdf"
-            onChange={handleEstimateChange}
-            className={fileInputClass}
-          />
-          {parseStatus === "parsing" && (
-            <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-blue-600">
-              <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600" />
-              선견적 분석 중…
-            </p>
-          )}
-          {parseStatus === "done" && (
-            <p className="mt-1.5 text-xs font-medium text-emerald-600">
-              ✓ 차량정보를 자동으로 인식했습니다. 필요하면 아래에서 수정하세요.
-            </p>
-          )}
-          {parseStatus === "error" && (
-            <p className="mt-1.5 text-xs text-slate-400">
-              이 선견적에서는 자동 인식된 정보가 없습니다. 아래 항목을 직접 입력해주세요.
-            </p>
-          )}
-        </div>
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)] lg:p-8"
+      >
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              선견적 첨부 (선택, PDF)
+            </label>
+            <input
+              name="estimate"
+              type="file"
+              accept="application/pdf"
+              onChange={handleEstimateChange}
+              className={fileInputClass}
+            />
+            {parseStatus === "parsing" && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-blue-600">
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600" />
+                선견적 분석 중…
+              </p>
+            )}
+            {parseStatus === "done" && (
+              <p className="mt-1.5 text-xs font-medium text-emerald-600">
+                ✓ 차량정보를 자동으로 인식했습니다. 필요하면 아래에서 수정하세요.
+              </p>
+            )}
+            {parseStatus === "error" && (
+              <p className="mt-1.5 text-xs text-slate-400">
+                이 선견적에서는 자동 인식된 정보가 없습니다. 아래 항목을 직접 입력해주세요.
+              </p>
+            )}
+          </div>
 
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
-            파손 사진 (필수, 여러 장 가능)
-          </label>
-          <input
-            name="images"
-            type="file"
-            accept="image/*"
-            multiple
-            required
-            className={fileInputClass}
-          />
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              파손 사진 (필수, 여러 장 가능)
+            </label>
+            <input
+              name="images"
+              type="file"
+              accept="image/*"
+              multiple
+              required
+              className={fileInputClass}
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-4">
