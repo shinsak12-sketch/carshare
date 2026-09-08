@@ -20,6 +20,7 @@ export function DamageDiagram({
   const unmatched: string[] = [];
 
   for (const part of damagedParts) {
+    if (part.damage_type === "손상없음") continue; // 램프류 등 "확인했지만 이상 없음" 항목 — 도해에 손상으로 표시하면 안 됨
     const ids = matchDiagramZones(part.part_name, part.side);
     if (ids.length === 0) unmatched.push(part.part_name);
     for (const id of ids) zoneStatus.set(id, "confirmed");

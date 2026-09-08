@@ -94,22 +94,35 @@ export function ProcedureResultView({
 
         <div className="flex flex-col gap-2">
           <h3 className="text-sm font-bold text-slate-900">손상 부위</h3>
+          {result.damaged_parts.some((p) => p.damage_type === "손상없음") && (
+            <p className="text-[11px] text-slate-400">✓ 표시는 확인은 했지만 손상이 없는 부위입니다.</p>
+          )}
           <div className="flex flex-wrap gap-1.5">
-            {result.damaged_parts.map((part, i) => (
-              <span
-                key={i}
-                className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700"
-                title={part.reasoning}
-              >
-                {part.part_name}
-                {part.side !== "중앙" && (
-                  <span className="text-slate-400">({part.side})</span>
-                )}
-                <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
-                  {part.damage_type}
+            {result.damaged_parts.map((part, i) => {
+              const noDamage = part.damage_type === "손상없음";
+              return (
+                <span
+                  key={i}
+                  className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                    noDamage
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-slate-200 bg-slate-50 text-slate-700"
+                  }`}
+                  title={part.reasoning}
+                >
+                  {noDamage && "✓ "}
+                  {part.part_name}
+                  {part.side !== "중앙" && <span className="text-slate-400">({part.side})</span>}
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                      noDamage ? "bg-white text-emerald-600" : "bg-white text-slate-500"
+                    }`}
+                  >
+                    {part.damage_type}
+                  </span>
                 </span>
-              </span>
-            ))}
+              );
+            })}
           </div>
         </div>
 
