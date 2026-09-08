@@ -20,12 +20,12 @@ export function DamageDiagram({
   const unmatched: string[] = [];
 
   for (const part of damagedParts) {
-    const ids = matchDiagramZones(part.part_name);
+    const ids = matchDiagramZones(part.part_name, part.side);
     if (ids.length === 0) unmatched.push(part.part_name);
     for (const id of ids) zoneStatus.set(id, "confirmed");
   }
   for (const issue of suspectedHiddenDamage) {
-    const ids = matchDiagramZones(issue.item);
+    const ids = matchDiagramZones(issue.item, issue.side);
     if (ids.length === 0) unmatched.push(issue.item);
     for (const id of ids) {
       if (zoneStatus.get(id) !== "confirmed") zoneStatus.set(id, "suspected");

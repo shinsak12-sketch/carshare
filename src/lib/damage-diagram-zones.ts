@@ -51,19 +51,17 @@ export const DIAGRAM_ZONES: DiagramZone[] = [
 
 const FRONT_WORDS = ["프론트", "전면", "전방"];
 const REAR_WORDS = ["리어", "후면", "후방"];
-const LEFT_WORDS = ["좌측", "(좌)", "왼쪽"];
-const RIGHT_WORDS = ["우측", "(우)", "오른쪽"];
 
 function hasAny(text: string, words: string[]): boolean {
   return words.some((w) => text.includes(w));
 }
 
-function classifySide(text: string): "L" | "R" | "both" {
-  const l = hasAny(text, LEFT_WORDS);
-  const r = hasAny(text, RIGHT_WORDS);
-  if (l && !r) return "L";
-  if (r && !l) return "R";
-  return "both";
+// 좌/우는 더 이상 텍스트에서 추측하지 않음 — AI가 채우는 side 필드를
+// 그대로 받아서 씀(procedure-prompt.ts에서 근거 없이 단정하지 말라고 지시함).
+function sideToLR(side: string): "L" | "R" | "both" {
+  if (side === "좌") return "L";
+  if (side === "우") return "R";
+  return "both"; // "중앙" | "양쪽" | 그 외 예상치 못한 값
 }
 
 function classifyFrontRear(text: string, fallback: "front" | "rear" | "both"): "front" | "rear" | "both" {
@@ -79,11 +77,12 @@ function sided(base: string, side: "L" | "R" | "both"): string[] {
   return [`${base}_${side}`];
 }
 
-// 텍스트 하나(손상부위명 또는 추정손상 항목명)에서 매칭되는 구역 id 목록을 반환.
-// 매칭되는 게 없으면 빈 배열 — 호출부에서 "도해에 표시 안 됨" 목록으로 처리.
-export function matchDiagramZones(text: string): string[] {
+// 텍스트(손상부위명 또는 추정손상 항목명)와 AI가 채운 side 필드를 받아
+// 매칭되는 구역 id 목록을 반환. 매칭되는 게 없으면 빈 배열 — 호출부에서
+// "도해에 표시 안 됨" 목록으로 처리.
+export function matchDiagramZones(text: string, sideField: string): string[] {
   const t = text.replace(/\s/g, "");
-  const side = classifySide(t);
+  const side = sideToLR(sideField);
   const ids = new Set<string>();
 
   if (t.includes("범퍼") || t.includes("크래시박스") || t.includes("범퍼스테이") || t.includes("언더커버")) {

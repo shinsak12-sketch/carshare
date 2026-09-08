@@ -24,14 +24,16 @@ export function buildProcedureReportText(caseInfo: ProcedureCaseInfo, result: Pr
 
   lines.push("[손상 부위]");
   result.damaged_parts.forEach((part) => {
-    lines.push(`- ${part.part_name} (${part.damage_type}): ${part.reasoning}`);
+    const side = part.side !== "중앙" ? `(${part.side}) ` : "";
+    lines.push(`- ${part.part_name} ${side}(${part.damage_type}): ${part.reasoning}`);
   });
   lines.push("");
 
   if (result.suspected_hidden_damage.length > 0) {
     lines.push("[정밀점검 필요 — 추정 손상, 사람 확인 필요]");
     result.suspected_hidden_damage.forEach((issue) => {
-      lines.push(`- ${issue.item} (의심도: ${issue.suspicion_level}): ${issue.reasoning}`);
+      const side = issue.side !== "중앙" ? `(${issue.side}) ` : "";
+      lines.push(`- ${issue.item} ${side}(의심도: ${issue.suspicion_level}): ${issue.reasoning}`);
       lines.push(`  확인방법: ${issue.recommended_check}`);
     });
     lines.push("");

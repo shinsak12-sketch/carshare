@@ -102,6 +102,9 @@ export function ProcedureResultView({
                 title={part.reasoning}
               >
                 {part.part_name}
+                {part.side !== "중앙" && (
+                  <span className="text-slate-400">({part.side})</span>
+                )}
                 <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
                   {part.damage_type}
                 </span>
@@ -126,7 +129,10 @@ export function ProcedureResultView({
               {result.suspected_hidden_damage.map((issue, i) => (
                 <div key={i} className="rounded-xl border-l-4 border-amber-500 bg-amber-50 px-4 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-bold text-slate-900">{issue.item}</p>
+                    <p className="text-sm font-bold text-slate-900">
+                      {issue.item}
+                      {issue.side !== "중앙" && <span className="ml-1 font-normal text-slate-500">({issue.side})</span>}
+                    </p>
                     <span
                       className={`rounded-full px-2.5 py-1 text-[11px] font-bold text-white ${suspicionBadge[issue.suspicion_level]}`}
                     >
