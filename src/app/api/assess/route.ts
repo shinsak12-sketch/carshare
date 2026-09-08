@@ -11,6 +11,7 @@ import type { AssessmentResult, VehicleInfo } from "@/lib/assessment-types";
 import { getCurrentUser } from "@/lib/session";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 import { isPdfFile, extractEstimateText } from "@/lib/estimate-pdf";
+import { redactPersonalInfo } from "@/lib/pii-redact";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -65,7 +66,7 @@ async function handleAssess(req: NextRequest) {
     return NextResponse.json({ error: "선견적은 PDF 파일만 첨부 가능합니다." }, { status: 400 });
   }
 
-  const [images, estimateText, promptVersion] = await Promise.all([
+  const [images, rawEstimateText, promptVersion] = await Promise.all([
     Promise.all(
       imageFiles.map(async (file) => ({
         mimeType: file.type || "image/jpeg",
@@ -75,6 +76,10 @@ async function handleAssess(req: NextRequest) {
     hasEstimate ? extractEstimateText(estimateFile as File) : Promise.resolve(null),
     getActivePromptVersion(),
   ]);
+
+  // 선견적 원문에서 고객명·연락처·주소 등 개인정보를 지운 뒤에만 AI 프롬프트에
+  // 쓰고, 이 텍스트 자체도 DB에 저장하지 않음(사진과 동일한 정책).
+  const estimateText = rawEstimateText ? redactPersonalInfo(rawEstimateText) : null;
 
   const matchedSections = matchReferenceSections(estimateText);
 
@@ -126,7 +131,8 @@ async function handleAssess(req: NextRequest) {
   }
   const aiResult: AssessmentResult = JSON.parse(raw);
 
-  // 사진은 위에서 GPT 호출에만 base64로 쓰고 DB에는 저장하지 않음(저장소 절약 방침).
+  // 사진과 선견적 원문은 위에서 GPT 호출에만 쓰고 DB에는 저장하지 않음
+  // (개인정보 보관 최소화 방침 — 사진과 동일하게 적용).
   const created = await prisma.assessmentCase.create({
     data: {
       userId: user.id,
@@ -135,7 +141,6 @@ async function handleAssess(req: NextRequest) {
       year: vehicle.year,
       damagedPart: vehicle.damagedPart,
       memo: vehicle.memo,
-      estimateText: estimateText ?? undefined,
       aiResult: aiResult as unknown as object,
       promptVersionId: promptVersion.id,
     },

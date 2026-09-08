@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { getModel, getOpenAI, getReasoningEffort } from "@/lib/openai";
 import { isPdfFile, extractEstimateText } from "@/lib/estimate-pdf";
+import { redactPersonalInfo } from "@/lib/pii-redact";
 import { ESTIMATE_PARSE_PROMPT, ESTIMATE_PARSE_SCHEMA, type ParsedEstimateInfo } from "@/lib/estimate-parse";
 
 export const runtime = "nodejs";
@@ -29,10 +30,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "선견적은 PDF 파일만 첨부 가능합니다." }, { status: 400 });
     }
 
-    const estimateText = await extractEstimateText(file);
-    if (!estimateText.trim()) {
+    const rawEstimateText = await extractEstimateText(file);
+    if (!rawEstimateText.trim()) {
       return NextResponse.json(EMPTY_RESULT);
     }
+    // 제조사/모델/연식만 뽑는 용도라 개인정보(고객명·연락처·주소 등)까지
+    // 외부 AI로 보낼 필요가 없어 미리 제거함. 텍스트 자체도 저장하지 않음.
+    const estimateText = redactPersonalInfo(rawEstimateText);
 
     const openai = getOpenAI();
     const reasoningEffort = getReasoningEffort("none");
