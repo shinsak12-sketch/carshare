@@ -10,7 +10,7 @@
 - Neon (Postgres) + Prisma — 계정, 진단 이력, 프롬프트 버전, 접속/활동 로그 저장
   (파손 사진은 저장소 절약을 위해 DB에 저장하지 않고, GPT 호출 시점에만
   메모리에서 base64로 사용 후 버립니다)
-- OpenAI GPT-4o (Vision) — 손상유형 판정
+- OpenAI GPT-5.6 Sol (Vision) — 손상유형 판정
 - bcryptjs — 비밀번호 해시(솔트 라운드 12), DB 세션 기반 로그인(쿠키에는
   무작위 토큰만 저장)
 
