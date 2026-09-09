@@ -20,6 +20,13 @@ export const VERDICT_STYLES: Record<VerdictLabel, { bar: string; badge: string }
 export const TYPE_BADGE_CLASS =
   "rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-600";
 
+// 경미손상 1~3유형은 외판부품(범퍼·펜더·도어 등)에만 의미가 있는 분류라,
+// "비대상(교환예외)"·"손상없음" 같은 값까지 배지로 노출하면 오히려
+// 판정 배지와 헷갈림 — 실제 1~3유형일 때만 유형 배지를 붙임.
+export function isMinorDamageType(t?: DamageType): t is "1유형" | "2유형" | "3유형" {
+  return t === "1유형" || t === "2유형" || t === "3유형";
+}
+
 function partVerdictLabel(part: PartAssessment): VerdictLabel {
   if (part.verdict === "인정가능") return "인정";
   if (part.verdict === "불인정") return "불인정";

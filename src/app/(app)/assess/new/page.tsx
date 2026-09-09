@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { ImageLightbox } from "@/components/ImageLightbox";
-import { ReviewItemDetail, ReviewItemList } from "@/components/ReviewItemPanels";
+import { ReviewItemList } from "@/components/ReviewItemPanels";
 import { compressImage } from "@/lib/image-compress";
 import type { AssessmentResult } from "@/lib/assessment-types";
 import { buildOverallOpinionText, buildReportText, derivedDamagedParts, type ReportCaseInfo } from "@/lib/format-report";
@@ -24,22 +24,14 @@ export default function NewAssessmentPage() {
 
   const [imagePreviews, setImagePreviews] = useState<{ url: string }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [hoveredPhoto, setHoveredPhoto] = useState<number | null>(null);
   const [estimatePreviewUrl, setEstimatePreviewUrl] = useState<string | null>(null);
-  const [showEstimate, setShowEstimate] = useState(false);
+  const [showEstimate, setShowEstimate] = useState(true);
 
   const [reportCopied, setReportCopied] = useState(false);
   const [opinionCopied, setOpinionCopied] = useState(false);
 
   const reviewItems = useMemo(() => (result ? buildReviewItems(result) : []), [result]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  // result가 바뀌어 목록이 새로 생기면 선택을 첫 항목으로 리셋
-  // (렌더 중 상태 조정 패턴 — 이펙트로 하면 캐스케이드 렌더 경고가 남).
-  const [itemsForSelection, setItemsForSelection] = useState(reviewItems);
-  if (reviewItems !== itemsForSelection) {
-    setItemsForSelection(reviewItems);
-    setSelectedId(reviewItems[0]?.id ?? null);
-  }
-  const selectedItem = reviewItems.find((i) => i.id === selectedId) ?? reviewItems[0] ?? null;
 
   // 미리보기용 objectURL은 화면에서만 쓰고 서버로는 절대 저장되지 않음 —
   // 목록이 바뀌거나 화면을 벗어나면 곧바로 해제.
@@ -65,7 +57,7 @@ export default function NewAssessmentPage() {
     if (!file) return;
 
     setEstimatePreviewUrl(URL.createObjectURL(file));
-    setShowEstimate(false);
+    setShowEstimate(true);
 
     setParseStatus("parsing");
     try {
@@ -176,8 +168,8 @@ export default function NewAssessmentPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[380px_minmax(0,1.5fr)_minmax(0,1fr)] xl:items-start">
-        {/* 좌: 입력 폼 + 차량정보 + 종합의견 */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[380px_minmax(0,1.6fr)_minmax(0,1fr)] xl:items-start">
+        {/* 좌: 입력 폼 + 차량정보 */}
         <div className="flex flex-col gap-4 xl:sticky xl:top-6">
           <form
             onSubmit={handleSubmit}
@@ -331,33 +323,11 @@ export default function NewAssessmentPage() {
                   확인이 필요합니다.
                 </div>
               )}
-
-              <div className="rounded-xl bg-slate-900 px-5 py-4 text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)]">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                    종합 의견 <span className="normal-case text-slate-500">· 거래처 발신용</span>
-                  </p>
-                  <button
-                    onClick={handleCopyOpinion}
-                    className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
-                      opinionCopied ? "bg-emerald-600" : "bg-white/15 hover:bg-white/25"
-                    }`}
-                  >
-                    {opinionCopied ? "복사됨 ✓" : "복사"}
-                  </button>
-                </div>
-                <p className="mt-1.5 text-sm font-medium leading-relaxed text-slate-100">{result.overall_opinion}</p>
-                {result.disputed_items.length > 0 && (
-                  <p className="mt-2.5 text-xs font-bold text-amber-300">
-                    협의 필요 항목: {result.disputed_items.join(", ")}
-                  </p>
-                )}
-              </div>
             </div>
           )}
         </div>
 
-        {/* 중: 첨부 사진/선견적 + 검토 항목 목록 (가장 넓게) */}
+        {/* 중: 첨부 사진 + 선견적 (가장 넓게) */}
         <div className="flex flex-col gap-4">
           {(imagePreviews.length > 0 || estimatePreviewUrl) && (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
@@ -368,15 +338,32 @@ export default function NewAssessmentPage() {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {imagePreviews.map((p, i) => (
-                      <button
+                      <div
                         key={i}
-                        type="button"
-                        onClick={() => setLightboxIndex(i)}
-                        className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-200 transition-transform duration-150 hover:scale-105"
+                        className="relative"
+                        onMouseEnter={() => setHoveredPhoto(i)}
+                        onMouseLeave={() => setHoveredPhoto((cur) => (cur === i ? null : cur))}
                       >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={p.url} alt={`첨부 사진 ${i + 1}`} className="h-full w-full object-cover" />
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => setLightboxIndex(i)}
+                          className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-200 transition-transform duration-150 hover:scale-105"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={p.url} alt={`첨부 사진 ${i + 1}`} className="h-full w-full object-cover" />
+                        </button>
+
+                        {hoveredPhoto === i && (
+                          <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 -translate-x-1/2">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={p.url}
+                              alt=""
+                              className="h-56 w-56 rounded-xl border-4 border-white object-cover shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)]"
+                            />
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -395,7 +382,7 @@ export default function NewAssessmentPage() {
                     <iframe
                       src={estimatePreviewUrl}
                       title="첨부된 선견적"
-                      className="mt-3 h-[70vh] w-full rounded-lg border border-slate-200"
+                      className="mt-3 h-[75vh] w-full rounded-lg border border-slate-200"
                     />
                   )}
                 </div>
@@ -403,9 +390,7 @@ export default function NewAssessmentPage() {
             </div>
           )}
 
-          {result ? (
-            <ReviewItemList items={reviewItems} selectedId={selectedItem?.id ?? null} onSelect={setSelectedId} />
-          ) : (
+          {!result && (
             <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-16 text-center shadow-[0_1px_0_rgba(255,255,255,0.6)_inset]">
               {loading ? (
                 <>
@@ -425,10 +410,32 @@ export default function NewAssessmentPage() {
           )}
         </div>
 
-        {/* 우: 선택한 항목 상세 */}
+        {/* 우: 검토 항목(위) + 종합의견(아래) */}
         {result && (
-          <div className="min-h-[240px] rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)] xl:sticky xl:top-6">
-            <ReviewItemDetail item={selectedItem} />
+          <div className="flex flex-col gap-4 xl:sticky xl:top-6">
+            <ReviewItemList items={reviewItems} />
+
+            <div className="rounded-2xl bg-slate-900 px-5 py-4 text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)]">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  종합 의견 <span className="normal-case text-slate-500">· 거래처 발신용</span>
+                </p>
+                <button
+                  onClick={handleCopyOpinion}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
+                    opinionCopied ? "bg-emerald-600" : "bg-white/15 hover:bg-white/25"
+                  }`}
+                >
+                  {opinionCopied ? "복사됨 ✓" : "복사"}
+                </button>
+              </div>
+              <p className="mt-1.5 text-sm font-medium leading-relaxed text-slate-100">{result.overall_opinion}</p>
+              {result.disputed_items.length > 0 && (
+                <p className="mt-2.5 text-xs font-bold text-amber-300">
+                  협의 필요 항목: {result.disputed_items.join(", ")}
+                </p>
+              )}
+            </div>
           </div>
         )}
       </div>

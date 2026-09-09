@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import type { AncillaryWorkCheck, GeneralAssessment } from "@/lib/assessment-types";
-import { TYPE_BADGE_CLASS, VERDICT_STYLES, type ReviewItem, type VerdictLabel } from "@/lib/review-items";
+import { TYPE_BADGE_CLASS, VERDICT_STYLES, isMinorDamageType, type ReviewItem, type VerdictLabel } from "@/lib/review-items";
 
 const generalAssessmentBadge: Record<GeneralAssessment, string> = {
   적정: "bg-emerald-100 text-emerald-900",
@@ -62,15 +63,16 @@ function VerdictBadge({ verdict }: { verdict: VerdictLabel }) {
   );
 }
 
-export function ReviewItemList({
-  items,
-  selectedId,
-  onSelect,
-}: {
-  items: ReviewItem[];
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-}) {
+function itemDamageType(item: ReviewItem): string | undefined {
+  const t = item.kind === "part" ? item.damageType : item.kind === "concern" ? item.damageType : undefined;
+  return isMinorDamageType(t) ? t : undefined;
+}
+
+export function ReviewItemList({ items }: { items: ReviewItem[] }) {
+  // 항목에 마우스를 올리면 상세 내용이 팝업으로 떴다가, 벗어나면 닫힘.
+  // 터치 기기(호버 불가)에서는 같은 항목을 탭하면 토글되도록 클릭도 같이 처리.
+  const [activeId, setActiveId] = useState<string | null>(null);
+
   const decorated = items.reduce<{ item: ReviewItem; showSectionHeader: boolean }[]>((acc, item) => {
     const prevSection = acc[acc.length - 1]?.item.section;
     acc.push({ item, showSectionHeader: item.section !== prevSection });
@@ -80,9 +82,10 @@ export function ReviewItemList({
   return (
     <div className="flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
       <p className="px-2 pt-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">
-        검토 항목 ({items.length})
+        검토 항목 ({items.length}) <span className="normal-case text-slate-300">· 항목에 마우스를 올리면 상세 표시</span>
       </p>
       {decorated.map(({ item, showSectionHeader }) => {
+        const damageType = itemDamageType(item);
         return (
           <div key={item.id}>
             {showSectionHeader && (
@@ -90,24 +93,33 @@ export function ReviewItemList({
                 {item.section}
               </p>
             )}
-            <button
-              onClick={() => onSelect(item.id)}
-              className={`flex w-full items-stretch overflow-hidden rounded-xl text-left transition-colors ${
-                selectedId === item.id ? "bg-slate-100" : "hover:bg-slate-50"
-              }`}
+            <div
+              className="relative"
+              onMouseEnter={() => setActiveId(item.id)}
+              onMouseLeave={() => setActiveId((cur) => (cur === item.id ? null : cur))}
             >
-              <span className={`w-1 shrink-0 ${VERDICT_STYLES[item.verdict].bar}`} />
-              <span className="flex flex-1 items-center justify-between gap-3 px-3 py-3">
-                <span className="text-[13px] font-semibold leading-snug text-slate-800">{item.title}</span>
-                <span className="flex shrink-0 items-center gap-1.5">
-                  {item.kind === "part" && <span className={TYPE_BADGE_CLASS}>{item.damageType}</span>}
-                  {item.kind === "concern" && item.damageType && (
-                    <span className={TYPE_BADGE_CLASS}>{item.damageType}</span>
-                  )}
-                  <VerdictBadge verdict={item.verdict} />
+              <button
+                onClick={() => setActiveId((cur) => (cur === item.id ? null : item.id))}
+                className={`flex w-full items-stretch overflow-hidden rounded-xl text-left transition-colors ${
+                  activeId === item.id ? "bg-slate-100" : "hover:bg-slate-50"
+                }`}
+              >
+                <span className={`w-1 shrink-0 ${VERDICT_STYLES[item.verdict].bar}`} />
+                <span className="flex flex-1 items-center justify-between gap-3 px-3 py-3">
+                  <span className="text-[13px] font-semibold leading-snug text-slate-800">{item.title}</span>
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    {damageType && <span className={TYPE_BADGE_CLASS}>{damageType}</span>}
+                    <VerdictBadge verdict={item.verdict} />
+                  </span>
                 </span>
-              </span>
-            </button>
+              </button>
+
+              {activeId === item.id && (
+                <div className="absolute right-full top-0 z-30 mr-3 w-[380px] max-h-[70vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_20px_45px_-12px_rgba(15,23,42,0.35)]">
+                  <ReviewItemDetail item={item} />
+                </div>
+              )}
+            </div>
           </div>
         );
       })}
@@ -192,7 +204,12 @@ export function ReviewItemDetail({ item }: { item: ReviewItem | null }) {
   if (item.kind === "concern") {
     return (
       <div className="flex flex-col gap-4">
-        <DetailHeader verdict={item.verdict} title={item.title} damageType={item.damageType} section={item.section} />
+        <DetailHeader
+          verdict={item.verdict}
+          title={item.title}
+          damageType={isMinorDamageType(item.damageType) ? item.damageType : undefined}
+          section={item.section}
+        />
         <p className="text-sm font-semibold leading-relaxed text-slate-800">{item.issue}</p>
         <p className="text-sm leading-relaxed text-slate-600">
           <FieldLabel>근거:</FieldLabel>
@@ -241,7 +258,12 @@ export function ReviewItemDetail({ item }: { item: ReviewItem | null }) {
   const { part } = item;
   return (
     <div className="flex flex-col gap-4">
-      <DetailHeader verdict={item.verdict} title={part.part_name} damageType={part.damage_type} section={item.section} />
+      <DetailHeader
+        verdict={item.verdict}
+        title={part.part_name}
+        damageType={isMinorDamageType(part.damage_type) ? part.damage_type : undefined}
+        section={item.section}
+      />
 
       <p className="text-sm text-slate-700">
         <FieldLabel>청구:</FieldLabel>
