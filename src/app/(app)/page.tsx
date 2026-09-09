@@ -23,11 +23,10 @@ const APPS: AppTile[] = [
     gradient: "from-orange-500 to-orange-700",
   },
   {
-    href: "#",
-    label: "안내스크립트",
-    icon: "🗒️",
-    gradient: "from-slate-400 to-slate-500",
-    disabled: true,
+    href: "/adjustment/new",
+    label: "AI손해사정",
+    icon: "⚖️",
+    gradient: "from-purple-500 to-purple-700",
   },
 ];
 
