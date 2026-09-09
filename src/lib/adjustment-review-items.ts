@@ -1,9 +1,17 @@
 import type { AdjustmentItem, AdjustmentResult } from "./adjustment-types";
-import type { VerdictLabel } from "./review-items";
+import { isMinorDamageType, type VerdictLabel } from "./review-items";
 
 export type AdjustmentReviewItem =
   | { id: string; kind: "consistency"; verdict: VerdictLabel; title: string; section: string; warning: string }
-  | { id: string; kind: "item"; verdict: VerdictLabel; title: string; section: string; item: AdjustmentItem };
+  | {
+      id: string;
+      kind: "item";
+      verdict: VerdictLabel;
+      damageType?: string;
+      title: string;
+      section: string;
+      item: AdjustmentItem;
+    };
 
 export function buildAdjustmentReviewItems(result: AdjustmentResult): AdjustmentReviewItem[] {
   const items: AdjustmentReviewItem[] = [];
@@ -24,6 +32,7 @@ export function buildAdjustmentReviewItems(result: AdjustmentResult): Adjustment
       id: `item-${i}`,
       kind: "item",
       verdict: item.verdict,
+      damageType: isMinorDamageType(item.damage_type ?? undefined) ? item.damage_type ?? undefined : undefined,
       title: item.item_name,
       section: "청구 항목",
       item,

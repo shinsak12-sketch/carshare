@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { VERDICT_STYLES, type VerdictLabel } from "@/lib/review-items";
+import { TYPE_BADGE_CLASS, VERDICT_STYLES, type VerdictLabel } from "@/lib/review-items";
 import type { AdjustmentReviewItem } from "@/lib/adjustment-review-items";
 
 function VerdictBadge({ verdict }: { verdict: VerdictLabel }) {
@@ -61,7 +61,12 @@ export function AdjustmentItemList({ items }: { items: AdjustmentReviewItem[] })
                   <span className={`w-1.5 shrink-0 ${VERDICT_STYLES[item.verdict].bar}`} />
                   <span className="flex flex-1 items-center justify-between gap-3 px-3 py-3">
                     <span className="text-[13px] font-semibold leading-snug text-slate-800">{item.title}</span>
-                    <VerdictBadge verdict={item.verdict} />
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      {item.kind === "item" && item.damageType && (
+                        <span className={TYPE_BADGE_CLASS}>{item.damageType}</span>
+                      )}
+                      <VerdictBadge verdict={item.verdict} />
+                    </span>
                   </span>
                 </button>
 
@@ -103,6 +108,7 @@ export function AdjustmentItemDetail({ item }: { item: AdjustmentReviewItem | nu
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <h4 className="text-base font-bold text-slate-900">{adj.item_name}</h4>
+        {item.damageType && <span className={TYPE_BADGE_CLASS}>{item.damageType}</span>}
         <VerdictBadge verdict={adj.verdict} />
       </div>
 
