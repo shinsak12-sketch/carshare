@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AssessmentReportBrowser } from "@/components/AssessmentReportBrowser";
+import { useEffect, useMemo, useState } from "react";
 import { ImageLightbox } from "@/components/ImageLightbox";
+import { ReviewItemDetail, ReviewItemList } from "@/components/ReviewItemPanels";
 import { compressImage } from "@/lib/image-compress";
 import type { AssessmentResult } from "@/lib/assessment-types";
 import { buildOverallOpinionText, buildReportText, derivedDamagedParts, type ReportCaseInfo } from "@/lib/format-report";
+import { buildReviewItems } from "@/lib/review-items";
 
 type ParseStatus = "idle" | "parsing" | "done" | "error";
 
@@ -28,6 +29,17 @@ export default function NewAssessmentPage() {
 
   const [reportCopied, setReportCopied] = useState(false);
   const [opinionCopied, setOpinionCopied] = useState(false);
+
+  const reviewItems = useMemo(() => (result ? buildReviewItems(result) : []), [result]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // result가 바뀌어 목록이 새로 생기면 선택을 첫 항목으로 리셋
+  // (렌더 중 상태 조정 패턴 — 이펙트로 하면 캐스케이드 렌더 경고가 남).
+  const [itemsForSelection, setItemsForSelection] = useState(reviewItems);
+  if (reviewItems !== itemsForSelection) {
+    setItemsForSelection(reviewItems);
+    setSelectedId(reviewItems[0]?.id ?? null);
+  }
+  const selectedItem = reviewItems.find((i) => i.id === selectedId) ?? reviewItems[0] ?? null;
 
   // 미리보기용 objectURL은 화면에서만 쓰고 서버로는 절대 저장되지 않음 —
   // 목록이 바뀌거나 화면을 벗어나면 곧바로 해제.
@@ -156,7 +168,7 @@ export default function NewAssessmentPage() {
     "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10 lg:py-14">
+    <main className="mx-auto max-w-[1800px] px-6 py-10 lg:py-14">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900 lg:text-3xl">신규 진단</h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -164,8 +176,9 @@ export default function NewAssessmentPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[440px_1fr] lg:items-start">
-        <div className="flex flex-col gap-4 lg:sticky lg:top-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[380px_minmax(0,1.5fr)_minmax(0,1fr)] xl:items-start">
+        {/* 좌: 입력 폼 + 차량정보 + 종합의견 */}
+        <div className="flex flex-col gap-4 xl:sticky xl:top-6">
           <form
             onSubmit={handleSubmit}
             className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]"
@@ -282,6 +295,12 @@ export default function NewAssessmentPage() {
             </button>
           </form>
 
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
           {result && caseInfo && (
             <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
               <div className="flex items-center justify-between gap-2">
@@ -315,7 +334,9 @@ export default function NewAssessmentPage() {
 
               <div className="rounded-xl bg-slate-900 px-5 py-4 text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)]">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">종합 의견</p>
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                    종합 의견 <span className="normal-case text-slate-500">· 거래처 발신용</span>
+                  </p>
                   <button
                     onClick={handleCopyOpinion}
                     className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
@@ -336,13 +357,8 @@ export default function NewAssessmentPage() {
           )}
         </div>
 
+        {/* 중: 첨부 사진/선견적 + 검토 항목 목록 (가장 넓게) */}
         <div className="flex flex-col gap-4">
-          {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
           {(imagePreviews.length > 0 || estimatePreviewUrl) && (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
               {imagePreviews.length > 0 && (
@@ -356,7 +372,7 @@ export default function NewAssessmentPage() {
                         key={i}
                         type="button"
                         onClick={() => setLightboxIndex(i)}
-                        className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 transition-transform duration-150 hover:scale-105"
+                        className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-200 transition-transform duration-150 hover:scale-105"
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={p.url} alt={`첨부 사진 ${i + 1}`} className="h-full w-full object-cover" />
@@ -388,7 +404,7 @@ export default function NewAssessmentPage() {
           )}
 
           {result ? (
-            <AssessmentReportBrowser result={result} />
+            <ReviewItemList items={reviewItems} selectedId={selectedItem?.id ?? null} onSelect={setSelectedId} />
           ) : (
             <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-16 text-center shadow-[0_1px_0_rgba(255,255,255,0.6)_inset]">
               {loading ? (
@@ -408,6 +424,13 @@ export default function NewAssessmentPage() {
             </div>
           )}
         </div>
+
+        {/* 우: 선택한 항목 상세 */}
+        {result && (
+          <div className="min-h-[240px] rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)] xl:sticky xl:top-6">
+            <ReviewItemDetail item={selectedItem} />
+          </div>
+        )}
       </div>
 
       {lightboxIndex !== null && (
