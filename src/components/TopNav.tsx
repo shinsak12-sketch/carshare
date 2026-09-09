@@ -20,14 +20,13 @@ export function TopNav({ name, role }: { name: string; role: "EMPLOYEE" | "ADMIN
 
   return (
     <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-3xl items-center justify-end gap-3 px-4 py-2.5 sm:px-6 sm:py-3 lg:max-w-[1800px] lg:px-8">
+      <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6 sm:py-3 lg:max-w-[1800px] lg:px-8">
         <Link href="/" className="flex shrink-0 items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-sm shadow-[0_1px_0_rgba(255,255,255,0.3)_inset,0_2px_6px_-2px_rgba(37,99,235,0.5)]">
             🚗
           </span>
           <span className="truncate whitespace-nowrap text-sm font-bold text-slate-900">차량 손상 AI 진단</span>
         </Link>
-        <span className="h-4 w-px shrink-0 bg-slate-200" aria-hidden="true" />
         <div className="flex shrink-0 items-center gap-1.5 text-xs sm:gap-3 sm:text-sm">
           <span className="whitespace-nowrap text-slate-500">{name}님</span>
           {role === "ADMIN" && (
