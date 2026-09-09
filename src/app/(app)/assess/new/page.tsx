@@ -184,15 +184,9 @@ export default function NewAssessmentPage() {
         )}
       </div>
 
-      {/* 우측 3번째 컬럼(검토항목/종합의견)은 result가 있을 때만 실제로 렌더됨.
-          result가 없는 동안에도 grid-template이 3번째 트랙 폭을 그대로 예약해두면
-          그 자리가 빈 채로 낭비되고 가운데 컬럼이 그만큼 좁아 보이므로, result
-          유무에 따라 트랙 자체를 다르게 정의함(2컬럼 ↔ 3컬럼). */}
-      <div
-        className={`grid grid-cols-1 gap-6 xl:items-start ${
-          result ? "xl:grid-cols-[360px_minmax(500px,1fr)_380px]" : "xl:grid-cols-[360px_minmax(0,1fr)]"
-        }`}
-      >
+      {/* 좌/중/우 폭을 픽셀로 완전히 고정 — 사진 개수나 결과 유무 등 어떤
+          콘텐츠 상태와도 무관하게 항상 동일한 360/740/400 크기를 유지함. */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_740px_400px] xl:items-start">
         {/* 좌: 입력 폼 + 차량정보 */}
         <div className="flex flex-col gap-4 xl:sticky xl:top-6">
           <form
