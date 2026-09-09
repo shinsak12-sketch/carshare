@@ -73,56 +73,68 @@ export function ReviewItemList({ items }: { items: ReviewItem[] }) {
   // 터치 기기(호버 불가)에서는 같은 항목을 탭하면 토글되도록 클릭도 같이 처리.
   const [activeId, setActiveId] = useState<string | null>(null);
 
-  const decorated = items.reduce<{ item: ReviewItem; showSectionHeader: boolean }[]>((acc, item) => {
-    const prevSection = acc[acc.length - 1]?.item.section;
-    acc.push({ item, showSectionHeader: item.section !== prevSection });
+  // 같은 단계(section)끼리 하나의 카드로 묶어서, 그냥 얇은 선 하나가 아니라
+  // 카드 자체가 나뉘어 있는 걸로 단계 구분이 확실히 보이게 함.
+  const groups = items.reduce<{ section: string; items: ReviewItem[] }[]>((acc, item) => {
+    const last = acc[acc.length - 1];
+    if (last && last.section === item.section) {
+      last.items.push(item);
+    } else {
+      acc.push({ section: item.section, items: [item] });
+    }
     return acc;
   }, []);
 
   return (
-    <div className="flex flex-col gap-1 rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
-      <p className="px-2 pt-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+    <div className="flex flex-col gap-3">
+      <p className="px-1 text-[11px] font-bold uppercase tracking-wide text-slate-400">
         검토 항목 ({items.length}) <span className="normal-case text-slate-300">· 항목에 마우스를 올리면 상세 표시</span>
       </p>
-      {decorated.map(({ item, showSectionHeader }) => {
-        const damageType = itemDamageType(item);
-        return (
-          <div key={item.id}>
-            {showSectionHeader && (
-              <p className="mt-4 mb-1.5 border-t border-slate-200 px-2 pt-3 text-[11px] font-bold uppercase tracking-wide text-slate-500 first:mt-0 first:border-t-0 first:pt-0">
-                {item.section}
-              </p>
-            )}
-            <div
-              className="relative"
-              onMouseEnter={() => setActiveId(item.id)}
-              onMouseLeave={() => setActiveId((cur) => (cur === item.id ? null : cur))}
-            >
-              <button
-                onClick={() => setActiveId((cur) => (cur === item.id ? null : item.id))}
-                className={`flex w-full items-stretch overflow-hidden rounded-xl text-left transition-colors ${
-                  activeId === item.id ? "bg-slate-100" : "hover:bg-slate-50"
-                }`}
-              >
-                <span className={`w-1 shrink-0 ${VERDICT_STYLES[item.verdict].bar}`} />
-                <span className="flex flex-1 items-center justify-between gap-3 px-3 py-3">
-                  <span className="text-[13px] font-semibold leading-snug text-slate-800">{item.title}</span>
-                  <span className="flex shrink-0 items-center gap-1.5">
-                    {damageType && <span className={TYPE_BADGE_CLASS}>{damageType}</span>}
-                    <VerdictBadge verdict={item.verdict} />
-                  </span>
-                </span>
-              </button>
+      {groups.map((group, gi) => (
+        <div
+          key={gi}
+          className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]"
+        >
+          <p className="border-b border-slate-200 bg-slate-100 px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-slate-600">
+            {group.section}
+          </p>
+          <div className="flex flex-col divide-y divide-slate-100">
+            {group.items.map((item) => {
+              const damageType = itemDamageType(item);
+              return (
+                <div
+                  key={item.id}
+                  className="relative"
+                  onMouseEnter={() => setActiveId(item.id)}
+                  onMouseLeave={() => setActiveId((cur) => (cur === item.id ? null : cur))}
+                >
+                  <button
+                    onClick={() => setActiveId((cur) => (cur === item.id ? null : item.id))}
+                    className={`flex w-full items-stretch overflow-hidden text-left transition-colors ${
+                      activeId === item.id ? "bg-slate-100" : "hover:bg-slate-50"
+                    }`}
+                  >
+                    <span className={`w-1.5 shrink-0 ${VERDICT_STYLES[item.verdict].bar}`} />
+                    <span className="flex flex-1 items-center justify-between gap-3 px-3 py-3">
+                      <span className="text-[13px] font-semibold leading-snug text-slate-800">{item.title}</span>
+                      <span className="flex shrink-0 items-center gap-1.5">
+                        {damageType && <span className={TYPE_BADGE_CLASS}>{damageType}</span>}
+                        <VerdictBadge verdict={item.verdict} />
+                      </span>
+                    </span>
+                  </button>
 
-              {activeId === item.id && (
-                <div className="absolute left-full top-0 z-30 ml-3 w-[380px] max-h-[70vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_20px_45px_-12px_rgba(15,23,42,0.35)]">
-                  <ReviewItemDetail item={item} />
+                  {activeId === item.id && (
+                    <div className="absolute left-full top-0 z-30 ml-3 w-[380px] max-h-[70vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_20px_45px_-12px_rgba(15,23,42,0.35)]">
+                      <ReviewItemDetail item={item} />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })}
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 }

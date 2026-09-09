@@ -186,7 +186,7 @@ export default function NewAssessmentPage() {
 
       {/* 좌/중/우 폭을 픽셀로 완전히 고정 — 사진 개수나 결과 유무 등 어떤
           콘텐츠 상태와도 무관하게 항상 동일한 360/740/400 크기를 유지함. */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_740px_400px] xl:items-start">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_800px_500px] xl:items-start">
         {/* 좌: 입력 폼 + 차량정보 */}
         <div className="flex flex-col gap-4 xl:sticky xl:top-6">
           <form
@@ -381,7 +381,7 @@ export default function NewAssessmentPage() {
                             <img
                               src={p.url}
                               alt={`첨부 사진 ${i + 1}`}
-                              className="h-full w-full rounded-lg border border-slate-200 object-cover transition-transform duration-200 ease-out group-hover:relative group-hover:z-30 group-hover:scale-[2.3] group-hover:shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)]"
+                              className="h-full w-full rounded-lg border border-slate-200 object-cover transition-transform duration-200 ease-out group-hover:relative group-hover:z-30 group-hover:scale-[4.6] group-hover:shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)]"
                             />
                           </button>
                         </div>
