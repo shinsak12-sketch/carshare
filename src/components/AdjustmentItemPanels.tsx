@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { TYPE_BADGE_CLASS, VERDICT_STYLES, type VerdictLabel } from "@/lib/review-items";
 import type { PhotoEvidence } from "@/lib/adjustment-types";
 import type { AdjustmentReviewItem } from "@/lib/adjustment-review-items";
@@ -56,9 +56,42 @@ function toggleInSet<T>(set: Set<T>, value: T): Set<T> {
 }
 
 export function AdjustmentItemList({ items }: { items: AdjustmentReviewItem[] }) {
-  const [activeId, setActiveId] = useState<string | null>(null);
+  // 우측 컬럼이 독립 스크롤(overflow-y-auto)되면서, 상세 팝업을 그 컬럼
+  // 밖으로 absolute/left-full로 넘치게 띄우던 방식이 스크롤 컨테이너에
+  // 잘려버림 — 그래서 트리거 요소의 화면 좌표를 직접 재서 position:fixed로
+  // 뷰포트 기준으로 띄움(어떤 overflow 컨테이너에도 안 잘림).
+  const [active, setActive] = useState<{ id: string; rect: DOMRect } | null>(null);
+  const activeElRef = useRef<HTMLElement | null>(null);
   const [verdictFilter, setVerdictFilter] = useState<Set<VerdictLabel>>(new Set(ALL_VERDICTS));
   const [evidenceFilter, setEvidenceFilter] = useState<Set<PhotoEvidence>>(new Set(ALL_EVIDENCE));
+
+  useEffect(() => {
+    function reposition() {
+      if (activeElRef.current) {
+        const rect = activeElRef.current.getBoundingClientRect();
+        setActive((cur) => (cur ? { ...cur, rect } : cur));
+      }
+    }
+    document.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      document.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
+  }, []);
+
+  function showDetail(id: string, el: HTMLElement) {
+    activeElRef.current = el;
+    setActive({ id, rect: el.getBoundingClientRect() });
+  }
+
+  function hideDetail(id: string) {
+    setActive((cur) => {
+      if (cur?.id !== id) return cur;
+      activeElRef.current = null;
+      return null;
+    });
+  }
 
   const verdictCounts = useMemo(() => {
     const counts = new Map<VerdictLabel, number>();
@@ -145,13 +178,13 @@ export function AdjustmentItemList({ items }: { items: AdjustmentReviewItem[] })
               <div
                 key={item.id}
                 className="relative"
-                onMouseEnter={() => setActiveId(item.id)}
-                onMouseLeave={() => setActiveId((cur) => (cur === item.id ? null : cur))}
+                onMouseEnter={(e) => showDetail(item.id, e.currentTarget)}
+                onMouseLeave={() => hideDetail(item.id)}
               >
                 <button
-                  onClick={() => setActiveId((cur) => (cur === item.id ? null : item.id))}
+                  onClick={(e) => (active?.id === item.id ? hideDetail(item.id) : showDetail(item.id, e.currentTarget))}
                   className={`flex w-full items-stretch overflow-hidden text-left transition-colors ${
-                    activeId === item.id ? "bg-slate-100" : "hover:bg-slate-50"
+                    active?.id === item.id ? "bg-slate-100" : "hover:bg-slate-50"
                   }`}
                 >
                   <span className={`w-1.5 shrink-0 ${VERDICT_STYLES[item.verdict].bar}`} />
@@ -170,8 +203,15 @@ export function AdjustmentItemList({ items }: { items: AdjustmentReviewItem[] })
                   </span>
                 </button>
 
-                {activeId === item.id && (
-                  <div className="absolute left-full top-0 z-30 ml-3 w-[380px] max-h-[70vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_20px_45px_-12px_rgba(15,23,42,0.35)]">
+                {active?.id === item.id && (
+                  <div
+                    style={{
+                      position: "fixed",
+                      top: Math.min(active.rect.top, window.innerHeight - 60),
+                      left: Math.min(active.rect.right + 12, window.innerWidth - 396),
+                    }}
+                    className="z-30 w-[380px] max-h-[70vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_20px_45px_-12px_rgba(15,23,42,0.35)]"
+                  >
                     <AdjustmentItemDetail item={item} />
                   </div>
                 )}
