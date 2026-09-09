@@ -10,6 +10,9 @@ export type PhotoEvidence = "직접확인" | "간접확인" | "확인불가";
 export interface AdjustmentItem {
   item_name: string;
   claimed_action: string;
+  // 판금·수리로 청구된 항목만 견적서상 청구 시간(시간 단위)을 채움 —
+  // 시간 과다 여부 판단(사진 속 손상 난이도 대비)에 씀. 그 외 항목은 null.
+  claimed_hours: number | null;
   photo_evidence: PhotoEvidence;
   // 적용대상 외판부품에서 "교환"이 청구됐고 수리 전 손상 상태가 사진에서
   // 확인될 때만 채워짐(과잉수리 판단용) — 그 외에는 null.

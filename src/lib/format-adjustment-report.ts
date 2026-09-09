@@ -15,7 +15,8 @@ export function buildAdjustmentReportText(caseInfo: AdjustmentCaseInfo, result: 
 
   lines.push("[청구 항목별 검토]");
   result.items.forEach((item, i) => {
-    lines.push(`${i + 1}. ${item.item_name} (청구: ${item.claimed_action}) → ${item.verdict}`);
+    const hoursText = item.claimed_hours != null ? ` ${item.claimed_hours}H` : "";
+    lines.push(`${i + 1}. ${item.item_name} (청구: ${item.claimed_action}${hoursText}) → ${item.verdict}`);
     lines.push(`   ${item.reasoning}`);
     if (item.verdict !== "인정" && item.adjustment_note) {
       lines.push(`   조정의견: ${item.adjustment_note}`);
