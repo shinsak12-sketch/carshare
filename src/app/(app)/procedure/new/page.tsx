@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProcedureResultView } from "@/components/ProcedureResultView";
+import { ImageLightbox } from "@/components/ImageLightbox";
 import { compressImage } from "@/lib/image-compress";
 import type { ProcedureResult } from "@/lib/procedure-types";
 import type { ProcedureCaseInfo } from "@/lib/format-procedure-report";
@@ -12,6 +13,20 @@ export default function NewProcedurePage() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ProcedureResult | null>(null);
   const [caseInfo, setCaseInfo] = useState<ProcedureCaseInfo | null>(null);
+
+  const [imagePreviews, setImagePreviews] = useState<{ url: string }[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      imagePreviews.forEach((p) => URL.revokeObjectURL(p.url));
+    };
+  }, [imagePreviews]);
+
+  function handleImagesChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    setImagePreviews(files.map((file) => ({ url: URL.createObjectURL(file) })));
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -83,7 +98,15 @@ export default function NewProcedurePage() {
             <label className="mb-1 block text-sm font-medium text-slate-700">
               파손 사진 (필수, 여러 장 가능)
             </label>
-            <input name="images" type="file" accept="image/*" multiple required className={fileInputClass} />
+            <input
+              name="images"
+              type="file"
+              accept="image/*"
+              multiple
+              required
+              onChange={handleImagesChange}
+              className={fileInputClass}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -130,6 +153,27 @@ export default function NewProcedurePage() {
             </div>
           )}
 
+          {imagePreviews.length > 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                첨부 사진 ({imagePreviews.length})
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {imagePreviews.map((p, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setLightboxIndex(i)}
+                    className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 transition-transform duration-150 hover:scale-105"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.url} alt={`첨부 사진 ${i + 1}`} className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {result && caseInfo ? (
             <div>
               <h2 className="mb-3 text-lg font-bold text-slate-900">판단 결과</h2>
@@ -155,6 +199,15 @@ export default function NewProcedurePage() {
           )}
         </div>
       </div>
+
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          urls={imagePreviews.map((p) => p.url)}
+          index={lightboxIndex}
+          onIndexChange={setLightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
     </main>
   );
 }
