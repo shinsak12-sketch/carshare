@@ -137,7 +137,7 @@ export default function NewAdjustmentPage() {
         const text = await res.text();
         throw new Error(
           res.status === 413
-            ? "첨부 용량이 너무 큽니다. 사진 수를 줄이거나 다시 시도해주세요."
+            ? "청구 견적서(PDF) 용량이 너무 큽니다. 다른 파일로 다시 시도해주세요."
             : `서버 오류 (${res.status}): ${text.slice(0, 200)}`
         );
       }
