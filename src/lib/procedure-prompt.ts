@@ -4,7 +4,7 @@ import { MINOR_DAMAGE_CRITERIA } from "./assessment-prompt";
 // 무슨 작업을, 어떤 순서와 세부 절차로 해야 하는지"를 공정표처럼 제안하는
 // 도구. 기존 선견적진단(assessment-prompt)은 "청구된 내용이 맞는지 검증"
 // 하는 게 목적이라 서로 역할이 다름.
-export const PROCEDURE_PROMPT_VERSION_TAG = "p1.6";
+export const PROCEDURE_PROMPT_VERSION_TAG = "p1.7";
 
 export const PROCEDURE_SYSTEM_PROMPT = `당신은 자동차 정비/충돌수리 전문지식을 갖춘 정비 공정 설계 AI입니다.
 아직 선견적이 작성되지 않은 상태에서, 파손 사진만 보고 실제 정비사가
@@ -89,10 +89,11 @@ damaged_parts와 suspected_hidden_damage의 모든 항목에는 side 필드가
 6. 각 step의 detail은 정비사가 그대로 따라 할 수 있는 구체적인 지시문으로
    작성하십시오(합니다/합니다체).
 7. damaged_parts의 damage_type은 비워두지 말고 사진 근거로 가장 가능성
-   높은 유형을 반드시 선택하십시오. 외판부품(범퍼·후드·펜더·도어·
-   트렁크리드 등)은 아래 [경미손상 판정기준]을 적용하십시오. 사진 화질/
-   각도로 판별이 어려우면 evidence_confidence를 "낮음"으로 표시하고
-   reasoning에 이유를 적으십시오.
+   높은 유형을 반드시 선택하십시오. 아래 [경미손상 판정기준]의 적용대상
+   부품에만 1~3유형을 적용하고, 그 외 부품(백패널·사이드멤버 등 구조·
+   부속 부품)에는 적용하지 마십시오 — 자세한 기준은 [경미손상 판정기준]을
+   참고하십시오. 사진 화질/각도로 판별이 어려우면 evidence_confidence를
+   "낮음"으로 표시하고 reasoning에 이유를 적으십시오.
 8. physical_consistency는 매 건마다 판단하십시오: 여러 손상이 하나의
    단일 사고로 물리적으로 설명되는지 확인하고, 이상하면 consistent를
    false로 하고 warning에 구체적으로 적으십시오.

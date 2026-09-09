@@ -5,7 +5,7 @@ import { ImageLightbox } from "@/components/ImageLightbox";
 import { ReviewItemList } from "@/components/ReviewItemPanels";
 import { compressImage } from "@/lib/image-compress";
 import type { AssessmentResult } from "@/lib/assessment-types";
-import { buildOverallOpinionText, buildReportText, derivedDamagedParts, type ReportCaseInfo } from "@/lib/format-report";
+import { buildReportText, derivedDamagedParts, type ReportCaseInfo } from "@/lib/format-report";
 import { buildReviewItems } from "@/lib/review-items";
 
 type ParseStatus = "idle" | "parsing" | "done" | "error";
@@ -30,6 +30,16 @@ export default function NewAssessmentPage() {
 
   const [reportCopied, setReportCopied] = useState(false);
   const [opinionCopied, setOpinionCopied] = useState(false);
+  const [isEditingOpinion, setIsEditingOpinion] = useState(false);
+  const [opinionDraft, setOpinionDraft] = useState("");
+  // 새 진단 결과가 들어오면(참조가 바뀌면) 편집 초안을 그 결과의 원문으로
+  // 리셋 — 렌더 중 상태 조정 패턴(이펙트로 하면 캐스케이드 렌더 경고가 남).
+  const [opinionSyncedResult, setOpinionSyncedResult] = useState<AssessmentResult | null>(null);
+  if (result !== opinionSyncedResult) {
+    setOpinionSyncedResult(result);
+    setOpinionDraft(result?.overall_opinion ?? "");
+    setIsEditingOpinion(false);
+  }
 
   const reviewItems = useMemo(() => (result ? buildReviewItems(result) : []), [result]);
 
@@ -144,9 +154,8 @@ export default function NewAssessmentPage() {
   }
 
   async function handleCopyOpinion() {
-    if (!result) return;
     try {
-      await navigator.clipboard.writeText(buildOverallOpinionText(result));
+      await navigator.clipboard.writeText(opinionDraft);
       setOpinionCopied(true);
       setTimeout(() => setOpinionCopied(false), 1500);
     } catch {
@@ -168,7 +177,7 @@ export default function NewAssessmentPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[380px_minmax(0,1.6fr)_minmax(0,1fr)] xl:items-start">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[400px_minmax(0,1fr)_460px] xl:items-start">
         {/* 좌: 입력 폼 + 차량정보 */}
         <div className="flex flex-col gap-4 xl:sticky xl:top-6">
           <form
@@ -354,7 +363,7 @@ export default function NewAssessmentPage() {
                         </button>
 
                         {hoveredPhoto === i && (
-                          <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 -translate-x-1/2">
+                          <div className="pointer-events-none absolute top-full left-1/2 z-30 mt-2 -translate-x-1/2">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={p.url}
@@ -380,7 +389,7 @@ export default function NewAssessmentPage() {
                   </button>
                   {showEstimate && (
                     <iframe
-                      src={estimatePreviewUrl}
+                      src={`${estimatePreviewUrl}#zoom=75`}
                       title="첨부된 선견적"
                       className="mt-3 h-[75vh] w-full rounded-lg border border-slate-200"
                     />
@@ -420,19 +429,35 @@ export default function NewAssessmentPage() {
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
                   종합 의견 <span className="normal-case text-slate-500">· 거래처 발신용</span>
                 </p>
-                <button
-                  onClick={handleCopyOpinion}
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
-                    opinionCopied ? "bg-emerald-600" : "bg-white/15 hover:bg-white/25"
-                  }`}
-                >
-                  {opinionCopied ? "복사됨 ✓" : "복사"}
-                </button>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    onClick={() => setIsEditingOpinion((v) => !v)}
+                    className={`rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
+                      isEditingOpinion ? "bg-emerald-600" : "bg-white/15 hover:bg-white/25"
+                    }`}
+                  >
+                    {isEditingOpinion ? "완료" : "편집"}
+                  </button>
+                  <button
+                    onClick={handleCopyOpinion}
+                    className={`rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
+                      opinionCopied ? "bg-emerald-600" : "bg-white/15 hover:bg-white/25"
+                    }`}
+                  >
+                    {opinionCopied ? "복사됨 ✓" : "복사"}
+                  </button>
+                </div>
               </div>
-              <p className="mt-1.5 text-sm font-medium leading-relaxed text-slate-100">{result.overall_opinion}</p>
-              {result.disputed_items.length > 0 && (
-                <p className="mt-2.5 text-xs font-bold text-amber-300">
-                  협의 필요 항목: {result.disputed_items.join(", ")}
+              {isEditingOpinion ? (
+                <textarea
+                  value={opinionDraft}
+                  onChange={(e) => setOpinionDraft(e.target.value)}
+                  rows={10}
+                  className="mt-1.5 w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium leading-relaxed text-white outline-none focus:border-white/40"
+                />
+              ) : (
+                <p className="mt-1.5 whitespace-pre-line text-sm font-medium leading-relaxed text-slate-100">
+                  {opinionDraft}
                 </p>
               )}
             </div>

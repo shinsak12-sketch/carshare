@@ -115,7 +115,7 @@ export function ReviewItemList({ items }: { items: ReviewItem[] }) {
               </button>
 
               {activeId === item.id && (
-                <div className="absolute right-full top-0 z-30 mr-3 w-[380px] max-h-[70vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_20px_45px_-12px_rgba(15,23,42,0.35)]">
+                <div className="absolute left-full top-0 z-30 ml-3 w-[380px] max-h-[70vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_20px_45px_-12px_rgba(15,23,42,0.35)]">
                   <ReviewItemDetail item={item} />
                 </div>
               )}
