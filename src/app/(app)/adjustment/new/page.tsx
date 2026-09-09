@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { upload } from "@vercel/blob/client";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { AdjustmentItemList } from "@/components/AdjustmentItemPanels";
 import { compressImage } from "@/lib/image-compress";
@@ -100,12 +101,35 @@ export default function NewAdjustmentPage() {
       const imageInput = form.elements.namedItem("images") as HTMLInputElement;
       const rawImages = imageInput.files ? Array.from(imageInput.files) : [];
       formData.delete("images");
-      setLoadingStep("사진 압축 중…");
-      for (const file of rawImages) {
-        formData.append("images", await compressImage(file));
-      }
 
-      setLoadingStep("AI 손해사정 중… (수십 초 소요)");
+      // 사진은 우리 서버를 거치지 않고 브라우저에서 Vercel Blob으로 직접
+      // 업로드함 — 서버리스 함수 요청 바디 제한(~4.5MB)과 무관하게 몇십~
+      // 백여 장도 올릴 수 있음. 서버에는 업로드된 URL 목록만 전달함.
+      const total = rawImages.length;
+      let uploadedCount = 0;
+      setLoadingStep(`사진 업로드 중… (0/${total})`);
+
+      const CONCURRENCY = 6;
+      const imageUrls: string[] = new Array(total);
+      let cursor = 0;
+      async function worker() {
+        while (cursor < total) {
+          const i = cursor++;
+          const compressed = await compressImage(rawImages[i]);
+          const blob = await upload(compressed.name, compressed, {
+            access: "public",
+            handleUploadUrl: "/api/blob-upload",
+          });
+          imageUrls[i] = blob.url;
+          uploadedCount++;
+          setLoadingStep(`사진 업로드 중… (${uploadedCount}/${total})`);
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(CONCURRENCY, total) }, worker));
+
+      formData.append("imageUrls", JSON.stringify(imageUrls));
+
+      setLoadingStep("AI 손해사정 중… (사진이 많으면 수 분 소요될 수 있음)");
       const res = await fetch("/api/adjustment", { method: "POST", body: formData });
 
       const contentType = res.headers.get("content-type") ?? "";
