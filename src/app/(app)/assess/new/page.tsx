@@ -24,7 +24,6 @@ export default function NewAssessmentPage() {
 
   const [imagePreviews, setImagePreviews] = useState<{ url: string }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [hoveredPhoto, setHoveredPhoto] = useState<number | null>(null);
   const [estimatePreviewUrl, setEstimatePreviewUrl] = useState<string | null>(null);
   const [showEstimate, setShowEstimate] = useState(true);
 
@@ -170,11 +169,19 @@ export default function NewAssessmentPage() {
 
   return (
     <main className="mx-auto max-w-[1800px] px-6 py-10 lg:py-14">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900 lg:text-3xl">신규 진단</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          선견적과 파손 사진을 먼저 첨부하면 차량정보를 자동으로 채워줍니다.
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 lg:text-3xl">신규 진단</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            선견적과 파손 사진을 먼저 첨부하면 차량정보를 자동으로 채워줍니다.
+          </p>
+        </div>
+        {loading && (
+          <div className="flex shrink-0 items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-bold text-blue-700 sm:text-sm">
+            <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-blue-300 border-t-blue-600" />
+            {loadingStep || "처리 중…"}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(500px,1fr)_380px] xl:items-start">
@@ -359,31 +366,22 @@ export default function NewAssessmentPage() {
                         );
                       }
                       return (
-                        <div
-                          key={i}
-                          className="relative"
-                          onMouseEnter={() => setHoveredPhoto(i)}
-                          onMouseLeave={() => setHoveredPhoto((cur) => (cur === i ? null : cur))}
-                        >
+                        <div key={i} className="group relative aspect-square">
+                          {/* 확대 미리보기는 별도 팝업 대신 같은 이미지를 제자리에서
+                              transform으로 키움 — 새로 그려지는 엘리먼트가 없어 PDF
+                              iframe에 가려지거나 깨지는 문제 없이 항상 안정적으로 보임. */}
                           <button
                             type="button"
                             onClick={() => setLightboxIndex(i)}
-                            className="aspect-square w-full overflow-hidden rounded-lg border border-slate-200 transition-transform duration-150 hover:scale-105"
+                            className="absolute inset-0"
                           >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={p.url} alt={`첨부 사진 ${i + 1}`} className="h-full w-full object-cover" />
+                            <img
+                              src={p.url}
+                              alt={`첨부 사진 ${i + 1}`}
+                              className="h-full w-full rounded-lg border border-slate-200 object-cover transition-transform duration-200 ease-out group-hover:relative group-hover:z-30 group-hover:scale-[2.3] group-hover:shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)]"
+                            />
                           </button>
-
-                          {hoveredPhoto === i && (
-                            <div className="pointer-events-none absolute left-full top-1/2 z-30 ml-2 -translate-y-1/2">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={p.url}
-                                alt=""
-                                className="h-56 w-56 rounded-xl border-4 border-white object-cover shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)]"
-                              />
-                            </div>
-                          )}
                         </div>
                       );
                     })}
@@ -414,20 +412,17 @@ export default function NewAssessmentPage() {
 
           {!result && (
             <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-16 text-center shadow-[0_1px_0_rgba(255,255,255,0.6)_inset]">
-              {loading ? (
-                <>
-                  <span className="h-8 w-8 animate-spin rounded-full border-[3px] border-blue-200 border-t-blue-600" />
-                  <p className="text-sm font-medium text-slate-600">{loadingStep || "처리 중…"}</p>
-                </>
-              ) : (
-                <>
-                  <span aria-hidden="true" className="text-4xl opacity-50">📋</span>
-                  <p className="text-sm text-slate-400">
-                    왼쪽에서 파손 사진을 첨부하고 진단을 시작하면
-                    <br />이 자리에 결과 보고서가 표시됩니다.
-                  </p>
-                </>
-              )}
+              <span aria-hidden="true" className="text-4xl opacity-50">📋</span>
+              <p className="text-sm text-slate-400">
+                왼쪽에서 파손 사진을 첨부하고 진단을 시작하면
+                <br />이 자리에 결과 보고서가 표시됩니다.
+                {loading && (
+                  <>
+                    <br />
+                    (우측 상단에서 진행 상태를 확인하세요)
+                  </>
+                )}
+              </p>
             </div>
           )}
         </div>

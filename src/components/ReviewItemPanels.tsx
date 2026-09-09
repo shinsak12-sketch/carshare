@@ -89,7 +89,7 @@ export function ReviewItemList({ items }: { items: ReviewItem[] }) {
         return (
           <div key={item.id}>
             {showSectionHeader && (
-              <p className="mt-3 mb-1 px-2 text-[10px] font-bold uppercase tracking-wide text-slate-300 first:mt-1">
+              <p className="mt-4 mb-1.5 border-t border-slate-200 px-2 pt-3 text-[11px] font-bold uppercase tracking-wide text-slate-500 first:mt-0 first:border-t-0 first:pt-0">
                 {item.section}
               </p>
             )}
