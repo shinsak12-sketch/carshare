@@ -177,7 +177,7 @@ export default function NewAssessmentPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[400px_minmax(0,1fr)_460px] xl:items-start">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(500px,1fr)_380px] xl:items-start">
         {/* 좌: 입력 폼 + 차량정보 */}
         <div className="flex flex-col gap-4 xl:sticky xl:top-6">
           <form
@@ -345,35 +345,48 @@ export default function NewAssessmentPage() {
                   <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">
                     첨부 사진 ({imagePreviews.length})
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    {imagePreviews.map((p, i) => (
-                      <div
-                        key={i}
-                        className="relative"
-                        onMouseEnter={() => setHoveredPhoto(i)}
-                        onMouseLeave={() => setHoveredPhoto((cur) => (cur === i ? null : cur))}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => setLightboxIndex(i)}
-                          className="h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-200 transition-transform duration-150 hover:scale-105"
+                  {/* 사진 개수와 무관하게 폭이 항상 일정하도록 9칸 고정 그리드로 배치
+                      (최소 2줄, 사진이 더 많으면 줄만 늘어남). 빈 칸은 점선 플레이스홀더. */}
+                  <div className="grid grid-cols-9 gap-2">
+                    {Array.from({ length: Math.max(18, Math.ceil(imagePreviews.length / 9) * 9) }).map((_, i) => {
+                      const p = imagePreviews[i];
+                      if (!p) {
+                        return (
+                          <div
+                            key={i}
+                            className="aspect-square rounded-lg border border-dashed border-slate-200 bg-slate-50/50"
+                          />
+                        );
+                      }
+                      return (
+                        <div
+                          key={i}
+                          className="relative"
+                          onMouseEnter={() => setHoveredPhoto(i)}
+                          onMouseLeave={() => setHoveredPhoto((cur) => (cur === i ? null : cur))}
                         >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={p.url} alt={`첨부 사진 ${i + 1}`} className="h-full w-full object-cover" />
-                        </button>
-
-                        {hoveredPhoto === i && (
-                          <div className="pointer-events-none absolute top-full left-1/2 z-30 mt-2 -translate-x-1/2">
+                          <button
+                            type="button"
+                            onClick={() => setLightboxIndex(i)}
+                            className="aspect-square w-full overflow-hidden rounded-lg border border-slate-200 transition-transform duration-150 hover:scale-105"
+                          >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={p.url}
-                              alt=""
-                              className="h-56 w-56 rounded-xl border-4 border-white object-cover shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)]"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                            <img src={p.url} alt={`첨부 사진 ${i + 1}`} className="h-full w-full object-cover" />
+                          </button>
+
+                          {hoveredPhoto === i && (
+                            <div className="pointer-events-none absolute left-full top-1/2 z-30 ml-2 -translate-y-1/2">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={p.url}
+                                alt=""
+                                className="h-56 w-56 rounded-xl border-4 border-white object-cover shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)]"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
