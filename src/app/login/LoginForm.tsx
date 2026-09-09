@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+const inputClass =
+  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)] transition-all duration-150 outline-none focus:border-blue-500 focus:shadow-[inset_0_1px_3px_rgba(37,99,235,0.12)] focus:ring-2 focus:ring-blue-500/20";
+
 export function LoginForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -35,7 +38,7 @@ export function LoginForm() {
           name="employeeId"
           required
           autoComplete="username"
-          className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+          className={inputClass}
         />
       </div>
       <div>
@@ -45,7 +48,7 @@ export function LoginForm() {
           type="password"
           required
           autoComplete="current-password"
-          className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+          className={inputClass}
         />
       </div>
 
@@ -58,7 +61,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={loading}
-        className="mt-1 rounded-full bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-[0_6px_16px_-4px_rgba(37,99,235,0.5)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_10px_22px_-6px_rgba(37,99,235,0.55)] active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-1 rounded-full bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-[0_1px_0_rgba(255,255,255,0.25)_inset,0_6px_16px_-4px_rgba(37,99,235,0.5)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_1px_0_rgba(255,255,255,0.25)_inset,0_10px_22px_-6px_rgba(37,99,235,0.55)] active:translate-y-0 active:scale-95 active:shadow-[0_2px_6px_rgba(37,99,235,0.4)_inset] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? "로그인 중…" : "로그인"}
       </button>

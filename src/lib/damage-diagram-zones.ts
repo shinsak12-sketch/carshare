@@ -49,8 +49,12 @@ export const DIAGRAM_ZONES: DiagramZone[] = [
   { id: "bumper_rear", label: "리어범퍼", x: 65, y: 508, w: 170, h: 22 },
 ];
 
-const FRONT_WORDS = ["프론트", "전면", "전방"];
-const REAR_WORDS = ["리어", "후면", "후방"];
+// "프론트/리어" 같은 정식 명칭 외에 견적서·현장에서 훨씬 많이 쓰는
+// "앞/뒤" 같은 구어체도 인식해야 함 — 이게 빠져 있어서 "앞범퍼"가 앞/뒤
+// 어느 쪽에도 안 걸리고 fallback("both")으로 떨어져 뒷범퍼까지 같이
+// 표시되는 버그가 있었음(펜더·도어도 동일한 문제).
+const FRONT_WORDS = ["프론트", "전면", "전방", "앞"];
+const REAR_WORDS = ["리어", "후면", "후방", "뒤", "뒷"];
 
 function hasAny(text: string, words: string[]): boolean {
   return words.some((w) => text.includes(w));

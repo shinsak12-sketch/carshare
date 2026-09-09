@@ -163,18 +163,15 @@ export default function NewAssessmentPage() {
   }
 
   const fileInputClass =
-    "w-full rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 file:transition-colors hover:border-blue-400 hover:file:bg-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
+    "w-full rounded-lg border border-dashed border-slate-300 bg-slate-50/40 px-3 py-2 text-sm shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-150 outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 file:shadow-sm file:transition-colors hover:border-blue-400 hover:file:bg-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
   const textInputClass =
-    "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-all duration-150 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20";
+    "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)] transition-all duration-150 outline-none focus:border-blue-500 focus:shadow-[inset_0_1px_3px_rgba(37,99,235,0.12)] focus:ring-2 focus:ring-blue-500/20";
 
   return (
     <main className="mx-auto max-w-[1800px] px-6 py-10 lg:py-14">
       <div className="mb-8 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 lg:text-3xl">신규 진단</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            선견적과 파손 사진을 먼저 첨부하면 차량정보를 자동으로 채워줍니다.
-          </p>
+          <h1 className="text-2xl font-bold text-slate-900 lg:text-3xl">AI 선견적 진단</h1>
         </div>
         {loading && (
           <div className="flex shrink-0 items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-bold text-blue-700 sm:text-sm">
@@ -272,12 +269,9 @@ export default function NewAssessmentPage() {
                 />
               </div>
             </div>
-            <p className="-mt-4 text-xs text-slate-400">
-              이 견적서 양식에는 제조사/모델/연식이 인쇄되지 않는 경우가 많습니다 — 그럴 땐 직접 입력해주세요.
-            </p>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">담당자 추가 의견</label>
+              <label className="mb-1 block text-sm font-medium text-slate-700">담당자 추가 의견(프롬프트 추가)</label>
               <textarea
                 name="memo"
                 rows={2}
