@@ -1,5 +1,7 @@
 import type { AdjustmentCaseInfo, AdjustmentResult } from "./adjustment-types";
+import { buildAdjustmentDiagnostics } from "./adjustment-review-items";
 
+// 린터 출력 형식: 문제 항목(✖ → ⚠)만 줄 번호와 함께 먼저, 통과는 건수 + 목록.
 export function buildAdjustmentReportText(caseInfo: AdjustmentCaseInfo, result: AdjustmentResult): string {
   const lines: string[] = ["AI 손해사정 검토 (보조 의견)", ""];
 
@@ -8,20 +10,42 @@ export function buildAdjustmentReportText(caseInfo: AdjustmentCaseInfo, result: 
     lines.push("");
   }
 
-  if (!result.physical_consistency.consistent) {
-    lines.push(`⚠ 사고 정합성 경고: ${result.physical_consistency.warning}`);
-    lines.push("");
-  }
+  const diags = buildAdjustmentDiagnostics(result);
+  const problems = diags.filter((d) => d.severity !== "pass");
+  const passed = diags.filter((d) => d.severity === "pass");
 
-  lines.push("[청구 항목별 검토]");
-  result.items.forEach((item, i) => {
-    const hoursText = item.claimed_hours != null ? ` ${item.claimed_hours}H` : "";
-    lines.push(`${i + 1}. ${item.item_name} (청구: ${item.claimed_action}${hoursText}) → ${item.verdict}`);
-    lines.push(`   ${item.reasoning}`);
-    if (item.verdict !== "인정" && item.adjustment_note) {
-      lines.push(`   조정의견: ${item.adjustment_note}`);
+  lines.push(
+    `✖ ${diags.filter((d) => d.severity === "error").length}  ⚠ ${diags.filter((d) => d.severity === "warn").length}  ✔ ${passed.length}`
+  );
+  lines.push("");
+
+  if (problems.length === 0) {
+    lines.push("조정 필요 항목 없음");
+  } else {
+    lines.push("[조정 필요 항목]");
+    for (const d of problems) {
+      const mark = d.severity === "error" ? "✖" : "⚠";
+      if (d.kind === "consistency") {
+        lines.push(`${mark}  --  ${d.title}`);
+        lines.push(`       ${d.message}`);
+        continue;
+      }
+      const it = d.item;
+      const hours = it.claimed_hours != null ? ` ${it.claimed_hours}H` : "";
+      lines.push(`${mark}  ${String(d.lineNo).padStart(3)}  ${it.item_name} · ${it.claimed_action}${hours}  → ${it.verdict}`);
+      const refs = it.photo_refs.length ? ` · 근거사진 ${it.photo_refs.join(", ")}` : "";
+      lines.push(`       ${it.reasoning}${it.adjustment_note ? ` → ${it.adjustment_note}` : ""}${refs}`);
     }
-  });
+  }
+  lines.push("");
+
+  lines.push(`[통과 ${passed.length}건]`);
+  for (const d of passed) {
+    if (d.kind !== "item") continue;
+    const it = d.item;
+    const hours = it.claimed_hours != null ? ` ${it.claimed_hours}H` : "";
+    lines.push(`✔  ${String(d.lineNo).padStart(3)}  ${it.item_name} · ${it.claimed_action}${hours} — ${it.reasoning}`);
+  }
   lines.push("");
 
   lines.push("종합 의견");

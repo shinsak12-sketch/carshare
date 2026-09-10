@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/session";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 import { isPdfFile, extractEstimateText } from "@/lib/estimate-pdf";
 import { redactPersonalInfo } from "@/lib/pii-redact";
+import { matchReferenceSections } from "@/lib/reference-sections";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -59,16 +60,20 @@ async function handleAdjustment(req: NextRequest) {
   // 이 텍스트 자체도 저장하지 않음(사진과 동일한 정책).
   const estimateText = redactPersonalInfo(rawEstimateText);
 
+  const matchedSections = matchReferenceSections(estimateText);
+
   const contextLines = [
     manufacturer || model ? `차량정보: ${manufacturer} ${model}`.trim() : null,
     memo ? `[담당자 추가 의견]\n${memo}` : null,
     `[청구 견적서 원문 텍스트]\n${estimateText}`,
-    "첨부된 사진은 파손 상태 사진이 아니라 수리작업 진행/완료 사진입니다.",
+    ...matchedSections.map((s) => `[참고자료: ${s.name}]\n${s.content}`),
+    `첨부된 사진은 파손 상태 사진이 아니라 수리작업 진행/완료 사진이며, 총 ${imageUrls.length}장이 첨부 순서대로 1번부터 번호가 매겨져 있습니다.`,
   ].filter(Boolean);
 
   try {
     const openai = getOpenAI();
-    const reasoningEffort = getReasoningEffort("low");
+    // 사진 100장·항목 100개 건은 low로는 뒤쪽 항목이 형식적으로 처리돼서 medium
+    const reasoningEffort = getReasoningEffort("medium");
     const completion = await openai.chat.completions.create({
       model: getModel(),
       ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),

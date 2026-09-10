@@ -91,7 +91,7 @@ async function handleAssess(req: NextRequest) {
       ? `[선견적 원문 텍스트]\n${estimateText}`
       : "선견적 데이터가 제공되지 않았습니다. 사진 기반 손상유형 판독만 수행하십시오.",
     ...matchedSections.map(
-      (s) => `[추가 참고자료: ${s.name}]\n${s.content}`
+      (s) => `[참고자료: ${s.name}]\n${s.content}`
     ),
   ].filter(Boolean);
 

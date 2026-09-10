@@ -8,14 +8,17 @@ export type AdjustmentVerdict = VerdictLabel;
 export type PhotoEvidence = "직접확인" | "간접확인" | "확인불가";
 
 export interface AdjustmentItem {
+  // 견적서 원문의 항목 순번 — 린터의 "몇 번째 줄"처럼 문제 항목을 바로 찾게 함.
+  line_no: number;
   item_name: string;
   claimed_action: string;
   // 판금·수리로 청구된 항목만 견적서상 청구 시간(시간 단위)을 채움 —
   // 시간 과다 여부 판단(사진 속 손상 난이도 대비)에 씀. 그 외 항목은 null.
   claimed_hours: number | null;
   photo_evidence: PhotoEvidence;
-  // 적용대상 외판부품에서 "교환"이 청구됐고 수리 전 손상 상태가 사진에서
-  // 확인될 때만 채워짐(과잉수리 판단용) — 그 외에는 null.
+  // 판단 근거가 된 사진 번호(1부터). 화면에서 해당 사진을 강조하는 데 씀.
+  photo_refs: number[];
+  // 경미손상 적용대상 부품이고 수리 전 손상 상태가 사진에서 확인될 때만 채움.
   damage_type: DamageType | null;
   verdict: AdjustmentVerdict;
   reasoning: string;

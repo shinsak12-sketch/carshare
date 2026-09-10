@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import { ImageLightbox } from "@/components/ImageLightbox";
-import { AdjustmentItemList } from "@/components/AdjustmentItemPanels";
+import { AdjustmentDiagnostics } from "@/components/AdjustmentDiagnostics";
 import { compressImage } from "@/lib/image-compress";
 import type { AdjustmentCaseInfo, AdjustmentResult } from "@/lib/adjustment-types";
 import { buildAdjustmentReportText } from "@/lib/format-adjustment-report";
-import { buildAdjustmentReviewItems } from "@/lib/adjustment-review-items";
+import { buildAdjustmentDiagnostics } from "@/lib/adjustment-review-items";
 
 type ParseStatus = "idle" | "parsing" | "done" | "error";
 
@@ -24,6 +24,8 @@ export default function NewAdjustmentPage() {
 
   const [imagePreviews, setImagePreviews] = useState<{ url: string }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  // 진단 항목에 마우스를 올리면 근거 사진(1부터 번호)을 가운데 그리드에서 강조
+  const [highlightedPhotos, setHighlightedPhotos] = useState<number[]>([]);
   const [estimatePreviewUrl, setEstimatePreviewUrl] = useState<string | null>(null);
   const [showEstimate, setShowEstimate] = useState(true);
 
@@ -40,7 +42,7 @@ export default function NewAdjustmentPage() {
     setIsEditingOpinion(false);
   }
 
-  const reviewItems = useMemo(() => (result ? buildAdjustmentReviewItems(result) : []), [result]);
+  const diagnostics = useMemo(() => (result ? buildAdjustmentDiagnostics(result) : []), [result]);
 
   useEffect(() => {
     return () => {
@@ -350,6 +352,8 @@ export default function NewAdjustmentPage() {
                           />
                         );
                       }
+                      const highlighted = highlightedPhotos.includes(i + 1);
+                      const dimmed = highlightedPhotos.length > 0 && !highlighted;
                       return (
                         <div key={i} className="group relative aspect-square">
                           <button type="button" onClick={() => setLightboxIndex(i)} className="absolute inset-0">
@@ -357,9 +361,20 @@ export default function NewAdjustmentPage() {
                             <img
                               src={p.url}
                               alt={`수리작업 사진 ${i + 1}`}
-                              className="h-full w-full rounded-lg border border-slate-200 object-cover transition-transform duration-200 ease-out group-hover:relative group-hover:z-30 group-hover:scale-[4.6] group-hover:shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)]"
+                              className={`h-full w-full rounded-lg border object-cover transition-all duration-200 ease-out group-hover:relative group-hover:z-30 group-hover:scale-[4.6] group-hover:opacity-100 group-hover:shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)] ${
+                                highlighted
+                                  ? "border-purple-500 ring-4 ring-purple-400/60 shadow-[0_0_0_2px_white,0_8px_20px_-6px_rgba(147,51,234,0.7)]"
+                                  : "border-slate-200"
+                              } ${dimmed ? "opacity-35" : ""}`}
                             />
                           </button>
+                          <span
+                            className={`pointer-events-none absolute left-1 top-1 rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold leading-none shadow-sm transition-colors group-hover:opacity-0 ${
+                              highlighted ? "bg-purple-600 text-white" : "bg-white/85 text-slate-600"
+                            }`}
+                          >
+                            {i + 1}
+                          </span>
                         </div>
                       );
                     })}
@@ -408,7 +423,13 @@ export default function NewAdjustmentPage() {
         {/* 우: 검토 항목(위) + 종합의견(아래) */}
         {result && (
           <div className="flex flex-col gap-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
-            <AdjustmentItemList items={reviewItems} />
+            <AdjustmentDiagnostics
+              diagnostics={diagnostics}
+              onHoverPhotos={setHighlightedPhotos}
+              onOpenPhoto={(n) => {
+                if (n >= 1 && n <= imagePreviews.length) setLightboxIndex(n - 1);
+              }}
+            />
 
             <div className="rounded-2xl bg-slate-900 px-5 py-4 text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)]">
               <div className="flex items-center justify-between gap-3">
