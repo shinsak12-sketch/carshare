@@ -7,9 +7,9 @@ export type AdjustmentVerdict = VerdictLabel;
 
 export type PhotoEvidence = "직접확인" | "간접확인" | "확인불가";
 
-// 청구 항목의 역할 — 메인(공임의 핵심 작업) / 부품 / 도장 / 부수(탈착·O/H 등).
-// 부품·도장은 메인 작업 판정에 따라오는 경우가 대부분이라 트리로 묶어 보여줌.
-export type ItemRole = "메인" | "부품" | "도장" | "부수";
+// 청구 항목의 역할 — 메인(공임의 핵심 작업) / 도장 / 부수(탈착·O/H 등).
+// 부품비 라인은 판단 대상이 아님(공임 판정 보고 담당자가 AOS에서 처리).
+export type ItemRole = "메인" | "도장" | "부수";
 
 export interface AdjustmentItem {
   // 견적서 원문의 항목 순번 — 린터의 "몇 번째 줄"처럼 문제 항목을 바로 찾게 함.

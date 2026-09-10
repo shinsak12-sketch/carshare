@@ -9,16 +9,16 @@ import type {
   ItemDiagnostic,
 } from "@/lib/adjustment-review-items";
 
-// 린터 출력처럼: 문제 브랜치(✖ 불인정·과다청구 → ⚠ 협의·조사)만 먼저, 통과(✔)는
-// 건수만 두고 접어둠. 브랜치 = 메인 부품/부위, 그 아래 부품·도장·부수 작업이
-// 트리로 붙음. 메인 판정에 딸려오는 부품·교환도장은 "연동"으로 표시하고 개별
-// 판정으로 세지 않음.
+// 우측 컬럼을 좌우 2분할: 왼쪽 = 메인 판넬(브랜치) 목록, 오른쪽 = 선택한 판넬의
+// 하위 작업(메인 공임 → 도장 → 부수) 판정. 부품비는 판단 대상이 아님.
+// ✖/⚠/✔ 집계는 독립 판정만(연동 항목 제외).
 
-const SEVERITY_META: Record<DiagnosticSeverity, { glyph: string; label: string; text: string; chip: string; chipOn: string }> = {
+const SEVERITY_META: Record<DiagnosticSeverity, { glyph: string; label: string; text: string; bg: string; chip: string; chipOn: string }> = {
   error: {
     glyph: "✖",
     label: "조정",
     text: "text-red-600",
+    bg: "bg-red-50",
     chip: "border-red-200 text-red-400 hover:bg-red-50",
     chipOn: "border-red-600 bg-red-600 text-white shadow-[0_4px_10px_-4px_rgba(220,38,38,0.6)]",
   },
@@ -26,6 +26,7 @@ const SEVERITY_META: Record<DiagnosticSeverity, { glyph: string; label: string; 
     glyph: "⚠",
     label: "확인",
     text: "text-amber-600",
+    bg: "bg-amber-50",
     chip: "border-amber-200 text-amber-500 hover:bg-amber-50",
     chipOn: "border-amber-500 bg-amber-500 text-white shadow-[0_4px_10px_-4px_rgba(245,158,11,0.6)]",
   },
@@ -33,32 +34,22 @@ const SEVERITY_META: Record<DiagnosticSeverity, { glyph: string; label: string; 
     glyph: "✔",
     label: "통과",
     text: "text-emerald-600",
+    bg: "bg-emerald-50",
     chip: "border-emerald-200 text-emerald-500 hover:bg-emerald-50",
     chipOn: "border-emerald-600 bg-emerald-600 text-white shadow-[0_4px_10px_-4px_rgba(5,150,105,0.6)]",
   },
 };
 
-const ROLE_LABEL: Record<ItemDiagnostic["item"]["role"], string> = {
-  메인: "",
-  부품: "부품",
-  도장: "도장",
-  부수: "부수",
-};
+const ROLE_LABEL: Record<ItemDiagnostic["item"]["role"], string> = { 메인: "메인", 도장: "도장", 부수: "부수" };
 
-function VerdictBadge({ verdict }: { verdict: VerdictLabel }) {
+function VerdictBadge({ verdict, small = false }: { verdict: VerdictLabel; small?: boolean }) {
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-bold text-white shadow-[0_1px_3px_-1px_rgba(0,0,0,0.4)] ${VERDICT_STYLES[verdict].badge}`}
+      className={`inline-flex shrink-0 items-center rounded-full font-bold text-white shadow-[0_1px_3px_-1px_rgba(0,0,0,0.4)] ${
+        small ? "px-1.5 py-px text-[9px]" : "px-2 py-0.5 text-[10px]"
+      } ${VERDICT_STYLES[verdict].badge}`}
     >
       {verdict}
-    </span>
-  );
-}
-
-function FollowsBadge() {
-  return (
-    <span className="inline-flex shrink-0 items-center rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-      ↳ 연동
     </span>
   );
 }
@@ -73,9 +64,17 @@ export function AdjustmentDiagnostics({
   onOpenPhoto: (photoNo: number) => void;
 }) {
   const [shown, setShown] = useState<Set<DiagnosticSeverity>>(new Set(["error", "warn"]));
-  const { consistency, branches, counts } = diagnostics;
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // 새 결과가 오면 선택 초기화 (렌더 중 상태 조정 패턴)
+  const [synced, setSynced] = useState<Diagnostics | null>(null);
+  if (synced !== diagnostics) {
+    setSynced(diagnostics);
+    setSelectedId(null);
+  }
 
+  const { consistency, branches, counts } = diagnostics;
   const visible = branches.filter((b) => shown.has(b.severity));
+  const selected = visible.find((b) => b.id === selectedId) ?? visible[0] ?? null;
 
   function toggle(sev: DiagnosticSeverity) {
     setShown((cur) => {
@@ -88,7 +87,6 @@ export function AdjustmentDiagnostics({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* 요약바 = 필터 */}
       <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
         {(["error", "warn", "pass"] as DiagnosticSeverity[]).map((sev) => {
           const m = SEVERITY_META[sev];
@@ -108,31 +106,70 @@ export function AdjustmentDiagnostics({
         })}
       </div>
 
-      {consistency && shown.has("warn") && (
-        <div className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-[0_10px_30px_-16px_rgba(245,158,11,0.4)]">
+      {consistency && (
+        <div className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
           <span className="w-5 shrink-0 text-center text-base font-bold text-amber-600">⚠</span>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[13px] font-bold text-amber-900">{consistency.title}</span>
-              <VerdictBadge verdict={consistency.verdict} />
-            </div>
+            <span className="text-[13px] font-bold text-amber-900">{consistency.title}</span>
             <p className="text-xs leading-relaxed text-amber-900/80">{consistency.message}</p>
           </div>
         </div>
       )}
 
-      {visible.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-slate-300 bg-white/60 px-4 py-8 text-center text-sm text-slate-400">
-          {counts.error + counts.warn === 0 ? "조정 필요 항목 없음 — 전 항목 통과" : "선택한 구분에 해당하는 항목이 없습니다."}
-        </p>
-      ) : (
-        visible.map((b) => <BranchCard key={b.id} branch={b} onHoverPhotos={onHoverPhotos} onOpenPhoto={onOpenPhoto} />)
-      )}
+      <div className="grid grid-cols-[210px_1fr] gap-3">
+        {/* 좌: 메인 판넬 목록 */}
+        <div className="flex flex-col divide-y divide-slate-100 self-start rounded-2xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
+          {visible.length === 0 && (
+            <p className="px-3 py-6 text-center text-xs text-slate-400">
+              {counts.error + counts.warn === 0 ? "조정 필요 없음" : "해당 항목 없음"}
+            </p>
+          )}
+          {visible.map((b) => {
+            const m = SEVERITY_META[b.severity];
+            const active = selected?.id === b.id;
+            const subErr = b.children.filter((c) => !c.item.follows_parent && c.severity === "error").length;
+            const subWarn = b.children.filter((c) => !c.item.follows_parent && c.severity === "warn").length;
+            return (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => setSelectedId(b.id)}
+                className={`flex items-start gap-2 px-3 py-2.5 text-left transition-colors first:rounded-t-2xl last:rounded-b-2xl ${
+                  active ? `${m.bg} shadow-[inset_3px_0_0_currentColor] ${m.text}` : "hover:bg-slate-50"
+                }`}
+              >
+                <span className={`mt-px w-4 shrink-0 text-center text-sm font-bold ${m.text}`}>{m.glyph}</span>
+                <span className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className={`truncate text-[13px] font-semibold ${active ? "text-slate-900" : "text-slate-800"}`}>{b.label}</span>
+                  <span className="flex flex-wrap items-center gap-1">
+                    {b.main ? (
+                      <VerdictBadge verdict={b.main.verdict} small />
+                    ) : (
+                      <span className="text-[9px] font-semibold text-slate-400">메인 없음</span>
+                    )}
+                    {subErr > 0 && <span className="text-[9px] font-bold text-red-600">하위 ✖{subErr}</span>}
+                    {subWarn > 0 && <span className="text-[9px] font-bold text-amber-600">하위 ⚠{subWarn}</span>}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 우: 선택한 판넬의 하위 작업 */}
+        <div className="min-w-0 self-start rounded-2xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
+          {selected ? (
+            <BranchDetail branch={selected} onHoverPhotos={onHoverPhotos} onOpenPhoto={onOpenPhoto} />
+          ) : (
+            <p className="px-4 py-10 text-center text-xs text-slate-400">왼쪽에서 판넬을 선택하면 하위 작업 판정이 표시됩니다.</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
-function BranchCard({
+function BranchDetail({
   branch,
   onHoverPhotos,
   onOpenPhoto,
@@ -142,16 +179,12 @@ function BranchCard({
   onOpenPhoto: (photoNo: number) => void;
 }) {
   const m = SEVERITY_META[branch.severity];
-  const muted = branch.severity === "pass";
   return (
-    <div
-      className={`rounded-2xl border bg-white shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)] ${
-        branch.severity === "error" ? "border-red-200" : branch.severity === "warn" ? "border-amber-200" : "border-slate-200"
-      } ${muted ? "opacity-75" : ""}`}
-    >
-      <div className="flex items-center gap-2 rounded-t-2xl border-b border-slate-100 bg-slate-50 px-4 py-1.5">
+    <div className="flex flex-col">
+      <div className={`flex items-center gap-2 rounded-t-2xl border-b border-slate-100 px-4 py-2 ${m.bg}`}>
         <span className={`text-sm font-bold ${m.text}`}>{m.glyph}</span>
-        <span className="text-[11px] font-bold uppercase tracking-wide text-slate-600">{branch.label}</span>
+        <span className="text-[13px] font-bold text-slate-800">{branch.label}</span>
+        <span className="ml-auto text-[10px] text-slate-400">하위 작업 {branch.children.length + (branch.main ? 1 : 0)}건</span>
       </div>
       <div className="flex flex-col divide-y divide-slate-100">
         {branch.main && <Row d={branch.main} isMain onHoverPhotos={onHoverPhotos} onOpenPhoto={onOpenPhoto} />}
@@ -177,42 +210,47 @@ function Row({
   const it = d.item;
   const follows = it.follows_parent && !isMain;
   const m = SEVERITY_META[d.severity];
-  const quiet = d.severity === "pass" || follows;
   const refs = it.photo_refs;
 
   return (
     <div
-      className={`flex gap-2 py-2.5 pr-4 transition-colors hover:bg-slate-50 ${isMain ? "pl-3" : "pl-8"}`}
+      className={`flex gap-2 px-3 py-2.5 transition-colors hover:bg-slate-50 ${isMain ? "bg-slate-50/60" : ""}`}
       onMouseEnter={() => onHoverPhotos(refs)}
       onMouseLeave={() => onHoverPhotos([])}
     >
       <span className={`w-4 shrink-0 text-center text-sm font-bold ${follows ? "text-slate-300" : m.text}`}>
         {follows ? "↳" : m.glyph}
       </span>
-      <span className="w-7 shrink-0 pt-0.5 text-right font-mono text-[11px] tabular-nums text-slate-400">{d.lineNo}</span>
+      <span className="w-6 shrink-0 pt-0.5 text-right font-mono text-[10px] tabular-nums text-slate-400">{d.lineNo}</span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex items-start justify-between gap-2">
-          <span className={`leading-snug ${isMain ? "text-[13px] font-semibold text-slate-800" : "text-xs font-medium text-slate-700"}`}>
-            {!isMain && ROLE_LABEL[it.role] && (
-              <span className="mr-1 rounded bg-slate-100 px-1 py-px text-[9px] font-bold text-slate-500">{ROLE_LABEL[it.role]}</span>
-            )}
+          <span className={`leading-snug ${isMain ? "text-[13px] font-bold text-slate-900" : "text-xs font-medium text-slate-700"}`}>
+            <span
+              className={`mr-1 rounded px-1 py-px text-[9px] font-bold ${isMain ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500"}`}
+            >
+              {ROLE_LABEL[it.role]}
+            </span>
             {it.item_name}
             <span className="font-normal text-slate-400"> · {it.claimed_action}</span>
             {it.claimed_hours != null && <span className="font-mono text-slate-500"> {it.claimed_hours}H</span>}
           </span>
           <span className="flex shrink-0 items-center gap-1">
             {d.damageType && <span className={TYPE_BADGE_CLASS}>{d.damageType}</span>}
-            {follows ? <FollowsBadge /> : <VerdictBadge verdict={it.verdict} />}
+            {follows ? (
+              <span className="inline-flex shrink-0 items-center rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600">↳ 연동</span>
+            ) : (
+              <VerdictBadge verdict={it.verdict} />
+            )}
           </span>
         </div>
-        {!quiet && (
-          <p className="text-xs leading-relaxed text-slate-600">
+        {follows ? (
+          it.adjustment_note && <p className="text-[11px] leading-relaxed text-slate-500">→ {it.adjustment_note}</p>
+        ) : (
+          <p className={`text-xs leading-relaxed ${d.severity === "pass" ? "text-slate-400" : "text-slate-600"}`}>
             {it.reasoning}
             {it.adjustment_note && <span className="font-semibold text-slate-900"> → {it.adjustment_note}</span>}
           </p>
         )}
-        {quiet && !follows && <p className="text-[11px] leading-relaxed text-slate-400">{it.reasoning}</p>}
-        {follows && it.adjustment_note && <p className="text-[11px] leading-relaxed text-slate-500">→ {it.adjustment_note}</p>}
         {!follows && (
           <div className="flex flex-wrap items-center gap-1 text-[10px] text-slate-400">
             <span>{it.photo_evidence}</span>

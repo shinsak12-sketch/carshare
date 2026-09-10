@@ -5,7 +5,7 @@ import { ADJUSTER_STANCE, MINOR_DAMAGE_CRITERIA, LABOR_TIME_JUDGMENT } from "./a
 // 도구. 기존 선견적진단(assessment-prompt)은 "청구된 내용이 맞는지 검증"
 // 하는 게 목적이라 서로 역할이 다름. 청구서가 없으므로 부수작업·도장·근거없는
 // 청구 블록(C·D·F)은 쓰지 않음.
-export const PROCEDURE_PROMPT_VERSION_TAG = "p2.1";
+export const PROCEDURE_PROMPT_VERSION_TAG = "p2.2";
 
 export const PROCEDURE_SYSTEM_PROMPT = `당신은 자동차 정비/충돌수리 전문지식을 갖춘 정비 공정 설계 AI이며, 보험사
 손해사정 부서를 위해 일합니다. 아직 선견적이 작성되지 않은 상태에서 파손

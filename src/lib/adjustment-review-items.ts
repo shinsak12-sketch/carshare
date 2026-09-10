@@ -39,7 +39,7 @@ export interface AdjustmentDiagnostics {
 }
 
 const SEVERITY_ORDER: Record<DiagnosticSeverity, number> = { error: 0, warn: 1, pass: 2 };
-const ROLE_ORDER: Record<AdjustmentItem["role"], number> = { 메인: 0, 부품: 1, 도장: 2, 부수: 3 };
+const ROLE_ORDER: Record<AdjustmentItem["role"], number> = { 메인: 0, 도장: 1, 부수: 2 };
 
 function toDiagnostic(item: AdjustmentItem, i: number): ItemDiagnostic {
   return {
