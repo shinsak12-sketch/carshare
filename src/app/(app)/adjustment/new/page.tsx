@@ -42,7 +42,7 @@ export default function NewAdjustmentPage() {
     setIsEditingOpinion(false);
   }
 
-  const diagnostics = useMemo(() => (result ? buildAdjustmentDiagnostics(result) : []), [result]);
+  const diagnostics = useMemo(() => (result ? buildAdjustmentDiagnostics(result) : null), [result]);
 
   useEffect(() => {
     return () => {
@@ -186,7 +186,7 @@ export default function NewAdjustmentPage() {
     "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)] transition-all duration-150 outline-none focus:border-purple-500 focus:shadow-[inset_0_1px_3px_rgba(147,51,234,0.12)] focus:ring-2 focus:ring-purple-500/20";
 
   return (
-    <main className="mx-auto flex max-w-[1800px] flex-col px-6 py-10 lg:py-14 xl:h-[calc(100dvh-57px)] xl:py-6">
+    <main className="mx-auto flex max-w-[1880px] flex-col px-6 py-10 lg:py-14 xl:h-[calc(100dvh-57px)] xl:py-6">
       <div className="mb-8 flex shrink-0 items-start justify-between gap-4 xl:mb-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 lg:text-3xl">AI 손해사정</h1>
@@ -202,7 +202,7 @@ export default function NewAdjustmentPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:min-h-0 xl:flex-1 xl:grid-cols-[360px_800px_500px] xl:items-stretch">
+      <div className="grid grid-cols-1 gap-6 xl:min-h-0 xl:flex-1 xl:grid-cols-[360px_800px_600px] xl:items-stretch">
         {/* 좌: 입력 폼 + 차량정보 — 3개 컬럼은 xl 이상에서 서로 독립적으로 스크롤됨 */}
         <div className="flex flex-col gap-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
           <form
@@ -423,6 +423,7 @@ export default function NewAdjustmentPage() {
         {/* 우: 검토 항목(위) + 종합의견(아래) */}
         {result && (
           <div className="flex flex-col gap-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
+            {diagnostics && (
             <AdjustmentDiagnostics
               diagnostics={diagnostics}
               onHoverPhotos={setHighlightedPhotos}
@@ -430,6 +431,7 @@ export default function NewAdjustmentPage() {
                 if (n >= 1 && n <= imagePreviews.length) setLightboxIndex(n - 1);
               }}
             />
+            )}
 
             <div className="rounded-2xl bg-slate-900 px-5 py-4 text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)]">
               <div className="flex items-center justify-between gap-3">

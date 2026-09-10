@@ -7,10 +7,10 @@ import {
   UNFOUNDED_CLAIM_PATTERNS,
 } from "./assessment-prompt";
 
-// AI손해사정 프롬프트 v2.0
+// AI손해사정 프롬프트 v2.1
 // 이 문자열이 바뀌면 버전 태그도 같이 올릴 것.
 
-export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj2.0";
+export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj2.1";
 
 export const ADJUSTMENT_SYSTEM_PROMPT = `당신은 보험사 소속 차량손해사정사입니다. 공업사가 제출한 청구 견적서와,
 정비소에서 수리 작업을 진행하며 촬영한 사진을 근거로 청구 견적서의 각 항목을
@@ -25,9 +25,25 @@ ${ADJUSTER_STANCE}
    사진들이 같은 차량·같은 공장에서 촬영된 것인지 확인하십시오. 다른 차량으로
    보이는 사진이 섞여 있으면 physical_consistency.warning에 적고 해당 사진을
    근거로 쓰지 마십시오.
-2. 청구서 재구성: 청구서를 부품/공임/도장 세 그룹으로 나눠 부위별로 짝을
-   맞추십시오. 부품만 있고 공임이 없거나, 공임만 있고 부품이 없거나, 도장만
+2. 청구서 재구성(트리): 청구서를 메인 부품/부위 단위의 브랜치(group)로 묶고,
+   각 항목에 역할(role)을 부여하십시오. 예: group "리어범퍼" 아래에 메인 =
+   "리어범퍼 어셈블리 교환"(공임), 부품 = "커버-리어범퍼", 도장 = "리어범퍼
+   교환도장", 부수 = "리어범퍼 사이드마운팅브라켓 탈착/교환", "후방감지센서
+   탈착" 등. 부품만 있고 공임이 없거나, 공임만 있고 부품이 없거나, 도장만
    있고 작업이 없는 항목은 그 자체로 확인 대상입니다.
+   - 메인 항목은 parent_line을 null로, 나머지는 같은 group 메인의 line_no를
+     parent_line에 적으십시오. 메인이 없는 단독 항목(예: 가열건조비, 컬러매칭)은
+     group을 "도장 공통" 등으로 묶고 role "부수", parent_line null로 두십시오.
+   - 연동(follows_parent): 부품과 교환도장은 메인 작업 판정의 결과로 따라옵니다.
+     메인 교환이 인정되면 그 부품·교환도장도 인정이고, 메인 교환이 불인정·
+     과다청구(보수도장으로 조정)되면 부품은 불인정, 교환도장은 "보수도장
+     (Lv1/Lv2)으로 변경"입니다. 이런 항목은 verdict를 메인과 같게 두고
+     follows_parent를 true로, reasoning은 "메인 판정에 연동" 한 줄로
+     쓰십시오. 교환도장이 보수도장으로 바뀌는 것은 과다청구가 아니라 메인
+     판정의 결과일 뿐이므로 "과다청구"라고 따로 쓰지 마십시오.
+   - 부수 작업은 자기 근거로 독립 판단합니다(follows_parent false). 예: 사이드
+     마운팅브라켓 교환은 범퍼가 교환이더라도 브라켓 자체의 파손 여부로 판단하고,
+     범퍼 단독작업 시 브라켓 탈착은 [참고자료] 기준으로 미적용입니다.
 3. 중복·수량 검사: [부수작업·중복 판단]의 중복·수량 규칙을 청구서 전체에
    적용하십시오. 이 단계는 사진과 무관하게 청구서 구조만으로 판단합니다.
 4. 항목별 판단: 메인작업 사진 대조 → 과잉수리 → 판금시간 → 부수작업 필요성
@@ -118,6 +134,7 @@ JSON 스키마에 정의된 필드만 채우십시오. items 배열은 견적서
 
 const VERDICT_ENUM = ["인정", "협의필요", "과다청구", "조사필요", "불인정"] as const;
 const EVIDENCE_ENUM = ["직접확인", "간접확인", "확인불가"] as const;
+const ROLE_ENUM = ["메인", "부품", "도장", "부수"] as const;
 const DAMAGE_TYPE_ENUM = ["1유형", "2유형", "3유형", "비대상(교환예외)", "손상없음"] as const;
 
 export const ADJUSTMENT_RESPONSE_SCHEMA = {
@@ -130,6 +147,10 @@ export const ADJUSTMENT_RESPONSE_SCHEMA = {
         type: "object",
         properties: {
           line_no: { type: "integer" },
+          group: { type: "string" },
+          role: { type: "string", enum: ROLE_ENUM },
+          parent_line: { type: ["integer", "null"] },
+          follows_parent: { type: "boolean" },
           item_name: { type: "string" },
           claimed_action: { type: "string" },
           claimed_hours: { type: ["number", "null"] },
@@ -142,6 +163,10 @@ export const ADJUSTMENT_RESPONSE_SCHEMA = {
         },
         required: [
           "line_no",
+          "group",
+          "role",
+          "parent_line",
+          "follows_parent",
           "item_name",
           "claimed_action",
           "claimed_hours",

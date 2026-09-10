@@ -7,9 +7,21 @@ export type AdjustmentVerdict = VerdictLabel;
 
 export type PhotoEvidence = "직접확인" | "간접확인" | "확인불가";
 
+// 청구 항목의 역할 — 메인(공임의 핵심 작업) / 부품 / 도장 / 부수(탈착·O/H 등).
+// 부품·도장은 메인 작업 판정에 따라오는 경우가 대부분이라 트리로 묶어 보여줌.
+export type ItemRole = "메인" | "부품" | "도장" | "부수";
+
 export interface AdjustmentItem {
   // 견적서 원문의 항목 순번 — 린터의 "몇 번째 줄"처럼 문제 항목을 바로 찾게 함.
   line_no: number;
+  // 브랜치(카테고리) 이름 — 메인 부품/부위 기준. 예: "리어범퍼", "프런트펜더(좌)"
+  group: string;
+  role: ItemRole;
+  // 같은 group의 메인 항목 line_no. 메인이면 null.
+  parent_line: number | null;
+  // 이 항목의 판정이 메인 항목 판정의 결과로 따라온 것(연동)이면 true —
+  // 화면·집계에서 독립 판정으로 세지 않음.
+  follows_parent: boolean;
   item_name: string;
   claimed_action: string;
   // 판금·수리로 청구된 항목만 견적서상 청구 시간(시간 단위)을 채움 —
