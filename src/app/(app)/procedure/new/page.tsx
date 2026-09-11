@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import { DamageDiagram } from "@/components/DamageDiagram";
 import { ImageLightbox } from "@/components/ImageLightbox";
+import { PhotoGrid } from "@/components/PhotoGrid";
 import { ProcedureMasterDetail } from "@/components/ProcedureItemPanels";
 import { compressImage } from "@/lib/image-compress";
 import { buildProcedureReportText } from "@/lib/format-procedure-report";
@@ -422,56 +423,13 @@ export default function NewProcedurePage() {
         <div className="flex flex-col gap-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
           {imagePreviews.length > 0 && (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                파손 사진 ({imagePreviews.length})
-              </p>
-              <div className="grid grid-cols-9 gap-2">
-                {Array.from({
-                  length: Math.max(18, Math.ceil(imagePreviews.length / 9) * 9),
-                }).map((_, i) => {
-                  const p = imagePreviews[i];
-                  if (!p) {
-                    return (
-                      <div
-                        key={i}
-                        className="aspect-square rounded-lg border border-dashed border-slate-200 bg-slate-50/50"
-                      />
-                    );
-                  }
-                  const highlighted = highlightedPhotos.includes(i + 1);
-                  const dimmed = highlightedPhotos.length > 0 && !highlighted;
-                  return (
-                    <div key={i} className="group relative aspect-square">
-                      <button
-                        type="button"
-                        onClick={() => setLightboxIndex(i)}
-                        className="absolute inset-0"
-                      >
-                        {/* 확대된 이미지는 마우스 이벤트를 안 받음 — 커서 위치는 원본 칸 기준 */}
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={p.url}
-                          alt={`파손 사진 ${i + 1}`}
-                          className={`pointer-events-none h-full w-full rounded-lg border object-cover transition-all duration-200 ease-out group-hover:relative group-hover:z-30 group-hover:scale-[4.6] group-hover:opacity-100 group-hover:shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)] ${
-                            highlighted
-                              ? "border-orange-500 ring-4 ring-orange-400/60 shadow-[0_0_0_2px_white,0_8px_20px_-6px_rgba(234,88,12,0.7)]"
-                              : "border-slate-200"
-                          } ${dimmed ? "opacity-35" : ""}`}
-                        />
-                      </button>
-                      <span
-                        className={`pointer-events-none absolute left-1 top-1 rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold leading-none shadow-sm transition-colors group-hover:opacity-0 ${
-                          highlighted
-                            ? "bg-orange-600 text-white"
-                            : "bg-white/85 text-slate-600"
-                        }`}
-                      >
-                        {i + 1}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+              <PhotoGrid
+                previews={imagePreviews}
+                label="파손 사진"
+                highlighted={highlightedPhotos}
+                accent="orange"
+                onOpen={setLightboxIndex}
+              />
             </div>
           )}
 
