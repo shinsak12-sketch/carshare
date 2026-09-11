@@ -19,8 +19,6 @@ import {
   type StoredCase,
 } from "@/lib/adjustment-store";
 
-type ParseStatus = "idle" | "parsing" | "done" | "error";
-
 export default function NewAdjustmentPage() {
   // 건별 탭 — 엑셀 시트처럼. 결과·사진·견적서는 IndexedDB에 캐시돼 새로고침해도 유지.
   const [cases, setCases] = useState<StoredCase[]>([]);
@@ -37,7 +35,6 @@ export default function NewAdjustmentPage() {
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [parseStatus, setParseStatus] = useState<ParseStatus>("idle");
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [highlightedPhotos, setHighlightedPhotos] = useState<number[]>([]);
@@ -95,7 +92,6 @@ export default function NewAdjustmentPage() {
       setPhotos(f.photos);
       setEstimateFile(f.estimate);
       setFileInputKey((k) => k + 1);
-      setParseStatus("idle");
       setError(null);
       setHighlightedPhotos([]);
     })();
@@ -145,34 +141,13 @@ export default function NewAdjustmentPage() {
       void saveFiles(activeId, { estimate: estimateFile, photos: files });
   }
 
-  async function handleEstimateChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleEstimateChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setEstimateFile(file);
     setShowEstimate(true);
     updateActive({ estimateName: file.name });
     if (activeId) void saveFiles(activeId, { estimate: file, photos });
-
-    setParseStatus("parsing");
-    try {
-      const formData = new FormData();
-      formData.append("estimate", file);
-      const res = await fetch("/api/parse-estimate", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      const patch: Partial<StoredCase> = {};
-      if (data.plateNumber && !active?.plateNo)
-        patch.plateNo = data.plateNumber;
-      if (data.manufacturer && !active?.manufacturer)
-        patch.manufacturer = data.manufacturer;
-      if (data.model && !active?.model) patch.model = data.model;
-      if (Object.keys(patch).length) updateActive(patch);
-      setParseStatus(Object.keys(patch).length ? "done" : "error");
-    } catch {
-      setParseStatus("error");
-    }
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -389,26 +364,6 @@ export default function NewAdjustmentPage() {
               onChange={handleEstimateChange}
               className={fileInputClass}
             />
-            <p className="mt-1 flex h-4 items-center gap-1.5 text-[11px] leading-none">
-              {parseStatus === "parsing" && (
-                <>
-                  <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-purple-300 border-t-purple-600" />
-                  <span className="font-medium text-purple-600">
-                    견적서 분석 중…
-                  </span>
-                </>
-              )}
-              {parseStatus === "done" && (
-                <span className="font-medium text-emerald-600">
-                  ✓ 차량정보 자동 인식됨
-                </span>
-              )}
-              {parseStatus === "error" && (
-                <span className="text-slate-400">
-                  자동 인식 정보 없음 — 직접 입력
-                </span>
-              )}
-            </p>
           </div>
 
           <div>

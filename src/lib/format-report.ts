@@ -12,16 +12,55 @@ export interface ReportCaseInfo {
 // 갖도록, 렌더링과 복사 양쪽에서 이 함수 하나로 텍스트를 만든다.
 // 사람이 입력한 손상부위 대신, AI가 실제로 판정한 부위 목록을 보여줌
 // (신고 내용을 그대로 되돌려주는 게 아니라 AI가 인식한 결과가 맞아야 함).
-export function derivedDamagedParts(result: AssessmentResult, fallback?: string | null): string {
+export function derivedDamagedParts(
+  result: AssessmentResult,
+  fallback?: string | null,
+): string {
   const parts = result.parts.map((p) => p.part_name);
   return parts.length > 0 ? parts.join(", ") : fallback || "미기재";
+}
+
+// 종합의견은 프롬프트(원칙 7)상 "1. ...\n2. ..." 번호 나열 또는 한 문장.
+// 담당자가 항목 단위로 제외·수정해서 공업사에 회신해야 하므로 번호 줄 기준으로
+// 쪼갠다. 번호가 없으면 통째로 한 항목.
+export function splitOpinionItems(opinion: string): string[] {
+  const text = opinion.trim();
+  if (!text) return [];
+  const parts = text.split(/\n(?=\s*\d+[.)]\s)/);
+  const items = parts
+    .map((p) => p.trim().replace(/^\d+[.)]\s*/, ""))
+    .filter(Boolean);
+  return items.length ? items : [text];
+}
+
+export interface OpinionEditState {
+  excluded: number[];
+  text: Record<number, string>;
+}
+
+// 제외된 항목을 빼고, 수정 문구를 반영해 다시 번호를 매긴 종합의견.
+// 항목이 하나만 남으면 번호 없이 문장만.
+export function buildEditedOpinion(
+  opinion: string,
+  edits?: OpinionEditState | null,
+): string {
+  const items = splitOpinionItems(opinion);
+  const kept = items
+    .map((t, i) => ({ i, t: edits?.text[i] ?? t }))
+    .filter(({ i }) => !edits?.excluded.includes(i));
+  if (kept.length === 0) return "";
+  if (kept.length === 1) return kept[0].t;
+  return kept.map(({ t }, n) => `${n + 1}. ${t}`).join("\n");
 }
 
 // 종합의견 카드 전용 복사 텍스트. 담당자가 선견적 회신에 그대로 붙여넣는
 // 용도라, 경미손상 유형·판정까지 포함된 overall_opinion 문장(프롬프트
 // 원칙 7)과 협의 필요 항목만 담아 바로 붙여넣기 좋은 형태로 만든다.
-export function buildOverallOpinionText(result: AssessmentResult): string {
-  const lines: string[] = [result.overall_opinion];
+export function buildOverallOpinionText(
+  result: AssessmentResult,
+  edits?: OpinionEditState | null,
+): string {
+  const lines: string[] = [buildEditedOpinion(result.overall_opinion, edits)];
   if (result.disputed_items.length > 0) {
     lines.push("");
     lines.push(`협의 필요 항목: ${result.disputed_items.join(", ")}`);
@@ -29,11 +68,17 @@ export function buildOverallOpinionText(result: AssessmentResult): string {
   return lines.join("\n");
 }
 
-export function buildReportText(caseInfo: ReportCaseInfo, result: AssessmentResult): string {
+export function buildReportText(
+  caseInfo: ReportCaseInfo,
+  result: AssessmentResult,
+  edits?: OpinionEditState | null,
+): string {
   const vehicleLine = `차량: ${caseInfo.manufacturer} ${caseInfo.model}${
     caseInfo.year ? ` ${caseInfo.year}년식` : ""
   } | 손상부위: ${derivedDamagedParts(result, caseInfo.damagedPart)}${
-    caseInfo.createdAt ? ` | 진단일시: ${caseInfo.createdAt.toLocaleString("ko-KR")}` : ""
+    caseInfo.createdAt
+      ? ` | 진단일시: ${caseInfo.createdAt.toLocaleString("ko-KR")}`
+      : ""
   }`;
 
   const lines: string[] = ["손해사정 검토 결과 (AI 초안)", "", vehicleLine, ""];
@@ -66,9 +111,11 @@ export function buildReportText(caseInfo: ReportCaseInfo, result: AssessmentResu
 
     if (part.labor_time_check.claimed_h !== null) {
       const ref =
-        part.labor_time_check.reference_h !== null ? ` (참고 ${part.labor_time_check.reference_h}H)` : "";
+        part.labor_time_check.reference_h !== null
+          ? ` (참고 ${part.labor_time_check.reference_h}H)`
+          : "";
       lines.push(
-        `  작업시간: 청구 ${part.labor_time_check.claimed_h}H${ref} — ${part.labor_time_check.note}`
+        `  작업시간: 청구 ${part.labor_time_check.claimed_h}H${ref} — ${part.labor_time_check.note}`,
       );
     }
     if (part.ancillary_work_check.length > 0) {
@@ -80,7 +127,10 @@ export function buildReportText(caseInfo: ReportCaseInfo, result: AssessmentResu
     lines.push("");
   });
 
-  if (result.claimed_but_not_visible.length > 0 || result.damage_but_not_claimed.length > 0) {
+  if (
+    result.claimed_but_not_visible.length > 0 ||
+    result.damage_but_not_claimed.length > 0
+  ) {
     lines.push("[청구·사진 불일치 확인사항]");
     for (const x of result.claimed_but_not_visible) {
       lines.push(`- 청구되었으나 사진상 미확인(과잉청구 의심): ${x}`);
@@ -94,13 +144,15 @@ export function buildReportText(caseInfo: ReportCaseInfo, result: AssessmentResu
   if (result.other_findings.length > 0) {
     lines.push("[기타 항목 검토]");
     for (const f of result.other_findings) {
-      lines.push(`- ${f.category}: ${f.description} (${f.reference_basis}) → ${f.verdict}`);
+      lines.push(
+        `- ${f.category}: ${f.description} (${f.reference_basis}) → ${f.verdict}`,
+      );
     }
     lines.push("");
   }
 
   lines.push("종합 의견");
-  lines.push(result.overall_opinion);
+  lines.push(buildEditedOpinion(result.overall_opinion, edits));
 
   if (result.disputed_items.length > 0) {
     lines.push("");
@@ -110,7 +162,7 @@ export function buildReportText(caseInfo: ReportCaseInfo, result: AssessmentResu
   if (!result.estimate_provided) {
     lines.push("");
     lines.push(
-      "※ 선견적 데이터가 제공되지 않아 사진 기반 손상유형 판독만 제공되었으며, 청구 타당성은 별도 확인이 필요합니다."
+      "※ 선견적 데이터가 제공되지 않아 사진 기반 손상유형 판독만 제공되었으며, 청구 타당성은 별도 확인이 필요합니다.",
     );
   }
 
