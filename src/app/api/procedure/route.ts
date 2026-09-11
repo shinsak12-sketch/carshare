@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { del } from "@vercel/blob";
-import { getModel, getOpenAI, getReasoningEffort } from "@/lib/openai";
+import {
+  createCompletionResilient,
+  getModel,
+  getOpenAI,
+  getReasoningEffort,
+} from "@/lib/openai";
 import {
   PROCEDURE_RESPONSE_SCHEMA,
   PROCEDURE_SYSTEM_PROMPT,
@@ -92,7 +97,7 @@ async function runProcedure(
   const openai = getOpenAI();
   // 손해사정·선견적과 동일
   const reasoningEffort = getReasoningEffort("medium");
-  const completion = await openai.chat.completions.create({
+  const completion = await createCompletionResilient(openai, {
     model: getModel(),
     ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
     messages: [

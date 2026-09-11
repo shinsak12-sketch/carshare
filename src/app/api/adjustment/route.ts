@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { del } from "@vercel/blob";
-import { getModel, getOpenAI, getReasoningEffort } from "@/lib/openai";
-import { ADJUSTMENT_RESPONSE_SCHEMA, ADJUSTMENT_SYSTEM_PROMPT } from "@/lib/adjustment-prompt";
+import {
+  createCompletionResilient,
+  getModel,
+  getOpenAI,
+  getReasoningEffort,
+} from "@/lib/openai";
+import {
+  ADJUSTMENT_RESPONSE_SCHEMA,
+  ADJUSTMENT_SYSTEM_PROMPT,
+} from "@/lib/adjustment-prompt";
 import type { AdjustmentResult } from "@/lib/adjustment-types";
 import { getCurrentUser } from "@/lib/session";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
@@ -17,7 +25,8 @@ export async function POST(req: NextRequest) {
     return await handleAdjustment(req);
   } catch (err) {
     console.error("[/api/adjustment] failed:", err);
-    const message = err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";
+    const message =
+      err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -25,17 +34,24 @@ export async function POST(req: NextRequest) {
 async function handleAdjustment(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+    return NextResponse.json(
+      { error: "로그인이 필요합니다." },
+      { status: 401 },
+    );
   }
 
   const form = await req.formData();
-  const manufacturer = form.get("manufacturer") ? String(form.get("manufacturer")) : "";
+  const manufacturer = form.get("manufacturer")
+    ? String(form.get("manufacturer"))
+    : "";
   const model = form.get("model") ? String(form.get("model")) : "";
   const memo = form.get("memo") ? String(form.get("memo")) : "";
 
   // 사진은 브라우저에서 Vercel Blob으로 직접 업로드되고, 이 라우트에는
   // 그 결과 URL 목록만 텍스트로 전달됨(우리 서버 요청 바디 제한과 무관).
-  const imageUrlsRaw = form.get("imageUrls") ? String(form.get("imageUrls")) : "[]";
+  const imageUrlsRaw = form.get("imageUrls")
+    ? String(form.get("imageUrls"))
+    : "[]";
   let imageUrls: string[];
   try {
     imageUrls = JSON.parse(imageUrlsRaw);
@@ -43,15 +59,24 @@ async function handleAdjustment(req: NextRequest) {
     imageUrls = [];
   }
   if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
-    return NextResponse.json({ error: "수리작업 사진을 1장 이상 첨부해주세요." }, { status: 400 });
+    return NextResponse.json(
+      { error: "수리작업 사진을 1장 이상 첨부해주세요." },
+      { status: 400 },
+    );
   }
 
   const estimateFile = form.get("estimate");
   if (!(estimateFile instanceof File) || estimateFile.size === 0) {
-    return NextResponse.json({ error: "청구 견적서(PDF)를 첨부해주세요." }, { status: 400 });
+    return NextResponse.json(
+      { error: "청구 견적서(PDF)를 첨부해주세요." },
+      { status: 400 },
+    );
   }
   if (!isPdfFile(estimateFile)) {
-    return NextResponse.json({ error: "청구 견적서는 PDF 파일만 첨부 가능합니다." }, { status: 400 });
+    return NextResponse.json(
+      { error: "청구 견적서는 PDF 파일만 첨부 가능합니다." },
+      { status: 400 },
+    );
   }
 
   const rawEstimateText = await extractEstimateText(estimateFile);
@@ -74,7 +99,7 @@ async function handleAdjustment(req: NextRequest) {
     const openai = getOpenAI();
     // 사진 100장·항목 100개 건은 low로는 뒤쪽 항목이 형식적으로 처리돼서 medium
     const reasoningEffort = getReasoningEffort("medium");
-    const completion = await openai.chat.completions.create({
+    const completion = await createCompletionResilient(openai, {
       model: getModel(),
       ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
       messages: [
@@ -92,13 +117,20 @@ async function handleAdjustment(req: NextRequest) {
       ],
       response_format: {
         type: "json_schema",
-        json_schema: { name: "adjustment_result", schema: ADJUSTMENT_RESPONSE_SCHEMA, strict: true },
+        json_schema: {
+          name: "adjustment_result",
+          schema: ADJUSTMENT_RESPONSE_SCHEMA,
+          strict: true,
+        },
       },
     });
 
     const raw = completion.choices[0]?.message?.content;
     if (!raw) {
-      return NextResponse.json({ error: "AI 응답을 받지 못했습니다." }, { status: 502 });
+      return NextResponse.json(
+        { error: "AI 응답을 받지 못했습니다." },
+        { status: 502 },
+      );
     }
     const result: AdjustmentResult = JSON.parse(raw);
 

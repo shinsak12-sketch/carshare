@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { del } from "@vercel/blob";
-import { getModel, getOpenAI, getReasoningEffort } from "@/lib/openai";
+import {
+  createCompletionResilient,
+  getModel,
+  getOpenAI,
+  getReasoningEffort,
+} from "@/lib/openai";
 import {
   ASSESSMENT_RESPONSE_SCHEMA,
   SYSTEM_PROMPT,
@@ -124,7 +129,7 @@ async function runAssess(
   const openai = getOpenAI();
   // 손해사정과 동일 — 사진이 많으면 low로는 뒤쪽 사진·항목이 형식적으로 처리됨
   const reasoningEffort = getReasoningEffort("medium");
-  const completion = await openai.chat.completions.create({
+  const completion = await createCompletionResilient(openai, {
     model: getModel(),
     ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
     messages: [
