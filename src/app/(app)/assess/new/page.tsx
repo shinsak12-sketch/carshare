@@ -7,7 +7,7 @@ import { OpinionEditor } from "@/components/OpinionEditor";
 import { ReviewMasterDetail } from "@/components/ReviewItemPanels";
 import { compressImage } from "@/lib/image-compress";
 import type { AssessmentResult } from "@/lib/assessment-types";
-import { buildReportText } from "@/lib/format-report";
+import { buildReportText, splitOpinionItems } from "@/lib/format-report";
 import { buildReviewItems } from "@/lib/review-items";
 import {
   assessCaseTitle,
@@ -39,6 +39,8 @@ export default function NewAssessmentPage() {
   const [highlightedPhotos, setHighlightedPhotos] = useState<number[]>([]);
   const [showEstimate, setShowEstimate] = useState(true);
   const [reportCopied, setReportCopied] = useState(false);
+  // 종합의견은 검토 끝나고 마지막에 보는 것 — 평소엔 한 줄로 접어두고 펼치면 우측 전체를 씀
+  const [opinionOpen, setOpinionOpen] = useState(false);
 
   const result = active?.result ?? null;
   const reviewItems = useMemo(
@@ -91,6 +93,7 @@ export default function NewAssessmentPage() {
       setFileInputKey((k) => k + 1);
       setError(null);
       setHighlightedPhotos([]);
+      setOpinionOpen(false);
     })();
     return () => {
       cancelled = true;
@@ -585,24 +588,48 @@ export default function NewAssessmentPage() {
                 제공되었습니다. 청구 타당성은 별도 확인이 필요합니다.
               </div>
             )}
-            <div className="min-h-0 flex-1">
-              <ReviewMasterDetail
-                items={reviewItems}
-                onHoverPhotos={setHighlightedPhotos}
-                onOpenPhoto={(n) => {
-                  if (n >= 1 && n <= imagePreviews.length)
-                    setLightboxIndex(n - 1);
-                }}
-              />
-            </div>
-            <div className="max-h-[42%] shrink-0 xl:flex xl:min-h-0 xl:flex-col">
-              <OpinionEditor
-                opinion={result.overall_opinion}
-                disputedItems={result.disputed_items}
-                edits={active.opinionEdits}
-                onChange={(next) => updateActive({ opinionEdits: next })}
-              />
-            </div>
+            {opinionOpen ? (
+              <div className="flex min-h-0 flex-1 flex-col">
+                <OpinionEditor
+                  opinion={result.overall_opinion}
+                  disputedItems={result.disputed_items}
+                  edits={active.opinionEdits}
+                  onChange={(next) => updateActive({ opinionEdits: next })}
+                  onCollapse={() => setOpinionOpen(false)}
+                />
+              </div>
+            ) : (
+              <>
+                <div className="min-h-0 flex-1">
+                  <ReviewMasterDetail
+                    items={reviewItems}
+                    onHoverPhotos={setHighlightedPhotos}
+                    onOpenPhoto={(n) => {
+                      if (n >= 1 && n <= imagePreviews.length)
+                        setLightboxIndex(n - 1);
+                    }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOpinionOpen(true)}
+                  className="group flex shrink-0 items-center justify-between gap-3 rounded-2xl bg-slate-900 px-5 py-3 text-left text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_28px_-10px_rgba(15,23,42,0.65)] active:translate-y-0 active:scale-[0.995]"
+                >
+                  <span className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                    종합 의견{" "}
+                    <span className="normal-case text-slate-500">
+                      · 거래처 발신용 ·{" "}
+                      {splitOpinionItems(result.overall_opinion).length -
+                        active.opinionEdits.excluded.length}
+                      /{splitOpinionItems(result.overall_opinion).length}건 회신
+                    </span>
+                  </span>
+                  <span className="rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-bold text-white transition-colors group-hover:bg-white/25">
+                    펼쳐서 편집 ▴
+                  </span>
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

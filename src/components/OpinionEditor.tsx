@@ -11,11 +11,13 @@ export function OpinionEditor({
   disputedItems,
   edits,
   onChange,
+  onCollapse,
 }: {
   opinion: string;
   disputedItems: string[];
   edits: OpinionEditState;
   onChange: (next: OpinionEditState) => void;
+  onCollapse?: () => void;
 }) {
   const items = splitOpinionItems(opinion);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
@@ -56,7 +58,7 @@ export function OpinionEditor({
   }
 
   return (
-    <div className="flex min-h-0 flex-col rounded-2xl bg-slate-900 px-5 py-3.5 text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)]">
+    <div className="flex min-h-0 flex-1 flex-col rounded-2xl bg-slate-900 px-5 py-3.5 text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)] xl:h-full">
       <div className="flex shrink-0 items-center justify-between gap-3">
         <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
           종합 의견{" "}
@@ -64,15 +66,26 @@ export function OpinionEditor({
             · 거래처 발신용 · {keptCount}/{items.length}건 회신
           </span>
         </p>
-        <button
-          type="button"
-          onClick={copy}
-          className={`rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
-            copied ? "bg-emerald-600" : "bg-white/15 hover:bg-white/25"
-          }`}
-        >
-          {copied ? "복사됨 ✓" : "회신문 복사"}
-        </button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={copy}
+            className={`rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
+              copied ? "bg-emerald-600" : "bg-white/15 hover:bg-white/25"
+            }`}
+          >
+            {copied ? "복사됨 ✓" : "회신문 복사"}
+          </button>
+          {onCollapse && (
+            <button
+              type="button"
+              onClick={onCollapse}
+              className="rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all hover:bg-white/25 active:scale-95"
+            >
+              검토 항목으로 ▾
+            </button>
+          )}
+        </div>
       </div>
 
       <ol className="mt-2 flex min-h-0 flex-col gap-1.5 overflow-y-auto pr-1">

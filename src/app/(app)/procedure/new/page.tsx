@@ -39,6 +39,8 @@ export default function NewProcedurePage() {
   const [reportCopied, setReportCopied] = useState(false);
   const [summaryCopied, setSummaryCopied] = useState(false);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
+  // 종합요약은 마지막에 보는 것 — 평소엔 한 줄로 접어두고 펼치면 우측 전체를 씀
+  const [summaryOpen, setSummaryOpen] = useState(false);
 
   const result = active?.result ?? null;
   const reviewItems = useMemo(
@@ -81,6 +83,7 @@ export default function NewProcedurePage() {
       setError(null);
       setHighlightedPhotos([]);
       setIsEditingSummary(false);
+      setSummaryOpen(false);
     })();
     return () => {
       cancelled = true;
@@ -533,60 +536,84 @@ export default function NewProcedurePage() {
         {/* 우: 검토 항목 마스터-디테일(위) + 종합요약(아래), 980px */}
         {result && active && (
           <div className="flex flex-col gap-4 xl:min-h-0">
-            <div className="min-h-0 flex-1">
-              <ProcedureMasterDetail
-                items={reviewItems}
-                onHoverPhotos={setHighlightedPhotos}
-                onOpenPhoto={(n) => {
-                  if (n >= 1 && n <= imagePreviews.length)
-                    setLightboxIndex(n - 1);
-                }}
-              />
-            </div>
-
-            <div className="flex max-h-[38%] shrink-0 flex-col rounded-2xl bg-slate-900 px-5 py-3.5 text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)]">
-              <div className="flex shrink-0 items-center justify-between gap-3">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  종합 요약
-                </p>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <button
-                    onClick={() => setIsEditingSummary((v) => !v)}
-                    className={`rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
-                      isEditingSummary
-                        ? "bg-emerald-600"
-                        : "bg-white/15 hover:bg-white/25"
-                    }`}
-                  >
-                    {isEditingSummary ? "완료" : "편집"}
-                  </button>
-                  <button
-                    onClick={handleCopySummary}
-                    className={`rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
-                      summaryCopied
-                        ? "bg-emerald-600"
-                        : "bg-white/15 hover:bg-white/25"
-                    }`}
-                  >
-                    {summaryCopied ? "복사됨 ✓" : "복사"}
-                  </button>
-                </div>
-              </div>
-              {isEditingSummary ? (
-                <textarea
-                  value={active.summaryDraft}
-                  onChange={(e) =>
-                    updateActive({ summaryDraft: e.target.value })
-                  }
-                  rows={5}
-                  className="mt-1.5 w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium leading-relaxed text-white outline-none focus:border-white/40"
+            {!summaryOpen && (
+              <div className="min-h-0 flex-1">
+                <ProcedureMasterDetail
+                  items={reviewItems}
+                  onHoverPhotos={setHighlightedPhotos}
+                  onOpenPhoto={(n) => {
+                    if (n >= 1 && n <= imagePreviews.length)
+                      setLightboxIndex(n - 1);
+                  }}
                 />
-              ) : (
-                <p className="mt-1.5 min-h-0 overflow-y-auto whitespace-pre-line text-sm font-medium leading-relaxed text-slate-100">
-                  {active.summaryDraft}
-                </p>
-              )}
-            </div>
+              </div>
+            )}
+
+            {!summaryOpen && (
+              <button
+                type="button"
+                onClick={() => setSummaryOpen(true)}
+                className="group flex shrink-0 items-center justify-between gap-3 rounded-2xl bg-slate-900 px-5 py-3 text-left text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_28px_-10px_rgba(15,23,42,0.65)] active:translate-y-0 active:scale-[0.995]"
+              >
+                <span className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  종합 요약
+                </span>
+                <span className="rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-bold text-white transition-colors group-hover:bg-white/25">
+                  펼쳐서 보기 ▴
+                </span>
+              </button>
+            )}
+
+            {summaryOpen && (
+              <div className="flex min-h-0 flex-1 flex-col rounded-2xl bg-slate-900 px-5 py-3.5 text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)]">
+                <div className="flex shrink-0 items-center justify-between gap-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                    종합 요약
+                  </p>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                      onClick={() => setIsEditingSummary((v) => !v)}
+                      className={`rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
+                        isEditingSummary
+                          ? "bg-emerald-600"
+                          : "bg-white/15 hover:bg-white/25"
+                      }`}
+                    >
+                      {isEditingSummary ? "완료" : "편집"}
+                    </button>
+                    <button
+                      onClick={handleCopySummary}
+                      className={`rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
+                        summaryCopied
+                          ? "bg-emerald-600"
+                          : "bg-white/15 hover:bg-white/25"
+                      }`}
+                    >
+                      {summaryCopied ? "복사됨 ✓" : "복사"}
+                    </button>
+                    <button
+                      onClick={() => setSummaryOpen(false)}
+                      className="rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all hover:bg-white/25 active:scale-95"
+                    >
+                      검토 항목으로 ▾
+                    </button>
+                  </div>
+                </div>
+                {isEditingSummary ? (
+                  <textarea
+                    value={active.summaryDraft}
+                    onChange={(e) =>
+                      updateActive({ summaryDraft: e.target.value })
+                    }
+                    className="mt-1.5 min-h-0 w-full flex-1 resize-none rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium leading-relaxed text-white outline-none focus:border-white/40"
+                  />
+                ) : (
+                  <p className="mt-1.5 min-h-0 flex-1 overflow-y-auto whitespace-pre-line text-sm font-medium leading-relaxed text-slate-100">
+                    {active.summaryDraft}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
