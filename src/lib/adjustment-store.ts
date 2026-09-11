@@ -15,7 +15,6 @@ export interface StoredCase {
   estimateName: string | null;
   result: AdjustmentResult | null;
   caseInfo: AdjustmentCaseInfo | null;
-  opinionDraft: string;
 }
 
 export interface StoredFiles {
@@ -70,7 +69,6 @@ export function emptyCase(): StoredCase {
     estimateName: null,
     result: null,
     caseInfo: null,
-    opinionDraft: "",
   };
 }
 

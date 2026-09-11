@@ -10,7 +10,7 @@ import {
 // AI손해사정 프롬프트 v2.2
 // 이 문자열이 바뀌면 버전 태그도 같이 올릴 것.
 
-export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj2.3";
+export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj2.4";
 
 export const ADJUSTMENT_SYSTEM_PROMPT = `당신은 보험사 소속 차량손해사정사입니다. 공업사가 제출한 청구 견적서와,
 정비소에서 수리 작업을 진행하며 촬영한 사진을 근거로 청구 견적서의 각 항목을
@@ -121,12 +121,8 @@ ${ADJUSTER_STANCE}
 9. physical_consistency: 사진에 나타난 여러 작업이 하나의 사고 건으로 물리적으로
    설명되는지, 차량 동일성에 문제가 없는지 확인하고 이상하면 consistent를
    false로, warning에 구체적으로 적으십시오.
-10. overall_opinion은 손해사정사가 결재란에 남기는 한두 줄 메모처럼, 조정이
-    필요한 항목만 짧게. 하나면 한 문장, 여럿이면 번호 나열("1. ...\\n2. ...").
-    문제가 없으면 "청구된 항목 전체가 사진상 확인되는 작업 범위에 부합하고
-    손상 정도 대비 과도하지 않은 것으로 판단됩니다." 한 문장. 발신 어투("귀사
-    에서 청구하신")가 아니라 담당자 본인의 내부 결론 어투로.
-11. [담당자 추가 의견]이 제공된 경우 실제 검토에 반영하십시오.
+10. [담당자 추가 의견]이 제공된 경우 실제 검토에 반영하십시오. 종합 의견은
+    따로 쓰지 않습니다 — 항목별 verdict·adjustment_note가 곧 사정 결과입니다.
 
 ${MINOR_DAMAGE_CRITERIA}
 
@@ -200,8 +196,7 @@ export const ADJUSTMENT_RESPONSE_SCHEMA = {
       required: ["consistent", "warning"],
       additionalProperties: false,
     },
-    overall_opinion: { type: "string" },
   },
-  required: ["estimate_provided", "items", "physical_consistency", "overall_opinion"],
+  required: ["estimate_provided", "items", "physical_consistency"],
   additionalProperties: false,
 } as const;

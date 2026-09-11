@@ -41,7 +41,6 @@ export interface AdjustmentResult {
   estimate_provided: boolean;
   items: AdjustmentItem[];
   physical_consistency: PhysicalConsistency;
-  overall_opinion: string;
 }
 
 export interface AdjustmentCaseInfo {

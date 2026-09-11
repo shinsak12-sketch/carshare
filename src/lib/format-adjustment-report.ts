@@ -1,5 +1,8 @@
 import type { AdjustmentCaseInfo, AdjustmentResult } from "./adjustment-types";
-import { buildAdjustmentDiagnostics, type ItemDiagnostic } from "./adjustment-review-items";
+import {
+  buildAdjustmentDiagnostics,
+  type ItemDiagnostic,
+} from "./adjustment-review-items";
 
 const GLYPH = { error: "✖", warn: "⚠", pass: "✔" } as const;
 
@@ -11,17 +14,30 @@ function rowText(d: ItemDiagnostic, isMain: boolean): string[] {
   const mark = follows ? "↳" : GLYPH[d.severity];
   const role = !isMain && it.role !== "메인" ? `[${it.role}] ` : "";
   const head = `${indent}${mark} ${String(d.lineNo).padStart(3)}  ${role}${it.item_name} · ${it.claimed_action}${hours}  → ${follows ? "연동" : it.verdict}`;
-  if (follows) return it.adjustment_note ? [head, `${indent}        → ${it.adjustment_note}`] : [head];
-  const refs = it.photo_refs.length ? ` · 근거사진 ${it.photo_refs.join(", ")}` : "";
-  return [head, `${indent}        ${it.reasoning}${it.adjustment_note ? ` → ${it.adjustment_note}` : ""}${refs}`];
+  if (follows)
+    return it.adjustment_note
+      ? [head, `${indent}        → ${it.adjustment_note}`]
+      : [head];
+  const refs = it.photo_refs.length
+    ? ` · 근거사진 ${it.photo_refs.join(", ")}`
+    : "";
+  return [
+    head,
+    `${indent}        ${it.reasoning}${it.adjustment_note ? ` → ${it.adjustment_note}` : ""}${refs}`,
+  ];
 }
 
 // 린터 출력 형식: 문제 브랜치(✖ → ⚠)만 먼저 트리로, 통과는 건수 + 목록.
-export function buildAdjustmentReportText(caseInfo: AdjustmentCaseInfo, result: AdjustmentResult): string {
+export function buildAdjustmentReportText(
+  caseInfo: AdjustmentCaseInfo,
+  result: AdjustmentResult,
+): string {
   const lines: string[] = ["AI 손해사정 검토 (보조 의견)", ""];
 
   if (caseInfo.manufacturer || caseInfo.model) {
-    lines.push(`차량: ${caseInfo.manufacturer ?? ""} ${caseInfo.model ?? ""}`.trim());
+    lines.push(
+      `차량: ${caseInfo.manufacturer ?? ""} ${caseInfo.model ?? ""}`.trim(),
+    );
     lines.push("");
   }
 
@@ -52,17 +68,17 @@ export function buildAdjustmentReportText(caseInfo: AdjustmentCaseInfo, result: 
 
   lines.push(`[통과 ${counts.pass}건]`);
   for (const b of passed) {
-    const all = [b.main, ...b.children].filter((d): d is ItemDiagnostic => d !== null);
+    const all = [b.main, ...b.children].filter(
+      (d): d is ItemDiagnostic => d !== null,
+    );
     for (const d of all) {
       const it = d.item;
       const hours = it.claimed_hours != null ? ` ${it.claimed_hours}H` : "";
-      lines.push(`✔  ${String(d.lineNo).padStart(3)}  ${b.label} › ${it.item_name} · ${it.claimed_action}${hours}`);
+      lines.push(
+        `✔  ${String(d.lineNo).padStart(3)}  ${b.label} › ${it.item_name} · ${it.claimed_action}${hours}`,
+      );
     }
   }
-  lines.push("");
-
-  lines.push("종합 의견");
-  lines.push(result.overall_opinion);
 
   return lines.join("\n");
 }

@@ -43,8 +43,6 @@ export default function NewAdjustmentPage() {
   const [highlightedPhotos, setHighlightedPhotos] = useState<number[]>([]);
   const [showEstimate, setShowEstimate] = useState(true);
   const [reportCopied, setReportCopied] = useState(false);
-  const [opinionCopied, setOpinionCopied] = useState(false);
-  const [isEditingOpinion, setIsEditingOpinion] = useState(false);
 
   const result = active?.result ?? null;
   const diagnostics = useMemo(
@@ -99,7 +97,6 @@ export default function NewAdjustmentPage() {
       setFileInputKey((k) => k + 1);
       setParseStatus("idle");
       setError(null);
-      setIsEditingOpinion(false);
       setHighlightedPhotos([]);
     })();
     return () => {
@@ -191,7 +188,7 @@ export default function NewAdjustmentPage() {
     }
     setLoading(true);
     setError(null);
-    updateActive({ result: null, caseInfo: null, opinionDraft: "" });
+    updateActive({ result: null, caseInfo: null });
 
     const caseId = activeId;
     try {
@@ -263,7 +260,6 @@ export default function NewAdjustmentPage() {
                   manufacturer: c.manufacturer || undefined,
                   model: c.model || undefined,
                 },
-                opinionDraft: r.overall_opinion,
               }
             : c,
         );
@@ -291,16 +287,6 @@ export default function NewAdjustmentPage() {
       setTimeout(() => setReportCopied(false), 1500);
     } catch {
       // 클립보드 권한 없는 브라우저 — 조용히 무시
-    }
-  }
-
-  async function handleCopyOpinion() {
-    try {
-      await navigator.clipboard.writeText(active?.opinionDraft ?? "");
-      setOpinionCopied(true);
-      setTimeout(() => setOpinionCopied(false), 1500);
-    } catch {
-      // 조용히 무시
     }
   }
 
@@ -620,7 +606,7 @@ export default function NewAdjustmentPage() {
           )}
         </div>
 
-        {/* 우: 판넬 목록 → 하위 작업 판정(위, 각각 독립 스크롤) + 종합의견(아래), 980px */}
+        {/* 우: 판넬 목록 → 하위 작업 판정(각각 독립 스크롤), 980px. 종합의견은 항목별 판정이 곧 결과라 없음 */}
         {result && diagnostics && active && (
           <div className="flex flex-col gap-4 xl:min-h-0">
             <div className="min-h-0 flex-1">
@@ -632,50 +618,6 @@ export default function NewAdjustmentPage() {
                     setLightboxIndex(n - 1);
                 }}
               />
-            </div>
-
-            <div className="shrink-0 rounded-2xl bg-slate-900 px-5 py-3.5 text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)]">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                  종합 의견
-                </p>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <button
-                    onClick={() => setIsEditingOpinion((v) => !v)}
-                    className={`rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
-                      isEditingOpinion
-                        ? "bg-emerald-600"
-                        : "bg-white/15 hover:bg-white/25"
-                    }`}
-                  >
-                    {isEditingOpinion ? "완료" : "편집"}
-                  </button>
-                  <button
-                    onClick={handleCopyOpinion}
-                    className={`rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
-                      opinionCopied
-                        ? "bg-emerald-600"
-                        : "bg-white/15 hover:bg-white/25"
-                    }`}
-                  >
-                    {opinionCopied ? "복사됨 ✓" : "복사"}
-                  </button>
-                </div>
-              </div>
-              {isEditingOpinion ? (
-                <textarea
-                  value={active.opinionDraft}
-                  onChange={(e) =>
-                    updateActive({ opinionDraft: e.target.value })
-                  }
-                  rows={5}
-                  className="mt-1.5 w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium leading-relaxed text-white outline-none focus:border-white/40"
-                />
-              ) : (
-                <p className="mt-1.5 max-h-36 overflow-y-auto whitespace-pre-line text-sm font-medium leading-relaxed text-slate-100">
-                  {active.opinionDraft}
-                </p>
-              )}
             </div>
           </div>
         )}
