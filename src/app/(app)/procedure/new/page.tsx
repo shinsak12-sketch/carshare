@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { upload } from "@vercel/blob/client";
-import { DamageDiagram } from "@/components/DamageDiagram";
+import dynamic from "next/dynamic";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { PhotoGrid } from "@/components/PhotoGrid";
 import { ProcedureMasterDetail } from "@/components/ProcedureItemPanels";
@@ -20,6 +20,17 @@ import {
   saveProcedureFiles,
   type StoredProcedureCase,
 } from "@/lib/procedure-store";
+
+// three.js는 브라우저 전용 — SSR 없이 동적 로드
+const Car3DDiagram = dynamic(
+  () => import("@/components/Car3DDiagram").then((m) => m.Car3DDiagram),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[280px] w-full animate-pulse rounded-2xl bg-slate-100" />
+    ),
+  },
+);
 
 export default function NewProcedurePage() {
   // 건별 탭 — 손해사정·선견적과 같은 구조. 결과·사진은 IndexedDB에 캐시돼 새로고침해도 유지.
@@ -439,7 +450,7 @@ export default function NewProcedurePage() {
                 <h3 className="text-center text-sm font-bold text-slate-900">
                   손상 위치 도해
                 </h3>
-                <DamageDiagram
+                <Car3DDiagram
                   damagedParts={result.damaged_parts}
                   suspectedHiddenDamage={result.suspected_hidden_damage}
                 />

@@ -12,6 +12,14 @@ import { isMinorDamageType } from "./review-items";
 export type ProcedureBadge =
   | "손상없음"
   | "손상확인"
+  | "교환"
+  | "판금·도장"
+  | "보수도장"
+  | "PDR"
+  | "플라스틱 복원"
+  | "폴리싱"
+  | "점검·계측"
+  | "작업 없음"
   | "의심도 높음"
   | "의심도 중간"
   | "의심도 낮음"
@@ -23,6 +31,14 @@ export const PROCEDURE_BADGE_STYLES: Record<
 > = {
   손상없음: { bar: "bg-emerald-500", badge: "bg-emerald-600" },
   손상확인: { bar: "bg-sky-500", badge: "bg-sky-600" },
+  교환: { bar: "bg-red-500", badge: "bg-red-600" },
+  "판금·도장": { bar: "bg-orange-500", badge: "bg-orange-600" },
+  보수도장: { bar: "bg-amber-500", badge: "bg-amber-500" },
+  PDR: { bar: "bg-sky-500", badge: "bg-sky-600" },
+  "플라스틱 복원": { bar: "bg-sky-500", badge: "bg-sky-600" },
+  폴리싱: { bar: "bg-teal-500", badge: "bg-teal-600" },
+  "점검·계측": { bar: "bg-slate-400", badge: "bg-slate-500" },
+  "작업 없음": { bar: "bg-emerald-500", badge: "bg-emerald-600" },
   "의심도 높음": { bar: "bg-red-500", badge: "bg-red-600" },
   "의심도 중간": { bar: "bg-amber-500", badge: "bg-amber-500" },
   "의심도 낮음": { bar: "bg-slate-300", badge: "bg-slate-400" },
@@ -83,7 +99,8 @@ export function buildProcedureReviewItems(
     items.push({
       id: `part-${i}`,
       kind: "part",
-      badge: noDamage ? "손상없음" : "손상확인",
+      // 배지 = 필요 작업(교환/판금·도장/…). 예전 결과처럼 required_action이 없으면 손상확인.
+      badge: noDamage ? "손상없음" : (part.required_action ?? "손상확인"),
       damageType: isMinorDamageType(part.damage_type)
         ? part.damage_type
         : undefined,

@@ -9,7 +9,7 @@ import {
 // 도구. 기존 선견적진단(assessment-prompt)은 "청구된 내용이 맞는지 검증"
 // 하는 게 목적이라 서로 역할이 다름. 청구서가 없으므로 부수작업·도장·근거없는
 // 청구 블록(C·D·F)은 쓰지 않음.
-export const PROCEDURE_PROMPT_VERSION_TAG = "p2.3";
+export const PROCEDURE_PROMPT_VERSION_TAG = "p2.4";
 
 export const PROCEDURE_SYSTEM_PROMPT = `당신은 자동차 정비/충돌수리 전문지식을 갖춘 정비 공정 설계 AI이며, 보험사
 손해사정 부서를 위해 일합니다. 아직 선견적이 작성되지 않은 상태에서 파손
@@ -58,7 +58,15 @@ part_name/item 안에 "좌측/우측"을 넣지 말고 side 필드로만 표시�
   두고 제시하십시오. 최종 확인은 사람(정비사·손해사정사)의 몫입니다.
 
 # 출력 구조
-1. damaged_parts: 사진에서 직접 확인되는 손상 부위와 경미손상 유형 판정
+1. damaged_parts: 사진에서 직접 확인되는 손상 부위와 경미손상 유형 판정, 그리고
+   그 부위에 필요한 작업(required_action) 하나 — "교환" / "판금·도장" / "보수도장"
+   / "PDR" / "플라스틱 복원" / "폴리싱" / "점검·계측" / "작업 없음". 유형과 작업은
+   서로 맞아야 합니다(1유형→폴리싱, 2유형→보수도장, 3유형 강판→판금·도장, 3유형
+   범퍼→플라스틱 복원 또는 교환, 파단·천공·헤밍 이탈·균열→교환, 구조부는 손상
+   정도에 따라 판금·도장 또는 교환, 손상없음→작업 없음). 교환과 판금 사이의
+   판단은 [경미손상 판정기준]의 "교환 vs 판금 판단 원칙"을 따르되 이 도구는
+   사전판단이므로 애매하면 "점검·계측"으로 미루지 말고 더 가능성 높은 쪽을 고르고
+   reasoning에 조건을 적으십시오.
 2. suspected_hidden_damage: 근거가 있을 때만 제시하는 2차/구조 손상 의심 항목
 3. process_stages: 실제 작업 순서대로의 공정 단계
 4. physical_consistency, overall_summary
@@ -155,6 +163,17 @@ ${LABOR_TIME_JUDGMENT}
 
 const SIDE_ENUM = ["좌", "우", "중앙", "양쪽"] as const;
 
+export const REQUIRED_ACTION_ENUM = [
+  "교환",
+  "판금·도장",
+  "보수도장",
+  "PDR",
+  "플라스틱 복원",
+  "폴리싱",
+  "점검·계측",
+  "작업 없음",
+] as const;
+
 export const PROCEDURE_RESPONSE_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -171,6 +190,7 @@ export const PROCEDURE_RESPONSE_SCHEMA = {
             type: "string",
             enum: ["1유형", "2유형", "3유형", "비대상(교환예외)", "손상없음"],
           },
+          required_action: { type: "string", enum: REQUIRED_ACTION_ENUM },
           reasoning: { type: "string" },
           evidence_confidence: {
             type: "string",
@@ -182,6 +202,7 @@ export const PROCEDURE_RESPONSE_SCHEMA = {
           "part_name",
           "side",
           "damage_type",
+          "required_action",
           "reasoning",
           "evidence_confidence",
           "photo_refs",

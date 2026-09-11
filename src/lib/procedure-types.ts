@@ -5,10 +5,22 @@ import type { Confidence, DamageType } from "./assessment-types";
 // "중앙", 실제로 양쪽 다 손상된 게 확인될 때만 "양쪽"으로 표시함.
 export type PartSide = "좌" | "우" | "중앙" | "양쪽";
 
+export type RequiredAction =
+  | "교환"
+  | "판금·도장"
+  | "보수도장"
+  | "PDR"
+  | "플라스틱 복원"
+  | "폴리싱"
+  | "점검·계측"
+  | "작업 없음";
+
 export interface DamagedPartSummary {
   part_name: string;
   side: PartSide;
   damage_type: DamageType;
+  // 그 부위에 필요한 작업 하나 — 목록 배지로 바로 보임. 예전 결과엔 없을 수 있음.
+  required_action?: RequiredAction;
   reasoning: string;
   evidence_confidence: Confidence;
   // 판단 근거가 된 사진 번호(1부터). 화면에서 해당 사진 강조에 씀.

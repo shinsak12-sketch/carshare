@@ -34,7 +34,7 @@ export function buildProcedureReportText(
       ? ` · 근거사진 ${part.photo_refs.join(", ")}`
       : "";
     lines.push(
-      `- ${part.part_name} ${side}(${part.damage_type}): ${part.reasoning}${refs}`,
+      `- ${part.part_name} ${side}(${part.damage_type})${part.required_action ? ` → ${part.required_action}` : ""}: ${part.reasoning}${refs}`,
     );
   });
   lines.push("");
