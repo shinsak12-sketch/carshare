@@ -1,72 +1,145 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { AdjustmentDiagnostics } from "@/components/AdjustmentDiagnostics";
 import { compressImage } from "@/lib/image-compress";
-import type { AdjustmentCaseInfo, AdjustmentResult } from "@/lib/adjustment-types";
+import type { AdjustmentResult } from "@/lib/adjustment-types";
 import { buildAdjustmentReportText } from "@/lib/format-adjustment-report";
 import { buildAdjustmentDiagnostics } from "@/lib/adjustment-review-items";
+import {
+  caseTitle,
+  deleteCase,
+  emptyCase,
+  loadCases,
+  loadFiles,
+  saveCase,
+  saveFiles,
+  type StoredCase,
+} from "@/lib/adjustment-store";
 
 type ParseStatus = "idle" | "parsing" | "done" | "error";
 
 export default function NewAdjustmentPage() {
+  // 건별 탭 — 엑셀 시트처럼. 결과·사진·견적서는 IndexedDB에 캐시돼 새로고침해도 유지.
+  const [cases, setCases] = useState<StoredCase[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const active = cases.find((c) => c.id === activeId) ?? null;
+
+  // 활성 건의 파일 (input이 아니라 state가 원본 — 캐시 복원 시 input엔 못 넣으니까)
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [estimateFile, setEstimateFile] = useState<File | null>(null);
+  // 탭 전환 시 <input type=file>을 비우기 위한 리마운트 키
+  const [fileInputKey, setFileInputKey] = useState(0);
+
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<AdjustmentResult | null>(null);
-  const [caseInfo, setCaseInfo] = useState<AdjustmentCaseInfo | null>(null);
-
   const [parseStatus, setParseStatus] = useState<ParseStatus>("idle");
-  const [manufacturer, setManufacturer] = useState("");
-  const [model, setModel] = useState("");
 
-  const [imagePreviews, setImagePreviews] = useState<{ url: string }[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  // 진단 항목에 마우스를 올리면 근거 사진(1부터 번호)을 가운데 그리드에서 강조
   const [highlightedPhotos, setHighlightedPhotos] = useState<number[]>([]);
-  const [estimatePreviewUrl, setEstimatePreviewUrl] = useState<string | null>(null);
   const [showEstimate, setShowEstimate] = useState(true);
-
   const [reportCopied, setReportCopied] = useState(false);
   const [opinionCopied, setOpinionCopied] = useState(false);
   const [isEditingOpinion, setIsEditingOpinion] = useState(false);
-  const [opinionDraft, setOpinionDraft] = useState("");
-  // 새 결과가 들어오면(참조가 바뀌면) 편집 초안을 원문으로 리셋 —
-  // 렌더 중 상태 조정 패턴(이펙트로 하면 캐스케이드 렌더 경고가 남).
-  const [opinionSyncedResult, setOpinionSyncedResult] = useState<AdjustmentResult | null>(null);
-  if (result !== opinionSyncedResult) {
-    setOpinionSyncedResult(result);
-    setOpinionDraft(result?.overall_opinion ?? "");
-    setIsEditingOpinion(false);
-  }
 
+  const result = active?.result ?? null;
   const diagnostics = useMemo(() => (result ? buildAdjustmentDiagnostics(result) : null), [result]);
 
-  useEffect(() => {
-    return () => {
-      imagePreviews.forEach((p) => URL.revokeObjectURL(p.url));
-    };
-  }, [imagePreviews]);
-
-  useEffect(() => {
-    return () => {
+  const imagePreviews = useMemo(() => photos.map((f) => ({ url: URL.createObjectURL(f) })), [photos]);
+  useEffect(() => () => imagePreviews.forEach((p) => URL.revokeObjectURL(p.url)), [imagePreviews]);
+  const estimatePreviewUrl = useMemo(() => (estimateFile ? URL.createObjectURL(estimateFile) : null), [estimateFile]);
+  useEffect(
+    () => () => {
       if (estimatePreviewUrl) URL.revokeObjectURL(estimatePreviewUrl);
+    },
+    [estimatePreviewUrl]
+  );
+
+  // 최초 로드: 캐시된 건 복원, 없으면 빈 건 하나
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const stored = await loadCases();
+      if (cancelled) return;
+      const list = stored.length ? stored : [emptyCase()];
+      setCases(list);
+      setActiveId(list[list.length - 1].id);
+      setHydrated(true);
+    })();
+    return () => {
+      cancelled = true;
     };
-  }, [estimatePreviewUrl]);
+  }, []);
+
+  // 활성 건 바뀌면 그 건의 파일 복원
+  useEffect(() => {
+    if (!activeId) return;
+    let cancelled = false;
+    (async () => {
+      const f = await loadFiles(activeId);
+      if (cancelled) return;
+      setPhotos(f.photos);
+      setEstimateFile(f.estimate);
+      setFileInputKey((k) => k + 1);
+      setParseStatus("idle");
+      setError(null);
+      setIsEditingOpinion(false);
+      setHighlightedPhotos([]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId]);
+
+  const updateActive = useCallback(
+    (patch: Partial<StoredCase>) => {
+      if (!activeId) return;
+      setCases((prev) => {
+        const next = prev.map((c) => (c.id === activeId ? { ...c, ...patch } : c));
+        const updated = next.find((c) => c.id === activeId);
+        if (updated) void saveCase(updated);
+        return next;
+      });
+    },
+    [activeId]
+  );
+
+  function addCase() {
+    const c = emptyCase();
+    setCases((prev) => [...prev, c]);
+    void saveCase(c);
+    setActiveId(c.id);
+  }
+
+  function removeCase(id: string) {
+    setCases((prev) => {
+      const next = prev.filter((c) => c.id !== id);
+      const list = next.length ? next : [emptyCase()];
+      if (!next.length) void saveCase(list[0]);
+      if (id === activeId) setActiveId(list[list.length - 1].id);
+      return list;
+    });
+    void deleteCase(id);
+  }
 
   function handleImagesChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files ? Array.from(e.target.files) : [];
-    setImagePreviews(files.map((file) => ({ url: URL.createObjectURL(file) })));
+    setPhotos(files);
+    updateActive({ photoCount: files.length });
+    if (activeId) void saveFiles(activeId, { estimate: estimateFile, photos: files });
   }
 
   async function handleEstimateChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    setEstimatePreviewUrl(URL.createObjectURL(file));
+    setEstimateFile(file);
     setShowEstimate(true);
+    updateActive({ estimateName: file.name });
+    if (activeId) void saveFiles(activeId, { estimate: file, photos });
 
     setParseStatus("parsing");
     try {
@@ -74,17 +147,11 @@ export default function NewAdjustmentPage() {
       formData.append("estimate", file);
       const res = await fetch("/api/parse-estimate", { method: "POST", body: formData });
       const data = await res.json();
-
-      let filledAny = false;
-      if (data.manufacturer && !manufacturer) {
-        setManufacturer(data.manufacturer);
-        filledAny = true;
-      }
-      if (data.model && !model) {
-        setModel(data.model);
-        filledAny = true;
-      }
-      setParseStatus(filledAny ? "done" : "error");
+      const patch: Partial<StoredCase> = {};
+      if (data.manufacturer && !active?.manufacturer) patch.manufacturer = data.manufacturer;
+      if (data.model && !active?.model) patch.model = data.model;
+      if (Object.keys(patch).length) updateActive(patch);
+      setParseStatus(Object.keys(patch).length ? "done" : "error");
     } catch {
       setParseStatus("error");
     }
@@ -92,32 +159,35 @@ export default function NewAdjustmentPage() {
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!active || !activeId) return;
+    if (!estimateFile) {
+      setError("청구 견적서(PDF)를 첨부해주세요.");
+      return;
+    }
+    if (photos.length === 0) {
+      setError("수리작업 사진을 1장 이상 첨부해주세요.");
+      return;
+    }
     setLoading(true);
     setError(null);
-    setResult(null);
+    updateActive({ result: null, caseInfo: null, opinionDraft: "" });
 
-    const form = e.currentTarget;
-    const formData = new FormData(form);
-
+    const caseId = activeId;
     try {
-      const imageInput = form.elements.namedItem("images") as HTMLInputElement;
-      const rawImages = imageInput.files ? Array.from(imageInput.files) : [];
-      formData.delete("images");
-
-      // 사진은 우리 서버를 거치지 않고 브라우저에서 Vercel Blob으로 직접
-      // 업로드함 — 서버리스 함수 요청 바디 제한(~4.5MB)과 무관하게 몇십~
-      // 백여 장도 올릴 수 있음. 서버에는 업로드된 URL 목록만 전달함.
-      const total = rawImages.length;
+      const total = photos.length;
       let uploadedCount = 0;
       setLoadingStep(`사진 업로드 중… (0/${total})`);
 
+      // 브라우저 → Vercel Blob 직접 업로드(서버 바디 제한 우회). 압축본을 캐시에도 씀.
       const CONCURRENCY = 6;
       const imageUrls: string[] = new Array(total);
+      const compressedFiles: File[] = new Array(total);
       let cursor = 0;
       async function worker() {
         while (cursor < total) {
           const i = cursor++;
-          const compressed = await compressImage(rawImages[i]);
+          const compressed = await compressImage(photos[i]);
+          compressedFiles[i] = compressed;
           const blob = await upload(compressed.name, compressed, {
             access: "public",
             handleUploadUrl: "/api/blob-upload",
@@ -128,7 +198,13 @@ export default function NewAdjustmentPage() {
         }
       }
       await Promise.all(Array.from({ length: Math.min(CONCURRENCY, total) }, worker));
+      void saveFiles(caseId, { estimate: estimateFile, photos: compressedFiles });
 
+      const formData = new FormData();
+      formData.append("estimate", estimateFile);
+      formData.append("manufacturer", active.manufacturer);
+      formData.append("model", active.model);
+      formData.append("memo", active.memo);
       formData.append("imageUrls", JSON.stringify(imageUrls));
 
       setLoadingStep("AI 손해사정 중… (사진이 많으면 수 분 소요될 수 있음)");
@@ -146,10 +222,22 @@ export default function NewAdjustmentPage() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "요청에 실패했습니다.");
-      setResult(data.result as AdjustmentResult);
-      setCaseInfo({
-        manufacturer: String(formData.get("manufacturer") ?? "") || undefined,
-        model: String(formData.get("model") ?? "") || undefined,
+      const r = data.result as AdjustmentResult;
+      // 분석 도중 다른 탭으로 옮겼어도 결과는 원래 건에 저장
+      setCases((prev) => {
+        const next = prev.map((c) =>
+          c.id === caseId
+            ? {
+                ...c,
+                result: r,
+                caseInfo: { manufacturer: c.manufacturer || undefined, model: c.model || undefined },
+                opinionDraft: r.overall_opinion,
+              }
+            : c
+        );
+        const updated = next.find((c) => c.id === caseId);
+        if (updated) void saveCase(updated);
+        return next;
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
@@ -160,19 +248,19 @@ export default function NewAdjustmentPage() {
   }
 
   async function handleCopyReport() {
-    if (!result || !caseInfo) return;
+    if (!active?.result || !active.caseInfo) return;
     try {
-      await navigator.clipboard.writeText(buildAdjustmentReportText(caseInfo, result));
+      await navigator.clipboard.writeText(buildAdjustmentReportText(active.caseInfo, active.result));
       setReportCopied(true);
       setTimeout(() => setReportCopied(false), 1500);
     } catch {
-      // 클립보드 권한이 없는 브라우저 등 — 조용히 무시
+      // 클립보드 권한 없는 브라우저 — 조용히 무시
     }
   }
 
   async function handleCopyOpinion() {
     try {
-      await navigator.clipboard.writeText(opinionDraft);
+      await navigator.clipboard.writeText(active?.opinionDraft ?? "");
       setOpinionCopied(true);
       setTimeout(() => setOpinionCopied(false), 1500);
     } catch {
@@ -181,158 +269,163 @@ export default function NewAdjustmentPage() {
   }
 
   const fileInputClass =
-    "w-full rounded-lg border border-dashed border-slate-300 bg-slate-50/40 px-3 py-2 text-sm shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-150 outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-slate-700 file:shadow-sm file:transition-colors hover:border-purple-400 hover:file:bg-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20";
+    "w-full rounded-lg border border-dashed border-slate-300 bg-slate-50/40 px-3 py-1.5 text-sm shadow-[inset_0_1px_2px_rgba(15,23,42,0.04)] transition-all duration-150 outline-none file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-slate-700 file:shadow-sm file:transition-colors hover:border-purple-400 hover:file:bg-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20";
   const textInputClass =
     "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)] transition-all duration-150 outline-none focus:border-purple-500 focus:shadow-[inset_0_1px_3px_rgba(147,51,234,0.12)] focus:ring-2 focus:ring-purple-500/20";
 
   return (
-    <main className="mx-auto flex max-w-[1880px] flex-col px-6 py-10 lg:py-14 xl:h-[calc(100dvh-57px)] xl:py-6">
-      <div className="mb-8 flex shrink-0 items-start justify-between gap-4 xl:mb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 lg:text-3xl">AI 손해사정</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            청구 견적서와 수리작업 사진을 첨부하면 AI가 항목별로 손해사정 의견을 제시합니다.
-          </p>
-        </div>
-        {loading && (
-          <div className="flex shrink-0 items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-4 py-2 text-xs font-bold text-purple-700 sm:text-sm">
-            <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-purple-300 border-t-purple-600" />
-            {loadingStep || "처리 중…"}
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 xl:min-h-0 xl:flex-1 xl:grid-cols-[360px_800px_600px] xl:items-stretch">
-        {/* 좌: 입력 폼 + 차량정보 — 3개 컬럼은 xl 이상에서 서로 독립적으로 스크롤됨 */}
-        <div className="flex flex-col gap-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
-          <form
-            onSubmit={handleSubmit}
-            className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]"
-          >
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">청구 견적서 (필수, PDF)</label>
-              <input
-                name="estimate"
-                type="file"
-                accept="application/pdf"
-                required
-                onChange={handleEstimateChange}
-                className={fileInputClass}
-              />
-              {parseStatus === "parsing" && (
-                <p className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-purple-600">
-                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-purple-300 border-t-purple-600" />
-                  견적서 분석 중…
-                </p>
-              )}
-              {parseStatus === "done" && (
-                <p className="mt-1.5 text-xs font-medium text-emerald-600">
-                  ✓ 차량정보를 자동으로 인식했습니다. 필요하면 아래에서 수정하세요.
-                </p>
-              )}
-              {parseStatus === "error" && (
-                <p className="mt-1.5 text-xs text-slate-400">
-                  이 견적서에서는 자동 인식된 정보가 없습니다. 아래 항목을 직접 입력해주세요.
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">
-                수리작업 사진 (필수, 여러 장 가능)
-              </label>
-              <input
-                name="images"
-                type="file"
-                accept="image/*"
-                multiple
-                required
-                onChange={handleImagesChange}
-                className={fileInputClass}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">제조사</label>
-                <input
-                  name="manufacturer"
-                  value={manufacturer}
-                  onChange={(e) => setManufacturer(e.target.value)}
-                  className={textInputClass}
-                  placeholder="현대"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">모델</label>
-                <input
-                  name="model"
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className={textInputClass}
-                  placeholder="아반떼"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">담당자 추가 의견(프롬프트 추가)</label>
-              <textarea
-                name="memo"
-                rows={2}
-                placeholder="예: 이 부위는 재사용이 어려워 보임 / 사고 경위상 확인이 필요함"
-                className={textInputClass}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-full bg-purple-600 px-4 py-3.5 text-sm font-bold text-white shadow-[0_1px_0_rgba(255,255,255,0.25)_inset,0_6px_16px_-4px_rgba(147,51,234,0.5)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-purple-700 hover:shadow-[0_1px_0_rgba(255,255,255,0.25)_inset,0_10px_22px_-6px_rgba(147,51,234,0.55)] active:translate-y-0 active:scale-95 active:shadow-[0_2px_6px_rgba(147,51,234,0.4)_inset] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                  {loadingStep || "처리 중…"}
-                </span>
-              ) : (
-                "AI 손해사정 시작"
-              )}
-            </button>
-          </form>
-
-          {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          )}
-
-          {result && caseInfo && (
-            <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">손해사정 결과</p>
-                <button
-                  onClick={handleCopyReport}
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold text-white shadow-sm transition-all active:scale-95 ${
-                    reportCopied ? "bg-emerald-600" : "bg-slate-900 hover:bg-slate-800"
+    <main className="mx-auto flex max-w-[1880px] flex-col px-6 py-8 lg:py-10 xl:h-[calc(100dvh-57px)] xl:py-4">
+      {/* 제목 + 탭 바 */}
+      <div className="mb-3 flex shrink-0 items-end justify-between gap-4">
+        <div className="flex min-w-0 items-end gap-4">
+          <h1 className="shrink-0 text-2xl font-bold text-slate-900 lg:text-3xl">AI 손해사정</h1>
+          <div className="flex min-w-0 items-end gap-1 overflow-x-auto">
+            {cases.map((c, i) => {
+              const isActive = c.id === activeId;
+              return (
+                <div
+                  key={c.id}
+                  className={`group flex shrink-0 items-center gap-1.5 rounded-t-xl border border-b-0 px-3.5 py-2 text-xs font-bold transition-colors ${
+                    isActive
+                      ? "border-purple-300 bg-white text-purple-700 shadow-[0_-4px_12px_-8px_rgba(147,51,234,0.4)]"
+                      : "border-transparent bg-slate-200/60 text-slate-500 hover:bg-slate-200"
                   }`}
                 >
-                  {reportCopied ? "복사됨 ✓" : "전체 복사"}
-                </button>
-              </div>
-
-              {(caseInfo.manufacturer || caseInfo.model) && (
-                <div className="flex flex-wrap gap-1.5">
-                  <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700">
-                    {caseInfo.manufacturer} {caseInfo.model}
-                  </span>
+                  <button type="button" onClick={() => setActiveId(c.id)} className="flex items-center gap-1.5">
+                    {c.result && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+                    {caseTitle(c, i)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeCase(c.id)}
+                    title="이 건 닫기"
+                    className="rounded-full px-1 text-[10px] text-slate-400 opacity-0 transition-opacity hover:bg-slate-200 hover:text-slate-700 group-hover:opacity-100"
+                  >
+                    ✕
+                  </button>
                 </div>
-              )}
+              );
+            })}
+            <button
+              type="button"
+              onClick={addCase}
+              className="shrink-0 rounded-t-xl border border-b-0 border-dashed border-slate-300 px-3 py-2 text-xs font-bold text-slate-500 transition-colors hover:border-purple-400 hover:text-purple-700"
+            >
+              + 신규추가
+            </button>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {loading && (
+            <div className="flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-4 py-2 text-xs font-bold text-purple-700 sm:text-sm">
+              <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-purple-300 border-t-purple-600" />
+              {loadingStep || "처리 중…"}
             </div>
           )}
+          {result && (
+            <button
+              onClick={handleCopyReport}
+              className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs font-bold text-white shadow-sm transition-all active:scale-95 ${
+                reportCopied ? "bg-emerald-600" : "bg-slate-900 hover:bg-slate-800"
+              }`}
+            >
+              {reportCopied ? "복사됨 ✓" : "결과 전체 복사"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* 상단 가로 입력 바 — 처음 한 번만 쓰는 필드라 세로 컬럼 대신 가로로 */}
+      <form
+        onSubmit={handleSubmit}
+        className="mb-4 grid shrink-0 grid-cols-1 gap-3 rounded-2xl rounded-tl-none border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)] md:grid-cols-2 xl:grid-cols-[1.1fr_1.1fr_130px_130px_1.6fr_auto] xl:items-end"
+      >
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
+            청구 견적서 (필수, PDF)
+            {estimateFile && <span className="ml-2 font-normal text-slate-400">{estimateFile.name}</span>}
+          </label>
+          <input
+            key={`est-${fileInputKey}`}
+            type="file"
+            accept="application/pdf"
+            onChange={handleEstimateChange}
+            className={fileInputClass}
+          />
+          {parseStatus === "parsing" && (
+            <p className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-purple-600">
+              <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-purple-300 border-t-purple-600" />
+              견적서 분석 중…
+            </p>
+          )}
+          {parseStatus === "done" && <p className="mt-1 text-[11px] font-medium text-emerald-600">✓ 차량정보 자동 인식됨</p>}
+          {parseStatus === "error" && <p className="mt-1 text-[11px] text-slate-400">자동 인식 정보 없음 — 직접 입력</p>}
         </div>
 
-        {/* 중: 수리작업 사진 + 청구 견적서 (가장 넓게) */}
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-slate-600">
+            수리작업 사진 (필수, 여러 장)
+            {photos.length > 0 && <span className="ml-2 font-normal text-slate-400">{photos.length}장</span>}
+          </label>
+          <input
+            key={`img-${fileInputKey}`}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleImagesChange}
+            className={fileInputClass}
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-slate-600">제조사</label>
+          <input
+            value={active?.manufacturer ?? ""}
+            onChange={(e) => updateActive({ manufacturer: e.target.value })}
+            className={textInputClass}
+            placeholder="현대"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-slate-600">모델</label>
+          <input
+            value={active?.model ?? ""}
+            onChange={(e) => updateActive({ model: e.target.value })}
+            className={textInputClass}
+            placeholder="아반떼"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-slate-600">담당자 추가 의견(프롬프트 추가)</label>
+          <input
+            value={active?.memo ?? ""}
+            onChange={(e) => updateActive({ memo: e.target.value })}
+            placeholder="예: 이 부위는 재사용이 어려워 보임 / 사고 경위상 확인이 필요함"
+            className={textInputClass}
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading || !hydrated}
+          className="h-[38px] rounded-full bg-purple-600 px-6 text-sm font-bold text-white shadow-[0_1px_0_rgba(255,255,255,0.25)_inset,0_6px_16px_-4px_rgba(147,51,234,0.5)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-purple-700 hover:shadow-[0_1px_0_rgba(255,255,255,0.25)_inset,0_10px_22px_-6px_rgba(147,51,234,0.55)] active:translate-y-0 active:scale-95 active:shadow-[0_2px_6px_rgba(147,51,234,0.4)_inset] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+              처리 중
+            </span>
+          ) : (
+            "AI 손해사정 시작"
+          )}
+        </button>
+      </form>
+
+      {error && <div className="mb-4 shrink-0 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+
+      <div className="grid grid-cols-1 gap-6 xl:min-h-0 xl:flex-1 xl:grid-cols-[800px_980px] xl:items-stretch">
+        {/* 좌: 수리작업 사진 + 청구 견적서 (800px 고정) */}
         <div className="flex flex-col gap-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
           {(imagePreviews.length > 0 || estimatePreviewUrl) && (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
@@ -345,23 +438,20 @@ export default function NewAdjustmentPage() {
                     {Array.from({ length: Math.max(18, Math.ceil(imagePreviews.length / 9) * 9) }).map((_, i) => {
                       const p = imagePreviews[i];
                       if (!p) {
-                        return (
-                          <div
-                            key={i}
-                            className="aspect-square rounded-lg border border-dashed border-slate-200 bg-slate-50/50"
-                          />
-                        );
+                        return <div key={i} className="aspect-square rounded-lg border border-dashed border-slate-200 bg-slate-50/50" />;
                       }
                       const highlighted = highlightedPhotos.includes(i + 1);
                       const dimmed = highlightedPhotos.length > 0 && !highlighted;
                       return (
                         <div key={i} className="group relative aspect-square">
                           <button type="button" onClick={() => setLightboxIndex(i)} className="absolute inset-0">
+                            {/* 확대된 이미지는 마우스 이벤트를 안 받음 — 커서 위치는 원본 칸 기준이라
+                                옆 칸으로 옮기면 그 칸이 바로 확대됨 */}
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={p.url}
                               alt={`수리작업 사진 ${i + 1}`}
-                              className={`h-full w-full rounded-lg border object-cover transition-all duration-200 ease-out group-hover:relative group-hover:z-30 group-hover:scale-[4.6] group-hover:opacity-100 group-hover:shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)] ${
+                              className={`pointer-events-none h-full w-full rounded-lg border object-cover transition-all duration-200 ease-out group-hover:relative group-hover:z-30 group-hover:scale-[4.6] group-hover:opacity-100 group-hover:shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)] ${
                                 highlighted
                                   ? "border-purple-500 ring-4 ring-purple-400/60 shadow-[0_0_0_2px_white,0_8px_20px_-6px_rgba(147,51,234,0.7)]"
                                   : "border-slate-200"
@@ -392,48 +482,40 @@ export default function NewAdjustmentPage() {
                     {showEstimate ? "견적서 숨기기 ▲" : "청구 견적서 보기 ▾"}
                   </button>
                   {showEstimate && (
-                    <iframe
-                      src={`${estimatePreviewUrl}#zoom=75`}
-                      title="청구 견적서"
-                      className="mt-3 h-[75vh] w-full rounded-lg border border-slate-200"
-                    />
+                    <iframe src={`${estimatePreviewUrl}#zoom=75`} title="청구 견적서" className="mt-3 h-[75vh] w-full rounded-lg border border-slate-200" />
                   )}
                 </div>
               )}
             </div>
           )}
 
-          {!result && (
+          {!result && imagePreviews.length === 0 && !estimatePreviewUrl && (
             <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-16 text-center shadow-[0_1px_0_rgba(255,255,255,0.6)_inset]">
-              <span aria-hidden="true" className="text-4xl opacity-50">⚖️</span>
+              <span aria-hidden="true" className="text-4xl opacity-50">
+                ⚖️
+              </span>
               <p className="text-sm text-slate-400">
-                왼쪽에서 견적서와 수리작업 사진을 첨부하고 손해사정을 시작하면
-                <br />이 자리에 청구서 미리보기가 표시됩니다.
-                {loading && (
-                  <>
-                    <br />
-                    (우측 상단에서 진행 상태를 확인하세요)
-                  </>
-                )}
+                위에서 견적서와 수리작업 사진을 첨부하고 손해사정을 시작하면
+                <br />이 자리에 사진과 청구서 미리보기가 표시됩니다.
               </p>
             </div>
           )}
         </div>
 
-        {/* 우: 검토 항목(위) + 종합의견(아래) */}
-        {result && (
-          <div className="flex flex-col gap-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
-            {diagnostics && (
-            <AdjustmentDiagnostics
-              diagnostics={diagnostics}
-              onHoverPhotos={setHighlightedPhotos}
-              onOpenPhoto={(n) => {
-                if (n >= 1 && n <= imagePreviews.length) setLightboxIndex(n - 1);
-              }}
-            />
-            )}
+        {/* 우: 판넬 목록 → 하위 작업 판정(위, 각각 독립 스크롤) + 종합의견(아래), 980px */}
+        {result && diagnostics && active && (
+          <div className="flex flex-col gap-4 xl:min-h-0">
+            <div className="min-h-0 flex-1">
+              <AdjustmentDiagnostics
+                diagnostics={diagnostics}
+                onHoverPhotos={setHighlightedPhotos}
+                onOpenPhoto={(n) => {
+                  if (n >= 1 && n <= imagePreviews.length) setLightboxIndex(n - 1);
+                }}
+              />
+            </div>
 
-            <div className="rounded-2xl bg-slate-900 px-5 py-4 text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)]">
+            <div className="shrink-0 rounded-2xl bg-slate-900 px-5 py-3.5 text-white shadow-[0_10px_24px_-10px_rgba(15,23,42,0.55)]">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-400">종합 의견</p>
                 <div className="flex shrink-0 items-center gap-1.5">
@@ -457,14 +539,14 @@ export default function NewAdjustmentPage() {
               </div>
               {isEditingOpinion ? (
                 <textarea
-                  value={opinionDraft}
-                  onChange={(e) => setOpinionDraft(e.target.value)}
-                  rows={8}
+                  value={active.opinionDraft}
+                  onChange={(e) => updateActive({ opinionDraft: e.target.value })}
+                  rows={5}
                   className="mt-1.5 w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-medium leading-relaxed text-white outline-none focus:border-white/40"
                 />
               ) : (
-                <p className="mt-1.5 whitespace-pre-line text-sm font-medium leading-relaxed text-slate-100">
-                  {opinionDraft}
+                <p className="mt-1.5 max-h-36 overflow-y-auto whitespace-pre-line text-sm font-medium leading-relaxed text-slate-100">
+                  {active.opinionDraft}
                 </p>
               )}
             </div>

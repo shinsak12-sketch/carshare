@@ -86,8 +86,8 @@ export function AdjustmentDiagnostics({
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
+    <div className="flex min-h-0 flex-col gap-3 xl:h-full">
+      <div className="flex shrink-0 items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2.5 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
         {(["error", "warn", "pass"] as DiagnosticSeverity[]).map((sev) => {
           const m = SEVERITY_META[sev];
           const on = shown.has(sev);
@@ -107,7 +107,7 @@ export function AdjustmentDiagnostics({
       </div>
 
       {consistency && (
-        <div className="flex gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+        <div className="flex shrink-0 gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
           <span className="w-5 shrink-0 text-center text-base font-bold text-amber-600">⚠</span>
           <div className="flex min-w-0 flex-1 flex-col gap-1">
             <span className="text-[13px] font-bold text-amber-900">{consistency.title}</span>
@@ -116,9 +116,10 @@ export function AdjustmentDiagnostics({
         </div>
       )}
 
-      <div className="grid grid-cols-[210px_1fr] gap-3">
+      {/* 판넬 목록과 하위 작업은 각각 독립 스크롤 */}
+      <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr] gap-3">
         {/* 좌: 메인 판넬 목록 */}
-        <div className="flex flex-col divide-y divide-slate-100 self-start rounded-2xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
+        <div className="flex min-h-0 flex-col divide-y divide-slate-100 self-stretch overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
           {visible.length === 0 && (
             <p className="px-3 py-6 text-center text-xs text-slate-400">
               {counts.error + counts.warn === 0 ? "조정 필요 없음" : "해당 항목 없음"}
@@ -157,7 +158,7 @@ export function AdjustmentDiagnostics({
         </div>
 
         {/* 우: 선택한 판넬의 하위 작업 */}
-        <div className="min-w-0 self-start rounded-2xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
+        <div className="min-h-0 min-w-0 self-stretch overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
           {selected ? (
             <BranchDetail branch={selected} onHoverPhotos={onHoverPhotos} onOpenPhoto={onOpenPhoto} />
           ) : (
