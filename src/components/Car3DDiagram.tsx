@@ -4,6 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
+import { DIAGRAM_ZONES } from "@/lib/damage-diagram-zones";
 import { matchDiagramZones } from "@/lib/damage-diagram-zones";
 import type {
   DamagedPartSummary,
@@ -15,6 +18,10 @@ import type {
 // 패널 id는 2D 도해와 같은 damage-diagram-zones 키를 그대로 씀(매칭 로직 공유).
 
 type ZoneStatus = "confirmed" | "suspected";
+
+// 3D 모델 출처 — CC 라이선스 표기 (작가명은 Sketchfab 모델 페이지 기준으로 채움)
+const MODEL_CREDIT =
+  "3D 모델: 2021 Hyundai Encino EV — Sketchfab 공개 모델 (CC BY 4.0)";
 
 const COLOR = {
   body: 0xd6dce6,
@@ -345,8 +352,8 @@ function buildCar(
   );
   // 옆면 패널 (좌/우) — 펜더·도어·쿼터, 휠아치 포함
   const sides: [string, number][] = [
-    ["L", -0.9],
-    ["R", 0.82],
+    ["L", 0.82],
+    ["R", -0.9],
   ];
   for (const [sfx, x] of sides) {
     add(
@@ -616,8 +623,8 @@ const VIEWS: Record<ViewKey, { label: string; pos: [number, number, number] }> =
     iso: { label: "기본", pos: [4.2, 3.0, 5.2] },
     front: { label: "전면", pos: [0, 1.6, 7.2] },
     rear: { label: "후면", pos: [0, 1.6, -7.2] },
-    left: { label: "좌측", pos: [-7.2, 1.6, 0] },
-    right: { label: "우측", pos: [7.2, 1.6, 0] },
+    left: { label: "좌측", pos: [7.2, 1.6, 0] },
+    right: { label: "우측", pos: [-7.2, 1.6, 0] },
     top: { label: "위", pos: [0, 9.6, 1.0] },
   };
 
@@ -654,9 +661,15 @@ export function Car3DDiagram({
   const sceneRef = useRef<{
     camera: THREE.PerspectiveCamera;
     controls: OrbitControls;
-    meshes: Map<string, THREE.Mesh>;
+    zoneMeshes: Map<string, THREE.Mesh[]>;
+    allMeshes: THREE.Mesh[];
+    paintInfo: Map<
+      THREE.MeshStandardMaterial,
+      { color: number; emissive: number; map: THREE.Texture | null }
+    >;
     target: THREE.Vector3;
   } | null>(null);
+  const [modelReady, setModelReady] = useState(false);
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
   const [view, setView] = useState<ViewKey>("iso");
 
@@ -736,9 +749,109 @@ export function Car3DDiagram({
       transparent: true,
       opacity: 0.3,
     });
-    const meshes = buildCar(scene, edgeMat);
+    // 실제 차량 모델(GLB, 구역별로 분리된 노드 zone_<id>__…) 로드. 실패하면 절차적 모델로 대체.
+    const zoneMeshes = new Map<string, THREE.Mesh[]>();
+    const allMeshes: THREE.Mesh[] = [];
+    let modelRoot: THREE.Object3D | null = null;
+    const paintMat = new THREE.MeshPhysicalMaterial({
+      color: COLOR.body,
+      roughness: 0.3,
+      metalness: 0.15,
+      clearcoat: 0.9,
+      clearcoatRoughness: 0.1,
+      envMapIntensity: 0.6,
+    });
+    const paintInfo = new Map<
+      THREE.MeshStandardMaterial,
+      { color: number; emissive: number; map: THREE.Texture | null }
+    >();
+    const registerZone = (id: string, mesh: THREE.Mesh) => {
+      const list = zoneMeshes.get(id) ?? [];
+      list.push(mesh);
+      zoneMeshes.set(id, list);
+      // 원래 색·텍스처를 기억해 두고 색칠/복원에 씀 (재질은 메시별로 복제돼 있어야 함)
+      const mats = Array.isArray(mesh.material)
+        ? mesh.material
+        : [mesh.material];
+      for (const m of mats) {
+        if (m instanceof THREE.MeshStandardMaterial && !paintInfo.has(m)) {
+          paintInfo.set(m, {
+            color: m.color.getHex(),
+            emissive: m.emissive.getHex(),
+            map: m.map,
+          });
+        }
+      }
+    };
+    const fallbackToProcedural = () => {
+      const meshes = buildCar(scene, edgeMat);
+      for (const [id, mesh] of meshes) {
+        registerZone(id, mesh);
+        allMeshes.push(mesh);
+      }
+      setModelReady(true);
+    };
+    const loader = new GLTFLoader();
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    let disposed = false;
+    loader.load(
+      "/models/car.glb",
+      (gltf) => {
+        if (disposed) return;
+        modelRoot = gltf.scene;
+        gltf.scene.traverse((o) => {
+          if (!(o instanceof THREE.Mesh)) return;
+          o.castShadow = true;
+          o.receiveShadow = true;
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          // 도장 재질은 중립 회색 클리어코트로 통일 (구역별 색칠을 위해 메시마다 복제)
+          const isZone =
+            /^zone_/.test(o.parent?.name ?? "") || /^zone_/.test(o.name);
+          const replaced = mats.map((m) =>
+            /carpaint/i.test(m.name)
+              ? paintMat.clone()
+              : isZone
+                ? m.clone()
+                : m,
+          );
+          o.material = Array.isArray(o.material) ? replaced : replaced[0];
+          const zoneMatch =
+            /^zone_([A-Za-z_]+?)__/.exec(o.parent?.name ?? "") ??
+            /^zone_([A-Za-z_]+?)__/.exec(o.name);
+          if (zoneMatch) {
+            const id = zoneMatch[1];
+            o.userData = {
+              id,
+              label: DIAGRAM_ZONES.find((z) => z.id === id)?.label ?? id,
+              zone: true,
+            };
+            registerZone(id, o);
+          } else {
+            o.userData = { id: o.name, label: null, zone: false };
+          }
+          allMeshes.push(o);
+        });
+        scene.add(gltf.scene);
+        setModelReady(true);
+      },
+      undefined,
+      (err) => {
+        console.error(
+          "[Car3DDiagram] model load failed, fallback to procedural:",
+          err,
+        );
+        if (!disposed) fallbackToProcedural();
+      },
+    );
 
-    sceneRef.current = { camera, controls, meshes, target };
+    sceneRef.current = {
+      camera,
+      controls,
+      zoneMeshes,
+      allMeshes,
+      paintInfo,
+      target,
+    };
 
     // 호버 라벨
     const ray = new THREE.Raycaster();
@@ -751,8 +864,10 @@ export function Car3DDiagram({
         -((e.clientY - r.top) / r.height) * 2 + 1,
       );
       ray.setFromCamera(ptr, camera);
-      const hit = ray.intersectObjects([...meshes.values()], false)[0];
-      const label = hit ? (hit.object.userData.label as string) : null;
+      const hit = ray.intersectObjects(allMeshes, false)[0];
+      const label = hit
+        ? ((hit.object.userData.label as string | null) ?? null)
+        : null;
       if (label !== hovered) {
         hovered = label;
         setHoverLabel(label);
@@ -787,6 +902,8 @@ export function Car3DDiagram({
     loop();
 
     return () => {
+      disposed = true;
+      if (modelRoot) scene.remove(modelRoot);
       cancelAnimationFrame(raf);
       ro.disconnect();
       renderer.domElement.removeEventListener("pointermove", onMove);
@@ -805,35 +922,46 @@ export function Car3DDiagram({
     };
   }, []);
 
-  // 손상 상태 → 패널 색
+  // 손상 상태 → 구역 색 (GLB·절차적 공통)
   useEffect(() => {
-    const s = sceneRef.current;
-    if (!s) return;
-    for (const [id, meta] of Object.entries(PARTS)) {
-      const mesh = s.meshes.get(id);
-      if (!mesh || meta.glass) continue;
-      const mat = mesh.material as THREE.MeshPhysicalMaterial;
-      const st = meta.zone ? status.get(id) : undefined;
-      const base = meta.color ?? COLOR.body;
-      mat.color.setHex(
-        st === "confirmed"
-          ? COLOR.confirmed
-          : st === "suspected"
-            ? COLOR.suspected
-            : base,
-      );
-      mat.emissive.setHex(
-        st === "confirmed"
-          ? 0x7f1d1d
-          : st === "suspected"
-            ? 0x78350f
-            : 0x000000,
-      );
-      mat.emissiveIntensity = st ? 0.35 : 0;
-      mat.needsUpdate = true;
+    const sc = sceneRef.current;
+    if (!sc || !modelReady) return;
+    for (const [id, list] of sc.zoneMeshes) {
+      if (PARTS[id]?.glass) continue;
+      const st = status.get(id);
+      for (const mesh of list) {
+        const mats = Array.isArray(mesh.material)
+          ? mesh.material
+          : [mesh.material];
+        for (const m of mats) {
+          if (!(m instanceof THREE.MeshStandardMaterial)) continue;
+          const info = sc.paintInfo.get(m);
+          if (!info) continue;
+          m.color.setHex(
+            st === "confirmed"
+              ? COLOR.confirmed
+              : st === "suspected"
+                ? COLOR.suspected
+                : info.color,
+          );
+          m.emissive.setHex(
+            st === "confirmed"
+              ? 0x7f1d1d
+              : st === "suspected"
+                ? 0x78350f
+                : info.emissive,
+          );
+          // 램프처럼 텍스처가 있는 구역은 색칠할 때 텍스처를 잠시 빼야 색이 보임
+          Object.assign(m, {
+            emissiveIntensity: st ? 0.35 : 0,
+            map: st ? null : info.map,
+            needsUpdate: true,
+          });
+        }
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusKey]);
+  }, [statusKey, modelReady]);
 
   function goView(k: ViewKey) {
     setView(k);
@@ -856,10 +984,10 @@ export function Car3DDiagram({
   }
 
   const hoveredId = hoverLabel
-    ? Object.entries(PARTS).find(([, m]) => m.label === hoverLabel)?.[0]
+    ? (DIAGRAM_ZONES.find((z) => z.label === hoverLabel)?.id ??
+      Object.entries(PARTS).find(([, m]) => m.label === hoverLabel)?.[0])
     : undefined;
-  const hoveredStatus =
-    hoveredId && PARTS[hoveredId].zone ? status.get(hoveredId) : undefined;
+  const hoveredStatus = hoveredId ? status.get(hoveredId) : undefined;
 
   return (
     <div className="flex flex-col gap-2">
@@ -915,6 +1043,8 @@ export function Car3DDiagram({
           이상 없음
         </span>
       </div>
+
+      <p className="text-center text-[10px] text-slate-400">{MODEL_CREDIT}</p>
 
       {unmatched.length > 0 && (
         <p className="text-center text-[11px] text-slate-400">
