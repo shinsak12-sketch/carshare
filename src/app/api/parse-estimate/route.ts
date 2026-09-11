@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/session";
 import { getModel, getOpenAI, getReasoningEffort } from "@/lib/openai";
 import { isPdfFile, extractEstimateText } from "@/lib/estimate-pdf";
 import { redactPersonalInfo } from "@/lib/pii-redact";
-import { ESTIMATE_PARSE_PROMPT, ESTIMATE_PARSE_SCHEMA, type ParsedEstimateInfo } from "@/lib/estimate-parse";
+import { ESTIMATE_PARSE_PROMPT, ESTIMATE_PARSE_SCHEMA, extractPlateNumber, type ParsedEstimateInfo } from "@/lib/estimate-parse";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
@@ -12,6 +12,7 @@ const EMPTY_RESULT: ParsedEstimateInfo = {
   manufacturer: null,
   model: null,
   year: null,
+  plateNumber: null,
 };
 
 export async function POST(req: NextRequest) {
@@ -34,6 +35,7 @@ export async function POST(req: NextRequest) {
     if (!rawEstimateText.trim()) {
       return NextResponse.json(EMPTY_RESULT);
     }
+    const plateNumber = extractPlateNumber(rawEstimateText);
     // 제조사/모델/연식만 뽑는 용도라 개인정보(고객명·연락처·주소 등)까지
     // 외부 AI로 보낼 필요가 없어 미리 제거함. 텍스트 자체도 저장하지 않음.
     const estimateText = redactPersonalInfo(rawEstimateText);
@@ -54,8 +56,8 @@ export async function POST(req: NextRequest) {
     });
 
     const raw = completion.choices[0]?.message?.content;
-    const parsed: ParsedEstimateInfo = raw ? JSON.parse(raw) : EMPTY_RESULT;
-    return NextResponse.json(parsed);
+    const parsed: ParsedEstimateInfo = raw ? { ...EMPTY_RESULT, ...JSON.parse(raw) } : EMPTY_RESULT;
+    return NextResponse.json({ ...parsed, plateNumber });
   } catch (err) {
     console.error("[/api/parse-estimate] failed:", err);
     // 자동입력은 편의 기능이라 실패해도 폼 자체는 계속 쓸 수 있어야 함 — 빈 값 반환

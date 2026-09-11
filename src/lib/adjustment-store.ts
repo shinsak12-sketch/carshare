@@ -7,6 +7,7 @@ import type { AdjustmentCaseInfo, AdjustmentResult } from "./adjustment-types";
 export interface StoredCase {
   id: string;
   createdAt: number;
+  plateNo: string;
   manufacturer: string;
   model: string;
   memo: string;
@@ -61,6 +62,7 @@ export function emptyCase(): StoredCase {
   return {
     id: newCaseId(),
     createdAt: Date.now(),
+    plateNo: "",
     manufacturer: "",
     model: "",
     memo: "",
@@ -75,7 +77,7 @@ export function emptyCase(): StoredCase {
 export async function loadCases(): Promise<StoredCase[]> {
   try {
     const all = await tx<StoredCase[]>(CASES, "readonly", (s) => s.getAll());
-    return all.sort((a, b) => a.createdAt - b.createdAt);
+    return all.map((c) => ({ ...c, plateNo: c.plateNo ?? "" })).sort((a, b) => a.createdAt - b.createdAt);
   } catch {
     return [];
   }
@@ -115,7 +117,10 @@ export async function loadFiles(id: string): Promise<StoredFiles> {
   }
 }
 
+// 탭 이름: 차량번호 > 제조사 모델 > 새 건 N
 export function caseTitle(c: StoredCase, index: number): string {
+  const plate = (c.plateNo ?? "").trim();
+  if (plate) return plate;
   const name = `${c.manufacturer} ${c.model}`.trim();
   return name || `새 건 ${index + 1}`;
 }

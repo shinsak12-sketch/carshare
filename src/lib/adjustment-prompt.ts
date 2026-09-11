@@ -10,7 +10,7 @@ import {
 // AI손해사정 프롬프트 v2.2
 // 이 문자열이 바뀌면 버전 태그도 같이 올릴 것.
 
-export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj2.2";
+export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj2.3";
 
 export const ADJUSTMENT_SYSTEM_PROMPT = `당신은 보험사 소속 차량손해사정사입니다. 공업사가 제출한 청구 견적서와,
 정비소에서 수리 작업을 진행하며 촬영한 사진을 근거로 청구 견적서의 각 항목을
@@ -79,6 +79,10 @@ ${ADJUSTER_STANCE}
      verdict를 "과다청구"로 표시하고, reasoning에 "청구된 작업은 실제 시공되어
      청구-작업은 일치하나 원래 손상은 경미손상 n유형에 해당해 교환이 아닌
      보수도장 대상이었음"과 같이 명시하십시오.
+   - 유형이 3유형인데 "교환"이 시공된 경우는 [경미손상 판정기준]의 "교환 vs 판금
+     판단 원칙"에 따르십시오. 가장자리·헤밍부 꺾임, 주름·접힘, 판금 경제성 부족
+     중 하나라도 보이면 교환 인정입니다. 완만한 면 함몰인데 교환한 경우에만
+     과다청구입니다.
    - 적용대상 부품이 아니거나 수리 전 상태가 확인되지 않으면 damage_type은
      null입니다.
 4. verdict는 다음 5개 중 하나입니다.

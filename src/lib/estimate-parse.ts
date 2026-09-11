@@ -28,4 +28,22 @@ export interface ParsedEstimateInfo {
   manufacturer: string | null;
   model: string | null;
   year: number | null;
+  // 차량번호는 외부 AI에 보내지 않고 서버에서 정규식으로만 뽑음(탭 이름용, 브라우저에만 저장)
+  plateNumber: string | null;
+}
+
+const REGION = "(?:서울|부산|대구|인천|광주|대전|울산|세종|경기|강원|충북|충남|전북|전남|경북|경남|제주)";
+const PLATE_RE = new RegExp(`(?:${REGION}\\s?)?\\d{2,3}\\s?[가-힣]\\s?\\d{4}`, "g");
+// 번호판 가운데 글자로 실제 쓰이는 용도기호만 허용 — "12월 3456" 같은 오탐 방지
+const PLATE_MID = /^[가나다라마바사아자차카타파하거너더러머버서어저처커터퍼허고노도로모보소오조초코토포호구누두루무부수우주추쿠투푸후배]$/;
+
+export function extractPlateNumber(text: string): string | null {
+  const matches = text.match(PLATE_RE);
+  if (!matches) return null;
+  for (const raw of matches) {
+    const compact = raw.replace(/\s+/g, "");
+    const mid = compact.replace(new RegExp(`^${REGION}`), "").replace(/\d/g, "");
+    if (PLATE_MID.test(mid)) return compact;
+  }
+  return null;
 }
