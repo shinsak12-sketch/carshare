@@ -21,10 +21,18 @@ function rowText(d: ItemDiagnostic, isMain: boolean): string[] {
   const refs = it.photo_refs.length
     ? ` · 근거사진 ${it.photo_refs.join(", ")}`
     : "";
-  return [
+  const lines = [
     head,
     `${indent}        ${it.reasoning}${it.adjustment_note ? ` → ${it.adjustment_note}` : ""}${refs}`,
   ];
+  if (it.cost_comparison) {
+    const c = it.cost_comparison;
+    lines.push(`${indent}        [교환 vs 수리 비교]`);
+    lines.push(`${indent}          교환안(청구서): ${c.replace_option}`);
+    lines.push(`${indent}          수리안(추정): ${c.repair_option}`);
+    lines.push(`${indent}          → ${c.recommendation}`);
+  }
+  return lines;
 }
 
 // 린터 출력 형식: 문제 브랜치(✖ → ⚠)만 먼저 트리로, 통과는 건수 + 목록.

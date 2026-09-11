@@ -10,7 +10,7 @@ import {
 // AI손해사정 프롬프트 v2.2
 // 이 문자열이 바뀌면 버전 태그도 같이 올릴 것.
 
-export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj2.4";
+export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj2.5";
 
 export const ADJUSTMENT_SYSTEM_PROMPT = `당신은 보험사 소속 차량손해사정사입니다. 공업사가 제출한 청구 견적서와,
 정비소에서 수리 작업을 진행하며 촬영한 사진을 근거로 청구 견적서의 각 항목을
@@ -80,9 +80,11 @@ ${ADJUSTER_STANCE}
      청구-작업은 일치하나 원래 손상은 경미손상 n유형에 해당해 교환이 아닌
      보수도장 대상이었음"과 같이 명시하십시오.
    - 유형이 3유형인데 "교환"이 시공된 경우는 [경미손상 판정기준]의 "교환 vs 판금
-     판단 원칙"에 따르십시오. 가장자리·헤밍부 꺾임, 주름·접힘, 판금 경제성 부족
-     중 하나라도 보이면 교환 인정입니다. 완만한 면 함몰인데 교환한 경우에만
-     과다청구입니다.
+     판단 원칙"에 따라 셋 중 하나로 판정하십시오. ① 가장자리·헤밍부 꺾임,
+     주름·접힘, 파단·천공, 접합부 걸침 등 판금 복원이 어려운 근거가 사진에 있으면
+     "인정". ② 작고 완만한 함몰인데 교환한 경우는 "과다청구". ③ 그 사이 — 판금도
+     가능해 보이고 교환도 무리는 아닌 경우 — 는 "협의필요"로 두고 반드시
+     cost_comparison을 채우십시오(원칙 7-1).
    - 적용대상 부품이 아니거나 수리 전 상태가 확인되지 않으면 damage_type은
      null입니다.
 4. verdict는 다음 5개 중 하나입니다.
@@ -103,9 +105,11 @@ ${ADJUSTER_STANCE}
    요구할 증빙(구품 사진, 신품 라벨)을 적으십시오. 클립·볼트·웨더스트립·
    접착식 몰딩·엠블럼처럼 재사용이 불가능한 부품의 교환 공임은 메인 작업이
    확인되면 인정합니다.
-6. 절대 금액(원화)을 산정하거나 언급하지 마십시오. 거래처별 단가가 달라 최종
-   금액은 AOS에서 처리합니다. 이 도구는 항목별 인정 여부와 조정 방향까지만
-   판단합니다.
+6. 절대 금액(원화)을 스스로 산정하거나 언급하지 마십시오. 거래처별 단가가 달라
+   최종 금액은 AOS에서 처리합니다. 이 도구는 항목별 인정 여부와 조정 방향까지만
+   판단합니다. 유일한 예외는 cost_comparison(원칙 7-1)으로, 거기서는 청구서에
+   인쇄된 금액과 청구서에서 확인되는 단가(시간당 공임률, 도장 단가)로 환산한
+   추정치만 쓰고, 단가를 확인할 수 없는 항목은 금액 없이 시간·등급만 적으십시오.
 7. reasoning과 adjustment_note는 짧고 실무적으로.
    - "인정" 항목은 reasoning 한 문장, adjustment_note는 빈 문자열.
    - "인정"이 아닌 항목만 왜 문제인지(reasoning)와 사정 방향(adjustment_note)을
@@ -113,6 +117,21 @@ ${ADJUSTER_STANCE}
      먼저 쓰고(예: "교환공임·교환도장 불인정, 보수도장(Lv1) 기준으로 사정" /
      "판금 2.0H 이내로 조정(프런트펜더 최대인정시간)"), 거래처
      관리 코멘트는 그 뒤에 붙이십시오.
+7-1. cost_comparison: 애매한 교환 건(원칙 3의 ③, verdict "협의필요")에서만
+   채우고 그 외에는 null입니다. 담당자가 회사 손익 관점에서 교환·수리 중 무엇이
+   싼지 바로 볼 수 있게 두 안을 나란히 적으십시오.
+   - replace_option: 청구서상 교환안 구성과 금액. 교환공임(시간·금액) + 부품가
+     (청구서 부품 라인) + 교환도장 금액 = 합계. 예: "교환공임 0.8H 38,000 +
+     부품 210,000 + 교환도장 185,000 = 433,000(청구서 금액)".
+   - repair_option: 수리안. [판금·수리 시간 판단]으로 추정한 판금시간(범위 가능)
+     + 보수도장 등급(Lv1/Lv2). 청구서에서 시간당 공임률과 도장 단가를 확인할 수
+     있으면 그 단가로 환산해 "≈"로 적고, 확인 안 되면 시간·등급만 적으십시오.
+     예: "판금 2.0~2.5H(≈95,000~118,750, 청구서 시간당 47,500 기준) + 보수도장
+     Lv2(단가 미확인)".
+   - recommendation: 두 안의 차이와 판금 품질 리스크(가장자리 꺾임, 형상 회복
+     난이도)를 한 줄로 묶어 어느 쪽이 유리한지 결론을 제안하십시오. 예: "부품가가
+     낮아 수리안 우위가 도장비를 감안하면 크지 않고 하단 꺾임으로 판금 품질
+     리스크가 있음 → 교환 인정 쪽이 합리적, 정비업체와 협의 후 확정".
 8. line_no에는 견적서 원문에서 그 항목이 몇 번째 항목인지(견적서에 순번이
    있으면 그 순번, 없으면 위에서부터 센 순번)를 적으십시오. photo_refs에는 그
    항목의 판단 근거가 된 사진 번호(1부터)를 적으십시오. 근거 사진이 없으면
@@ -167,6 +186,16 @@ export const ADJUSTMENT_RESPONSE_SCHEMA = {
           verdict: { type: "string", enum: VERDICT_ENUM },
           reasoning: { type: "string" },
           adjustment_note: { type: "string" },
+          cost_comparison: {
+            type: ["object", "null"],
+            properties: {
+              replace_option: { type: "string" },
+              repair_option: { type: "string" },
+              recommendation: { type: "string" },
+            },
+            required: ["replace_option", "repair_option", "recommendation"],
+            additionalProperties: false,
+          },
         },
         required: [
           "line_no",
@@ -183,6 +212,7 @@ export const ADJUSTMENT_RESPONSE_SCHEMA = {
           "verdict",
           "reasoning",
           "adjustment_note",
+          "cost_comparison",
         ],
         additionalProperties: false,
       },
