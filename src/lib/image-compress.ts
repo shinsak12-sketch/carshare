@@ -1,15 +1,18 @@
-// 업로드 전 브라우저에서 리사이즈/압축 — 폰 카메라 원본(장당 몇 MB)이 서버
-// 요청 용량 제한(Vercel 서버리스 함수 기준 약 4.5MB)을 넘기지 않도록 함.
+// 업로드 전 브라우저에서 리사이즈/압축 — 폰 카메라 원본(장당 몇 MB)을 긴 변 1400px·JPEG 0.8로
+// 줄여 Blob 업로드·GPT 처리 속도를 올림. 손상 판독엔 충분한 해상도.
 export async function compressImage(
   file: File,
-  maxDimension = 1600,
-  quality = 0.82
+  maxDimension = 1400,
+  quality = 0.8,
 ): Promise<File> {
   if (!file.type.startsWith("image/")) return file;
 
   try {
     const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+    const scale = Math.min(
+      1,
+      maxDimension / Math.max(bitmap.width, bitmap.height),
+    );
     const width = Math.round(bitmap.width * scale);
     const height = Math.round(bitmap.height * scale);
 
@@ -21,7 +24,7 @@ export async function compressImage(
     ctx.drawImage(bitmap, 0, 0, width, height);
 
     const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", quality)
+      canvas.toBlob(resolve, "image/jpeg", quality),
     );
     if (!blob) return file;
 

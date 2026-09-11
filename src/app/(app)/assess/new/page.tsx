@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { PhotoGrid } from "@/components/PhotoGrid";
 import { OpinionEditor } from "@/components/OpinionEditor";
 import { DiagnosticsPanel } from "@/components/DiagnosticsPanel";
 import { uploadPhotos } from "@/lib/upload-photos";
+import { runAiJob } from "@/lib/ai-job-client";
 import type { AssessmentResult } from "@/lib/assessment-types";
 import { buildReportText, splitOpinionItems } from "@/lib/format-report";
 import { buildAssessmentDiagnostics } from "@/lib/assessment-diagnostics";
@@ -99,6 +100,90 @@ export default function NewAssessmentPage() {
       cancelled = true;
     };
   }, [activeId]);
+
+  // 결과를 원래 건에 저장(분석 도중 다른 탭으로 옮겼어도 원래 건에). 새로고침 후 이어받을 때도 씀
+  function storeResult(caseId: string, r: AssessmentResult) {
+    setCases((prev) => {
+      const next = prev.map((c) =>
+        c.id === caseId
+          ? {
+              ...c,
+              result: r,
+              jobId: null,
+              jobImageUrls: [],
+              caseInfo: {
+                manufacturer: c.manufacturer,
+                model: c.model,
+                year: c.year.trim() ? Number(c.year) : undefined,
+              },
+              opinionEdits: { excluded: [], text: {} },
+            }
+          : c,
+      );
+      const updated = next.find((c) => c.id === caseId);
+      if (updated) void saveAssessCase(updated);
+      return next;
+    });
+  }
+
+  // 백그라운드 작업 ID를 건에 기록 — 새로고침해도 결과를 이어받기 위함
+  function markJob(caseId: string, jobId: string, jobImageUrls: string[]) {
+    setCases((prev) => {
+      const next = prev.map((c) =>
+        c.id === caseId ? { ...c, jobId, jobImageUrls } : c,
+      );
+      const updated = next.find((c) => c.id === caseId);
+      if (updated) void saveAssessCase(updated);
+      return next;
+    });
+  }
+
+  // 로드 시 진행 중이던 작업 이어받기 (OpenAI 쪽에서 계속 돌고 있음)
+  const resumedRef = useRef(false);
+  useEffect(() => {
+    if (!hydrated || resumedRef.current) return;
+    resumedRef.current = true;
+    const pending = cases.filter(
+      (c): c is typeof c & { jobId: string } => !!c.jobId && !c.result,
+    );
+    if (!pending.length) return;
+    // effect 본문에서 직접 setState 하지 않고 다음 틱에서 시작
+    const timer = setTimeout(() => {
+      for (const c of pending) {
+        const caseId = c.id;
+        setLoading(true);
+        runAiJob<AssessmentResult>(
+          { jobId: c.jobId },
+          c.jobImageUrls ?? [],
+          setLoadingStep,
+          undefined,
+          "AI 진단 중(이어받기)",
+        )
+          .then((r) => storeResult(caseId, r))
+          .catch((err) => {
+            setError(
+              err instanceof Error
+                ? err.message
+                : "알 수 없는 오류가 발생했습니다.",
+            );
+            setCases((prev) => {
+              const next = prev.map((x) =>
+                x.id === caseId ? { ...x, jobId: null, jobImageUrls: [] } : x,
+              );
+              const updated = next.find((x) => x.id === caseId);
+              if (updated) void saveAssessCase(updated);
+              return next;
+            });
+          })
+          .finally(() => {
+            setLoading(false);
+            setLoadingStep("");
+          });
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
 
   const updateActive = useCallback(
     (patch: Partial<StoredAssessCase>) => {
@@ -206,27 +291,14 @@ export default function NewAssessmentPage() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "요청에 실패했습니다.");
-      const r = data.result as AssessmentResult;
-      // 분석 도중 다른 탭으로 옮겼어도 결과는 원래 건에 저장
-      setCases((prev) => {
-        const next = prev.map((c) =>
-          c.id === caseId
-            ? {
-                ...c,
-                result: r,
-                caseInfo: {
-                  manufacturer: c.manufacturer,
-                  model: c.model,
-                  year: c.year.trim() ? Number(c.year) : undefined,
-                },
-                opinionEdits: { excluded: [], text: {} },
-              }
-            : c,
-        );
-        const updated = next.find((c) => c.id === caseId);
-        if (updated) void saveAssessCase(updated);
-        return next;
-      });
+      const r = await runAiJob<AssessmentResult>(
+        data,
+        imageUrls,
+        setLoadingStep,
+        (jobId) => markJob(caseId, jobId, imageUrls),
+        "AI 진단 중",
+      );
+      storeResult(caseId, r);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.",

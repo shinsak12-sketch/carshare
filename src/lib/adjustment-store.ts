@@ -19,6 +19,9 @@ export interface StoredCase {
   photoCount: number;
   estimateName: string | null;
   result: AdjustmentResult | null;
+  // 진행 중인 OpenAI 백그라운드 작업(새로고침 후 이어받기용). 끝나면 null
+  jobId?: string | null;
+  jobImageUrls?: string[];
   caseInfo: AdjustmentCaseInfo | null;
 }
 

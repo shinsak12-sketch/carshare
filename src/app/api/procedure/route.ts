@@ -1,17 +1,11 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import {
-  createCompletionResilient,
-  getModel,
-  getOpenAI,
-  getReasoningEffort,
-} from "@/lib/openai";
+import { startStructuredJob } from "@/lib/ai-job";
 import {
   PROCEDURE_RESPONSE_SCHEMA,
   PROCEDURE_SYSTEM_PROMPT,
 } from "@/lib/procedure-prompt";
-import type { ProcedureResult } from "@/lib/procedure-types";
 import { getCurrentUser } from "@/lib/session";
-import { deleteBlobs, sweepStaleBlobs } from "@/lib/blob-cleanup";
+import { sweepStaleBlobs } from "@/lib/blob-cleanup";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 
 export const runtime = "nodejs";
@@ -69,70 +63,15 @@ async function handleProcedure(req: NextRequest) {
     `첨부된 사진은 총 ${imageUrls.length}장이며 첨부 순서대로 1번부터 번호가 매겨져 있습니다.`,
   ].filter(Boolean);
 
-  try {
-    return await runProcedure(
-      req,
-      user,
-      manufacturer,
-      model,
-      contextLines,
-      imageUrls,
-    );
-  } finally {
-    // 사진을 저장하지 않는 정책이라, AI 분석이 끝나면(성공/실패 무관) Blob에서 즉시 삭제
-    // 응답 후 실행 보장(after) — 이 건 사진 삭제 + 오래된 찌꺼기 정리
-    after(async () => {
-      await deleteBlobs(imageUrls, "/api/procedure");
-      await sweepStaleBlobs("/api/procedure");
-    });
-  }
-}
-
-async function runProcedure(
-  req: NextRequest,
-  user: NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>,
-  manufacturer: string,
-  model: string,
-  contextLines: (string | null)[],
-  imageUrls: string[],
-) {
-  const openai = getOpenAI();
-  // 손해사정·선견적과 동일
-  const reasoningEffort = getReasoningEffort("medium");
-  const completion = await createCompletionResilient(openai, {
-    model: getModel(),
-    ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
-    messages: [
-      { role: "system", content: PROCEDURE_SYSTEM_PROMPT },
-      {
-        role: "user",
-        content: [
-          { type: "text", text: contextLines.join("\n\n") },
-          ...imageUrls.map((url) => ({
-            type: "image_url" as const,
-            image_url: { url },
-          })),
-        ],
-      },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "procedure_result",
-        schema: PROCEDURE_RESPONSE_SCHEMA,
-        strict: true,
-      },
-    },
+  // 백그라운드 작업으로 시작만 하고 작업 ID 반환. 사진(Blob)은 작업이 끝날 때 /api/ai-job 에서 지움.
+  const started = await startStructuredJob({
+    system: PROCEDURE_SYSTEM_PROMPT,
+    userText: contextLines.join("\n\n"),
+    imageUrls,
+    schemaName: "procedure_result",
+    schema: PROCEDURE_RESPONSE_SCHEMA as unknown as Record<string, unknown>,
+    effort: "medium",
   });
-
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) {
-    return NextResponse.json(
-      { error: "AI 응답을 받지 못했습니다." },
-      { status: 502 },
-    );
-  }
-  const result: ProcedureResult = JSON.parse(raw);
 
   const { ip, userAgent } = getRequestMeta(req);
   void logAudit({
@@ -144,5 +83,9 @@ async function runProcedure(
     userAgent,
   });
 
-  return NextResponse.json({ result });
+  after(async () => {
+    await sweepStaleBlobs("/api/procedure");
+  });
+
+  return NextResponse.json(started);
 }

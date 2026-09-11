@@ -1,17 +1,11 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import {
-  createCompletionResilient,
-  getModel,
-  getOpenAI,
-  getReasoningEffort,
-} from "@/lib/openai";
+import { startStructuredJob } from "@/lib/ai-job";
 import {
   ADJUSTMENT_RESPONSE_SCHEMA,
   ADJUSTMENT_SYSTEM_PROMPT,
 } from "@/lib/adjustment-prompt";
-import type { AdjustmentResult } from "@/lib/adjustment-types";
 import { getCurrentUser } from "@/lib/session";
-import { deleteBlobs, sweepStaleBlobs } from "@/lib/blob-cleanup";
+import { sweepStaleBlobs } from "@/lib/blob-cleanup";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 import { isPdfFile, extractEstimateText } from "@/lib/estimate-pdf";
 import { redactPersonalInfo } from "@/lib/pii-redact";
@@ -95,63 +89,29 @@ async function handleAdjustment(req: NextRequest) {
     `첨부된 사진은 파손 상태 사진이 아니라 수리작업 진행/완료 사진이며, 총 ${imageUrls.length}장이 첨부 순서대로 1번부터 번호가 매겨져 있습니다.`,
   ].filter(Boolean);
 
-  try {
-    const openai = getOpenAI();
-    // 사진 100장·항목 100개 건은 low로는 뒤쪽 항목이 형식적으로 처리돼서 medium
-    const reasoningEffort = getReasoningEffort("medium");
-    const completion = await createCompletionResilient(openai, {
-      model: getModel(),
-      ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
-      messages: [
-        { role: "system", content: ADJUSTMENT_SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: contextLines.join("\n\n") },
-            ...imageUrls.map((url) => ({
-              type: "image_url" as const,
-              image_url: { url },
-            })),
-          ],
-        },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "adjustment_result",
-          schema: ADJUSTMENT_RESPONSE_SCHEMA,
-          strict: true,
-        },
-      },
-    });
+  // 백그라운드 작업으로 시작만 하고 작업 ID 반환. 사진(Blob)은 작업이 끝날 때 /api/ai-job 에서 지움.
+  const started = await startStructuredJob({
+    system: ADJUSTMENT_SYSTEM_PROMPT,
+    userText: contextLines.join("\n\n"),
+    imageUrls,
+    schemaName: "adjustment_result",
+    schema: ADJUSTMENT_RESPONSE_SCHEMA as unknown as Record<string, unknown>,
+    effort: "medium",
+  });
 
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw) {
-      return NextResponse.json(
-        { error: "AI 응답을 받지 못했습니다." },
-        { status: 502 },
-      );
-    }
-    const result: AdjustmentResult = JSON.parse(raw);
+  const { ip, userAgent } = getRequestMeta(req);
+  void logAudit({
+    action: AuditAction.ADJUSTMENT_CHECKED,
+    actorUserId: user.id,
+    actorEmployeeId: user.employeeId,
+    detail: `${manufacturer} ${model}`.trim() || "차량정보 미입력",
+    ip,
+    userAgent,
+  });
 
-    const { ip, userAgent } = getRequestMeta(req);
-    void logAudit({
-      action: AuditAction.ADJUSTMENT_CHECKED,
-      actorUserId: user.id,
-      actorEmployeeId: user.employeeId,
-      detail: `${manufacturer} ${model}`.trim() || "차량정보 미입력",
-      ip,
-      userAgent,
-    });
+  after(async () => {
+    await sweepStaleBlobs("/api/adjustment");
+  });
 
-    return NextResponse.json({ result });
-  } finally {
-    // 사진을 저장하지 않는 정책이라, AI 분석이 끝나면(성공/실패 무관) Blob에서
-    // 즉시 삭제함 — Blob은 사진이 GPT에 전달되는 동안만 잠깐 거쳐가는 통로.
-    // 응답 후 실행 보장(after) — 이 건 사진 삭제 + 오래된 찌꺼기 정리
-    after(async () => {
-      await deleteBlobs(imageUrls, "/api/adjustment");
-      await sweepStaleBlobs("/api/adjustment");
-    });
-  }
+  return NextResponse.json(started);
 }

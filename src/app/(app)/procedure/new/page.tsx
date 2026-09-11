@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { PhotoGrid } from "@/components/PhotoGrid";
 import { ProcedureMasterDetail } from "@/components/ProcedureItemPanels";
 import { uploadPhotos } from "@/lib/upload-photos";
+import { runAiJob } from "@/lib/ai-job-client";
 import { buildProcedureReportText } from "@/lib/format-procedure-report";
 import { buildProcedureReviewItems } from "@/lib/procedure-review-items";
 import type { ProcedureResult } from "@/lib/procedure-types";
@@ -101,6 +102,89 @@ export default function NewProcedurePage() {
     };
   }, [activeId]);
 
+  // 결과를 원래 건에 저장(분석 도중 다른 탭으로 옮겼어도 원래 건에). 새로고침 후 이어받을 때도 씀
+  function storeResult(caseId: string, r: ProcedureResult) {
+    setCases((prev) => {
+      const next = prev.map((c) =>
+        c.id === caseId
+          ? {
+              ...c,
+              result: r,
+              jobId: null,
+              jobImageUrls: [],
+              caseInfo: {
+                manufacturer: c.manufacturer || undefined,
+                model: c.model || undefined,
+              },
+              summaryDraft: r.overall_summary,
+            }
+          : c,
+      );
+      const updated = next.find((c) => c.id === caseId);
+      if (updated) void saveProcedureCase(updated);
+      return next;
+    });
+  }
+
+  // 백그라운드 작업 ID를 건에 기록 — 새로고침해도 결과를 이어받기 위함
+  function markJob(caseId: string, jobId: string, jobImageUrls: string[]) {
+    setCases((prev) => {
+      const next = prev.map((c) =>
+        c.id === caseId ? { ...c, jobId, jobImageUrls } : c,
+      );
+      const updated = next.find((c) => c.id === caseId);
+      if (updated) void saveProcedureCase(updated);
+      return next;
+    });
+  }
+
+  // 로드 시 진행 중이던 작업 이어받기 (OpenAI 쪽에서 계속 돌고 있음)
+  const resumedRef = useRef(false);
+  useEffect(() => {
+    if (!hydrated || resumedRef.current) return;
+    resumedRef.current = true;
+    const pending = cases.filter(
+      (c): c is typeof c & { jobId: string } => !!c.jobId && !c.result,
+    );
+    if (!pending.length) return;
+    // effect 본문에서 직접 setState 하지 않고 다음 틱에서 시작
+    const timer = setTimeout(() => {
+      for (const c of pending) {
+        const caseId = c.id;
+        setLoading(true);
+        runAiJob<ProcedureResult>(
+          { jobId: c.jobId },
+          c.jobImageUrls ?? [],
+          setLoadingStep,
+          undefined,
+          "AI 판단 중(이어받기)",
+        )
+          .then((r) => storeResult(caseId, r))
+          .catch((err) => {
+            setError(
+              err instanceof Error
+                ? err.message
+                : "알 수 없는 오류가 발생했습니다.",
+            );
+            setCases((prev) => {
+              const next = prev.map((x) =>
+                x.id === caseId ? { ...x, jobId: null, jobImageUrls: [] } : x,
+              );
+              const updated = next.find((x) => x.id === caseId);
+              if (updated) void saveProcedureCase(updated);
+              return next;
+            });
+          })
+          .finally(() => {
+            setLoading(false);
+            setLoadingStep("");
+          });
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
+
   const updateActive = useCallback(
     (patch: Partial<StoredProcedureCase>) => {
       if (!activeId) return;
@@ -181,25 +265,14 @@ export default function NewProcedurePage() {
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "요청에 실패했습니다.");
-      const r = data.result as ProcedureResult;
-      setCases((prev) => {
-        const next = prev.map((c) =>
-          c.id === caseId
-            ? {
-                ...c,
-                result: r,
-                caseInfo: {
-                  manufacturer: c.manufacturer || undefined,
-                  model: c.model || undefined,
-                },
-                summaryDraft: r.overall_summary,
-              }
-            : c,
-        );
-        const updated = next.find((c) => c.id === caseId);
-        if (updated) void saveProcedureCase(updated);
-        return next;
-      });
+      const r = await runAiJob<ProcedureResult>(
+        data,
+        imageUrls,
+        setLoadingStep,
+        (jobId) => markJob(caseId, jobId, imageUrls),
+        "AI 판단 중",
+      );
+      storeResult(caseId, r);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.",

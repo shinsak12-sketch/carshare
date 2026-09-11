@@ -1,18 +1,13 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import {
-  createCompletionResilient,
-  getModel,
-  getOpenAI,
-  getReasoningEffort,
-} from "@/lib/openai";
+import { startStructuredJob } from "@/lib/ai-job";
 import {
   ASSESSMENT_RESPONSE_SCHEMA,
   SYSTEM_PROMPT,
 } from "@/lib/assessment-prompt";
 import { matchReferenceSections } from "@/lib/reference-sections";
-import type { AssessmentResult, VehicleInfo } from "@/lib/assessment-types";
+import type { VehicleInfo } from "@/lib/assessment-types";
 import { getCurrentUser } from "@/lib/session";
-import { deleteBlobs, sweepStaleBlobs } from "@/lib/blob-cleanup";
+import { sweepStaleBlobs } from "@/lib/blob-cleanup";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 import { isPdfFile, extractEstimateText } from "@/lib/estimate-pdf";
 import { redactPersonalInfo } from "@/lib/pii-redact";
@@ -79,23 +74,13 @@ async function handleAssess(req: NextRequest) {
     );
   }
 
-  try {
-    return await runAssess(
-      req,
-      user,
-      vehicle,
-      imageUrls,
-      hasEstimate ? (estimateFile as File) : null,
-    );
-  } finally {
-    // 사진을 저장하지 않는 정책이라, AI 분석이 끝나면(성공/실패 무관) Blob에서
-    // 즉시 삭제함 — Blob은 사진이 GPT에 전달되는 동안만 잠깐 거쳐가는 통로.
-    // 응답 후 실행 보장(after) — 이 건 사진 삭제 + 오래된 찌꺼기 정리
-    after(async () => {
-      await deleteBlobs(imageUrls, "/api/assess");
-      await sweepStaleBlobs("/api/assess");
-    });
-  }
+  return await runAssess(
+    req,
+    user,
+    vehicle,
+    imageUrls,
+    hasEstimate ? (estimateFile as File) : null,
+  );
 }
 
 async function runAssess(
@@ -128,46 +113,17 @@ async function runAssess(
     `첨부된 사진은 총 ${imageUrls.length}장이며 첨부 순서대로 1번부터 번호가 매겨져 있습니다.`,
   ].filter(Boolean);
 
-  const openai = getOpenAI();
-  // 손해사정과 동일 — 사진이 많으면 low로는 뒤쪽 사진·항목이 형식적으로 처리됨
-  const reasoningEffort = getReasoningEffort("medium");
-  const completion = await createCompletionResilient(openai, {
-    model: getModel(),
-    ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      {
-        role: "user",
-        content: [
-          { type: "text", text: contextLines.join("\n\n") },
-          ...imageUrls.map((url) => ({
-            type: "image_url" as const,
-            image_url: { url },
-          })),
-        ],
-      },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "assessment_result",
-        schema: ASSESSMENT_RESPONSE_SCHEMA,
-        strict: true,
-      },
-    },
+  // 백그라운드 작업으로 시작만 하고 작업 ID 반환. 사진(Blob)은 작업이 끝날 때 /api/ai-job 에서 지움.
+  const started = await startStructuredJob({
+    system: SYSTEM_PROMPT,
+    userText: contextLines.join("\n\n"),
+    imageUrls,
+    schemaName: "assessment_result",
+    schema: ASSESSMENT_RESPONSE_SCHEMA as unknown as Record<string, unknown>,
+    effort: "medium",
   });
 
-  const raw = completion.choices[0]?.message?.content;
-  if (!raw) {
-    return NextResponse.json(
-      { error: "AI 응답을 받지 못했습니다." },
-      { status: 502 },
-    );
-  }
-  const aiResult: AssessmentResult = JSON.parse(raw);
-
   // 결과·사진·선견적 원문 모두 서버에 저장하지 않음(손해사정과 동일). 브라우저 캐시에만 남음.
-
   const { ip, userAgent } = getRequestMeta(req);
   void logAudit({
     action: AuditAction.ASSESSMENT_SUBMITTED,
@@ -178,5 +134,9 @@ async function runAssess(
     userAgent,
   });
 
-  return NextResponse.json({ result: aiResult });
+  after(async () => {
+    await sweepStaleBlobs("/api/assess");
+  });
+
+  return NextResponse.json(started);
 }
