@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { matchDiagramZones } from "@/lib/damage-diagram-zones";
 import type {
   DamagedPartSummary,
@@ -16,11 +17,11 @@ import type {
 type ZoneStatus = "confirmed" | "suspected";
 
 const COLOR = {
-  body: 0xe2e8f0,
+  body: 0xd6dce6,
   bodyDark: 0xcbd5e1,
-  confirmed: 0xf87171,
-  suspected: 0xfbbf24,
-  glass: 0x93c5fd,
+  confirmed: 0xef4444,
+  suspected: 0xf59e0b,
+  glass: 0x7fb3e6,
   wheel: 0x1e293b,
   rim: 0x94a3b8,
   edge: 0x475569,
@@ -257,17 +258,19 @@ function buildCar(
       ? new THREE.MeshPhysicalMaterial({
           color: COLOR.glass,
           transparent: true,
-          opacity: 0.5,
-          roughness: 0.08,
+          opacity: 0.42,
+          roughness: 0.1,
           metalness: 0.05,
-          clearcoat: 1,
+          clearcoat: 0.6,
+          envMapIntensity: 0.35,
         })
       : new THREE.MeshPhysicalMaterial({
           color: meta.color ?? COLOR.body,
-          roughness: 0.42,
-          metalness: 0.12,
-          clearcoat: 0.5,
-          clearcoatRoughness: 0.3,
+          roughness: 0.32,
+          metalness: 0.1,
+          clearcoat: 0.9,
+          clearcoatRoughness: 0.12,
+          envMapIntensity: 0.55,
         });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.castShadow = !meta.glass;
@@ -458,6 +461,61 @@ function buildCar(
     void group;
     add("pillars", merged, { edges: false });
   }
+  // 디테일(손상 매칭 없음): 그릴 슬랫·하부 인테이크·번호판·도어 핸들·사이드실 트림
+  {
+    const trimMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      roughness: 0.7,
+      metalness: 0.2,
+    });
+    const chrome = new THREE.MeshStandardMaterial({
+      color: 0xcbd5e1,
+      roughness: 0.2,
+      metalness: 0.9,
+    });
+    const plate = new THREE.MeshStandardMaterial({ color: 0xf8fafc });
+    const addDeco = (geo: THREE.BufferGeometry, mat: THREE.Material) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.castShadow = true;
+      scene.add(m);
+    };
+    for (let i = 0; i < 4; i++)
+      addDeco(
+        new THREE.BoxGeometry(0.7, 0.012, 0.02).translate(
+          0,
+          0.76 + i * 0.04,
+          2.35,
+        ),
+        chrome,
+      );
+    addDeco(
+      roundedBox(1.0, 0.12, 0.06, 0.03).translate(0, 0.36, 2.37),
+      trimMat,
+    );
+    addDeco(
+      roundedBox(0.9, 0.1, 0.05, 0.02).translate(0, 0.36, -2.37),
+      trimMat,
+    );
+    addDeco(
+      new THREE.BoxGeometry(0.34, 0.09, 0.012).translate(0, 0.5, 2.39),
+      plate,
+    );
+    addDeco(
+      new THREE.BoxGeometry(0.34, 0.09, 0.012).translate(0, 0.62, -2.39),
+      plate,
+    );
+    for (const x of [-0.93, 0.93]) {
+      for (const z of [0.25, -0.75])
+        addDeco(
+          roundedBox(0.02, 0.03, 0.14, 0.01).translate(x, 0.86, z),
+          chrome,
+        );
+      addDeco(
+        new THREE.BoxGeometry(0.03, 0.05, 3.4).translate(x * 0.97, 0.29, 0),
+        trimMat,
+      );
+    }
+  }
   // 미러
   for (const [sfx, x] of [
     ["L", -1.0],
@@ -499,6 +557,27 @@ function buildCar(
     hub.rotation.z = Math.PI / 2;
     hub.position.set(x, WHEEL_Y, z);
     scene.add(hub);
+    // 림 안쪽 어두운 면 + 스포크 5개
+    const dark = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.19, 0.19, 0.2, 24),
+      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.6 }),
+    );
+    dark.rotation.z = Math.PI / 2;
+    dark.position.set(x, WHEEL_Y, z);
+    scene.add(dark);
+    const spokeMat = new THREE.MeshStandardMaterial({
+      color: COLOR.rim,
+      roughness: 0.25,
+      metalness: 0.7,
+    });
+    for (let i = 0; i < 5; i++) {
+      const g = new THREE.BoxGeometry(0.035, 0.28, 0.05);
+      g.translate(0, 0.13, 0); // 중심에서 바깥으로
+      g.rotateX((i * Math.PI * 2) / 5); // 바퀴 면(Y-Z) 안에서 회전
+      const sp = new THREE.Mesh(g, spokeMat);
+      sp.position.set(x + (x > 0 ? 0.11 : -0.11), WHEEL_Y, z);
+      scene.add(sp);
+    }
   }
   return meshes;
 }
@@ -539,7 +618,7 @@ const VIEWS: Record<ViewKey, { label: string; pos: [number, number, number] }> =
     rear: { label: "후면", pos: [0, 1.6, -7.2] },
     left: { label: "좌측", pos: [-7.2, 1.6, 0] },
     right: { label: "우측", pos: [7.2, 1.6, 0] },
-    top: { label: "위", pos: [0, 11.5, 1.2] },
+    top: { label: "위", pos: [0, 9.6, 1.0] },
   };
 
 function computeStatus(
@@ -602,6 +681,8 @@ export function Car3DDiagram({
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.92;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
@@ -615,8 +696,12 @@ export function Car3DDiagram({
     controls.maxDistance = 14;
     controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
-    scene.add(new THREE.HemisphereLight(0xffffff, 0xcbd5e1, 1.1));
-    const key = new THREE.DirectionalLight(0xffffff, 1.4);
+    // 스튜디오 환경광 — 도장 광택·유리 반사가 살아남 (파일 없이 절차적으로 생성)
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
+    scene.add(new THREE.HemisphereLight(0xffffff, 0xcbd5e1, 0.35));
+    const key = new THREE.DirectionalLight(0xffffff, 1.1);
     key.position.set(4, 7, 5);
     key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024);
@@ -625,7 +710,7 @@ export function Car3DDiagram({
     key.shadow.camera.top = 4;
     key.shadow.camera.bottom = -4;
     scene.add(key);
-    const fill = new THREE.DirectionalLight(0xffffff, 0.5);
+    const fill = new THREE.DirectionalLight(0xffffff, 0.3);
     fill.position.set(-5, 3, -4);
     scene.add(fill);
 
@@ -640,7 +725,7 @@ export function Car3DDiagram({
     scene.add(ground);
     const disc = new THREE.Mesh(
       new THREE.CircleGeometry(4.2, 64),
-      new THREE.MeshBasicMaterial({ color: 0xf1f5f9 }),
+      new THREE.MeshBasicMaterial({ color: 0xf8fafc }),
     );
     disc.rotation.x = -Math.PI / 2;
     disc.position.y = -0.005;
@@ -744,7 +829,7 @@ export function Car3DDiagram({
             ? 0x78350f
             : 0x000000,
       );
-      mat.emissiveIntensity = st ? 0.22 : 0;
+      mat.emissiveIntensity = st ? 0.35 : 0;
       mat.needsUpdate = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
