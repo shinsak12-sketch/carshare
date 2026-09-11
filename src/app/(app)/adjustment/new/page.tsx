@@ -374,7 +374,7 @@ export default function NewAdjustmentPage() {
           className="mb-4 grid shrink-0 grid-cols-1 gap-3 rounded-2xl rounded-tl-none border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)] md:grid-cols-2 xl:grid-cols-[1.1fr_1.1fr_120px_110px_110px_1.4fr_auto] xl:items-start"
         >
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-600">
+            <label className="mb-1 block truncate text-xs font-semibold text-slate-600">
               청구 견적서 (필수, PDF)
               {estimateFile && (
                 <span className="ml-2 font-normal text-slate-400">
@@ -412,7 +412,7 @@ export default function NewAdjustmentPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-slate-600">
+            <label className="mb-1 block truncate text-xs font-semibold text-slate-600">
               수리작업 사진 (필수, 여러 장)
               {photos.length > 0 && (
                 <span className="ml-2 font-normal text-slate-400">
