@@ -1,13 +1,26 @@
-import type { DamagedPartSummary, ProcedureResult, SuspectedHiddenDamage } from "./procedure-types";
+import type {
+  DamagedPartSummary,
+  ProcedureResult,
+  SuspectedHiddenDamage,
+} from "./procedure-types";
 import { isMinorDamageType } from "./review-items";
 
 // 정비공정 도구는 청구 타당성을 다투는 게 아니라 "무슨 작업이 필요한가"를
 // 미리 판단하는 도구라, 선견적진단의 인정/불인정 같은 판정 배지가 그대로
 // 맞지 않음. 그래서 이 도구 성격에 맞는 배지 어휘를 따로 둠 — 색 언어
 // (초록/파랑/빨강/주황)는 선견적진단과 통일해 같은 화면처럼 보이게 함.
-export type ProcedureBadge = "손상없음" | "손상확인" | "의심도 높음" | "의심도 중간" | "의심도 낮음" | "확인필요";
+export type ProcedureBadge =
+  | "손상없음"
+  | "손상확인"
+  | "의심도 높음"
+  | "의심도 중간"
+  | "의심도 낮음"
+  | "확인필요";
 
-export const PROCEDURE_BADGE_STYLES: Record<ProcedureBadge, { bar: string; badge: string }> = {
+export const PROCEDURE_BADGE_STYLES: Record<
+  ProcedureBadge,
+  { bar: string; badge: string }
+> = {
   손상없음: { bar: "bg-emerald-500", badge: "bg-emerald-600" },
   손상확인: { bar: "bg-sky-500", badge: "bg-sky-600" },
   "의심도 높음": { bar: "bg-red-500", badge: "bg-red-600" },
@@ -16,8 +29,15 @@ export const PROCEDURE_BADGE_STYLES: Record<ProcedureBadge, { bar: string; badge
   확인필요: { bar: "bg-red-500", badge: "bg-red-600" },
 };
 
-export type ProcedureReviewItem =
-  | { id: string; kind: "consistency"; badge: ProcedureBadge; title: string; section: string; warning: string }
+export type ProcedureReviewItem = { photoRefs: number[] } & (
+  | {
+      id: string;
+      kind: "consistency";
+      badge: ProcedureBadge;
+      title: string;
+      section: string;
+      warning: string;
+    }
   | {
       id: string;
       kind: "part";
@@ -34,13 +54,16 @@ export type ProcedureReviewItem =
       title: string;
       section: string;
       hidden: SuspectedHiddenDamage;
-    };
+    }
+);
 
 function withSide(name: string, side: string): string {
   return side !== "중앙" ? `${name}(${side})` : name;
 }
 
-export function buildProcedureReviewItems(result: ProcedureResult): ProcedureReviewItem[] {
+export function buildProcedureReviewItems(
+  result: ProcedureResult,
+): ProcedureReviewItem[] {
   const items: ProcedureReviewItem[] = [];
 
   if (!result.physical_consistency.consistent) {
@@ -51,6 +74,7 @@ export function buildProcedureReviewItems(result: ProcedureResult): ProcedureRev
       title: "사고 정합성 경고",
       section: "정합성",
       warning: result.physical_consistency.warning,
+      photoRefs: [],
     });
   }
 
@@ -60,10 +84,13 @@ export function buildProcedureReviewItems(result: ProcedureResult): ProcedureRev
       id: `part-${i}`,
       kind: "part",
       badge: noDamage ? "손상없음" : "손상확인",
-      damageType: isMinorDamageType(part.damage_type) ? part.damage_type : undefined,
+      damageType: isMinorDamageType(part.damage_type)
+        ? part.damage_type
+        : undefined,
       title: withSide(part.part_name, part.side),
       section: "손상 부위",
       part,
+      photoRefs: part.photo_refs ?? [],
     });
   });
 
@@ -75,6 +102,7 @@ export function buildProcedureReviewItems(result: ProcedureResult): ProcedureRev
       title: withSide(hidden.item, hidden.side),
       section: "정밀점검 필요 — 추정 손상",
       hidden,
+      photoRefs: hidden.photo_refs ?? [],
     });
   });
 

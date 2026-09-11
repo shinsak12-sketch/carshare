@@ -9,11 +9,16 @@ export function buildProcedureSummaryText(result: ProcedureResult): string {
   return result.overall_summary;
 }
 
-export function buildProcedureReportText(caseInfo: ProcedureCaseInfo, result: ProcedureResult): string {
+export function buildProcedureReportText(
+  caseInfo: ProcedureCaseInfo,
+  result: ProcedureResult,
+): string {
   const lines: string[] = ["정비공정 사전판단 (AI, 선견적 이전 참고용)", ""];
 
   if (caseInfo.manufacturer || caseInfo.model) {
-    lines.push(`차량: ${caseInfo.manufacturer ?? ""} ${caseInfo.model ?? ""}`.trim());
+    lines.push(
+      `차량: ${caseInfo.manufacturer ?? ""} ${caseInfo.model ?? ""}`.trim(),
+    );
     lines.push("");
   }
 
@@ -25,7 +30,12 @@ export function buildProcedureReportText(caseInfo: ProcedureCaseInfo, result: Pr
   lines.push("[손상 부위]");
   result.damaged_parts.forEach((part) => {
     const side = part.side !== "중앙" ? `(${part.side}) ` : "";
-    lines.push(`- ${part.part_name} ${side}(${part.damage_type}): ${part.reasoning}`);
+    const refs = part.photo_refs?.length
+      ? ` · 근거사진 ${part.photo_refs.join(", ")}`
+      : "";
+    lines.push(
+      `- ${part.part_name} ${side}(${part.damage_type}): ${part.reasoning}${refs}`,
+    );
   });
   lines.push("");
 
@@ -33,7 +43,12 @@ export function buildProcedureReportText(caseInfo: ProcedureCaseInfo, result: Pr
     lines.push("[정밀점검 필요 — 추정 손상, 사람 확인 필요]");
     result.suspected_hidden_damage.forEach((issue) => {
       const side = issue.side !== "중앙" ? `(${issue.side}) ` : "";
-      lines.push(`- ${issue.item} ${side}(의심도: ${issue.suspicion_level}): ${issue.reasoning}`);
+      const refs = issue.photo_refs?.length
+        ? ` · 단서사진 ${issue.photo_refs.join(", ")}`
+        : "";
+      lines.push(
+        `- ${issue.item} ${side}(의심도: ${issue.suspicion_level}): ${issue.reasoning}${refs}`,
+      );
       lines.push(`  확인방법: ${issue.recommended_check}`);
     });
     lines.push("");

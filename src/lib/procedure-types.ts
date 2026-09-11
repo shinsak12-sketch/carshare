@@ -11,6 +11,8 @@ export interface DamagedPartSummary {
   damage_type: DamageType;
   reasoning: string;
   evidence_confidence: Confidence;
+  // 판단 근거가 된 사진 번호(1부터). 화면에서 해당 사진 강조에 씀.
+  photo_refs?: number[];
 }
 
 export type SuspicionLevel = "높음" | "중간" | "낮음";
@@ -25,6 +27,7 @@ export interface SuspectedHiddenDamage {
   suspicion_level: SuspicionLevel;
   reasoning: string;
   recommended_check: string;
+  photo_refs?: number[];
 }
 
 export interface ProcedureStep {

@@ -1,11 +1,15 @@
-import { ADJUSTER_STANCE, MINOR_DAMAGE_CRITERIA, LABOR_TIME_JUDGMENT } from "./assessment-prompt";
+import {
+  ADJUSTER_STANCE,
+  MINOR_DAMAGE_CRITERIA,
+  LABOR_TIME_JUDGMENT,
+} from "./assessment-prompt";
 
 // 정비공정 판단 — 아직 견적서가 없는 단계에서 파손 사진만 보고 "실제로
 // 무슨 작업을, 어떤 순서와 세부 절차로 해야 하는지"를 공정표처럼 제안하는
 // 도구. 기존 선견적진단(assessment-prompt)은 "청구된 내용이 맞는지 검증"
 // 하는 게 목적이라 서로 역할이 다름. 청구서가 없으므로 부수작업·도장·근거없는
 // 청구 블록(C·D·F)은 쓰지 않음.
-export const PROCEDURE_PROMPT_VERSION_TAG = "p2.2";
+export const PROCEDURE_PROMPT_VERSION_TAG = "p2.3";
 
 export const PROCEDURE_SYSTEM_PROMPT = `당신은 자동차 정비/충돌수리 전문지식을 갖춘 정비 공정 설계 AI이며, 보험사
 손해사정 부서를 위해 일합니다. 아직 선견적이 작성되지 않은 상태에서 파손
@@ -87,6 +91,10 @@ part_name/item 안에 "좌측/우측"을 넣지 말고 side 필드로만 표시�
    대상이 아니며 실제 작업범위·수리비가 커질 수 있다"는 취지를, 말미에 "이
    결과는 선견적 작성 전 참고용 사전판단이며 실제 견적서 접수 후에는
    [선견적진단] 도구로 다시 검증해야 한다"는 취지를 짧게 덧붙이십시오.
+10. photo_refs에는 그 판단의 근거가 된 사진 번호(첨부 순서대로 1부터)를
+    적으십시오. damaged_parts와 suspected_hidden_damage 모두 해당합니다.
+    추정 손상은 직접 보이지 않으므로 추정의 단서가 된 사진(충격 부위·변형
+    패턴이 보이는 사진)을 적고, 단서 사진이 없으면 빈 배열로 두십시오.
 
 ${MINOR_DAMAGE_CRITERIA}
 
@@ -164,9 +172,20 @@ export const PROCEDURE_RESPONSE_SCHEMA = {
             enum: ["1유형", "2유형", "3유형", "비대상(교환예외)", "손상없음"],
           },
           reasoning: { type: "string" },
-          evidence_confidence: { type: "string", enum: ["높음", "중간", "낮음"] },
+          evidence_confidence: {
+            type: "string",
+            enum: ["높음", "중간", "낮음"],
+          },
+          photo_refs: { type: "array", items: { type: "integer" } },
         },
-        required: ["part_name", "side", "damage_type", "reasoning", "evidence_confidence"],
+        required: [
+          "part_name",
+          "side",
+          "damage_type",
+          "reasoning",
+          "evidence_confidence",
+          "photo_refs",
+        ],
       },
     },
     suspected_hidden_damage: {
@@ -180,8 +199,16 @@ export const PROCEDURE_RESPONSE_SCHEMA = {
           suspicion_level: { type: "string", enum: ["높음", "중간", "낮음"] },
           reasoning: { type: "string" },
           recommended_check: { type: "string" },
+          photo_refs: { type: "array", items: { type: "integer" } },
         },
-        required: ["item", "side", "suspicion_level", "reasoning", "recommended_check"],
+        required: [
+          "item",
+          "side",
+          "suspicion_level",
+          "reasoning",
+          "recommended_check",
+          "photo_refs",
+        ],
       },
     },
     process_stages: {
