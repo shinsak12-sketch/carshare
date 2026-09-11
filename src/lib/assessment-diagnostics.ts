@@ -23,6 +23,40 @@ const FINDING_VERDICT: Record<string, VerdictLabel> = {
   확인불가: "조사필요",
 };
 
+// 이름 비교용 정규화 — 공백·괄호·"신품"·"어셈블리" 같은 장식을 걷어내고 핵심만 남김.
+// AI가 같은 작업을 "시그널램프(펜더부착)(우) 교환" / "시그널램프 신품교환"처럼 다르게
+// 적어도 같은 것으로 잡기 위함.
+const ACTION_WORDS =
+  /(탈부착|탈착|재장착|장착|신품교환|교환|판금|도장|수리|복원|점검|조정|O\/H|오버홀)/g;
+function normName(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, "")
+    .replace(/어셈블리|어셈블리|assy|ass'y|신품|기존|좌측|우측|·|,|\s+/g, "")
+    .trim();
+}
+function actionKind(s: string): string {
+  const m = s.match(ACTION_WORDS);
+  if (!m) return "";
+  const a = m[m.length - 1];
+  if (a === "탈부착" || a === "탈착" || a === "재장착" || a === "장착")
+    return "탈착";
+  if (a === "신품교환" || a === "교환") return "교환";
+  return a;
+}
+function sameWork(a: string, b: string): boolean {
+  const na = normName(a.replace(ACTION_WORDS, ""));
+  const nb = normName(b.replace(ACTION_WORDS, ""));
+  if (!na || !nb) return false;
+  const nounHit = na.includes(nb) || nb.includes(na);
+  const ka = actionKind(a);
+  const kb = actionKind(b);
+  return nounHit && (!ka || !kb || ka === kb);
+}
+function samePart(concernItem: string, part: PartAssessment): boolean {
+  return sameWork(concernItem, `${part.part_name} ${part.claimed_action}`);
+}
+
 function partView(part: PartAssessment, lineNo: number): DiagItemView {
   const extras: DiagItemView["extras"] = [];
   const lt = part.labor_time_check;
@@ -90,27 +124,39 @@ export function buildAssessmentDiagnostics(
     : result.overall_repair_scope_review.concerns;
   const concernUsed = new Set<number>();
 
+  // concern은 정확 일치 → 정규화 일치 순으로, 역할(메인/도장/부수) 무관하게 해당 행에 붙임.
+  // 판정은 parts 행이 기준이고 concern은 지적 내용만 부가 검토로.
   result.parts.forEach((part, i) => {
     const view = partView(part, i + 1);
     const key = part.group || part.part_name;
     concerns.forEach((c, ci) => {
-      const hit =
-        c.item.includes(part.part_name) ||
-        part.part_name.includes(c.item) ||
-        (part.group ? c.item.includes(part.group) : false);
-      if (hit && !concernUsed.has(ci) && (part.role ?? "메인") === "메인") {
+      if (concernUsed.has(ci)) return;
+      const exact =
+        c.item === part.part_name || c.item.includes(part.part_name);
+      if (exact || samePart(c.item, part)) {
         concernUsed.add(ci);
-        view.extras.unshift({
-          tone: "warn",
-          label: "수리범위",
-          text: `${c.issue} — ${c.reasoning}`,
-        });
+        if (!part.reasoning.includes(c.reasoning.slice(0, 20))) {
+          view.extras.unshift({
+            tone: "warn",
+            label: "수리범위",
+            text: `${c.issue} — ${c.reasoning}`,
+          });
+        }
       }
     });
     push(key, makeDiagnostic(`part-${i}`, view));
 
-    // 부수작업 검토 → 그 부위의 자식 행
+    // 부수작업 검토 → 그 부위의 자식 행. 같은 그룹 parts에 이미 같은 작업이 별도 항목으로
+    // 있으면 중복이므로 버림 — 청구 라인이 있는 parts 행이 판정 기준.
+    const groupParts = result.parts.filter(
+      (p) => (p.group || p.part_name) === key,
+    );
     part.ancillary_work_check.forEach((a, j) => {
+      const dup = groupParts.some(
+        (p) =>
+          p !== part && sameWork(a.item, `${p.part_name} ${p.claimed_action}`),
+      );
+      if (dup) return;
       const ok = a.mechanically_plausible && a.in_allowed_list !== false;
       push(
         key,
