@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-import { del } from "@vercel/blob";
+import { after, NextRequest, NextResponse } from "next/server";
 import {
   createCompletionResilient,
   getModel,
@@ -12,6 +11,7 @@ import {
 } from "@/lib/procedure-prompt";
 import type { ProcedureResult } from "@/lib/procedure-types";
 import { getCurrentUser } from "@/lib/session";
+import { deleteBlobs, sweepStaleBlobs } from "@/lib/blob-cleanup";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 
 export const runtime = "nodejs";
@@ -80,8 +80,10 @@ async function handleProcedure(req: NextRequest) {
     );
   } finally {
     // 사진을 저장하지 않는 정책이라, AI 분석이 끝나면(성공/실패 무관) Blob에서 즉시 삭제
-    void del(imageUrls).catch((err) => {
-      console.error("[/api/procedure] blob cleanup failed:", err);
+    // 응답 후 실행 보장(after) — 이 건 사진 삭제 + 오래된 찌꺼기 정리
+    after(async () => {
+      await deleteBlobs(imageUrls, "/api/procedure");
+      await sweepStaleBlobs("/api/procedure");
     });
   }
 }

@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-import { del } from "@vercel/blob";
+import { after, NextRequest, NextResponse } from "next/server";
 import {
   createCompletionResilient,
   getModel,
@@ -13,6 +12,7 @@ import {
 import { matchReferenceSections } from "@/lib/reference-sections";
 import type { AssessmentResult, VehicleInfo } from "@/lib/assessment-types";
 import { getCurrentUser } from "@/lib/session";
+import { deleteBlobs, sweepStaleBlobs } from "@/lib/blob-cleanup";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 import { isPdfFile, extractEstimateText } from "@/lib/estimate-pdf";
 import { redactPersonalInfo } from "@/lib/pii-redact";
@@ -90,8 +90,10 @@ async function handleAssess(req: NextRequest) {
   } finally {
     // 사진을 저장하지 않는 정책이라, AI 분석이 끝나면(성공/실패 무관) Blob에서
     // 즉시 삭제함 — Blob은 사진이 GPT에 전달되는 동안만 잠깐 거쳐가는 통로.
-    void del(imageUrls).catch((err) => {
-      console.error("[/api/assess] blob cleanup failed:", err);
+    // 응답 후 실행 보장(after) — 이 건 사진 삭제 + 오래된 찌꺼기 정리
+    after(async () => {
+      await deleteBlobs(imageUrls, "/api/assess");
+      await sweepStaleBlobs("/api/assess");
     });
   }
 }
