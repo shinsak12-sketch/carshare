@@ -17,11 +17,7 @@ export function getOpenAI() {
       });
     } else if (openaiKey) {
       // 5xx·429·네트워크 오류는 SDK가 자동 재시도(3회). 사진 많은 건은 응답이 길어 타임아웃 여유.
-      client = new OpenAI({
-        apiKey: openaiKey,
-        maxRetries: 3,
-        timeout: 240_000,
-      });
+      client = new OpenAI({ apiKey: openaiKey, maxRetries: 0 });
     } else {
       throw new Error(
         "GROQ_API_KEY 또는 OPENAI_API_KEY 환경변수가 설정되지 않았습니다.",
@@ -98,28 +94,50 @@ function toUserError(err: unknown): Error {
   return err instanceof Error ? err : new Error(message);
 }
 
-// 세 도구 공통 호출. SDK 재시도까지 실패한 5xx/타임아웃이면 같은 조건으로 한 번 더 시도.
-// 추론 강도는 절대 낮추지 않음 — 판단 품질이 곧 결과라서(담당자 지시).
+// 세 도구 공통 호출. Vercel 함수 제한(300초) 안에서 끝나도록 전체 시간 예산을 잡고,
+// 5xx·타임아웃·네트워크 오류면 남은 예산이 충분할 때만 같은 조건으로 한 번 더 시도.
+// 추론 강도는 절대 낮추지 않음(담당자 지시). 예산을 넘기면 Vercel이 504를 내기 전에
+// 우리가 먼저 사용자에게 설명 가능한 오류를 돌려줌.
+const TOTAL_BUDGET_MS = 270_000;
+const ATTEMPT_MAX_MS = 200_000;
+const RETRY_MIN_REMAINING_MS = 60_000;
+
 export async function createCompletionResilient(
   openai: OpenAI,
   params: ChatParams,
 ) {
-  try {
-    return await openai.chat.completions.create(params);
-  } catch (err) {
-    const d = describeError(err);
-    console.error("[ai] completion failed:", d);
-    const retryable =
-      d.status === undefined || d.status >= 500 || d.status === 408;
-    if (retryable) {
-      console.warn("[ai] retrying once with the same parameters");
-      try {
-        return await openai.chat.completions.create(params);
-      } catch (err2) {
-        console.error("[ai] retry failed:", describeError(err2));
-        throw toUserError(err2);
-      }
+  const started = Date.now();
+  const remaining = () => TOTAL_BUDGET_MS - (Date.now() - started);
+  let attempt = 0;
+  for (;;) {
+    attempt++;
+    const timeout = Math.min(ATTEMPT_MAX_MS, remaining() - 5_000);
+    if (timeout < 20_000) {
+      throw new Error(
+        "AI 응답 시간이 초과됐습니다. 사진 수를 줄이거나 잠시 후 다시 시도해주세요.",
+      );
     }
-    throw toUserError(err);
+    try {
+      return await openai.chat.completions.create(params, {
+        timeout,
+        maxRetries: 0,
+      });
+    } catch (err) {
+      const d = describeError(err);
+      console.error(
+        `[ai] attempt ${attempt} failed after ${Date.now() - started}ms:`,
+        d,
+      );
+      const retryable =
+        d.status === undefined ||
+        d.status >= 500 ||
+        d.status === 408 ||
+        d.status === 429;
+      if (retryable && attempt < 2 && remaining() > RETRY_MIN_REMAINING_MS) {
+        console.warn("[ai] retrying once with the same parameters");
+        continue;
+      }
+      throw toUserError(err);
+    }
   }
 }
