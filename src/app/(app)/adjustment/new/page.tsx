@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { upload } from "@vercel/blob/client";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { PhotoGrid } from "@/components/PhotoGrid";
 import { DiagnosticsPanel } from "@/components/DiagnosticsPanel";
-import { compressImage } from "@/lib/image-compress";
+import { uploadPhotos } from "@/lib/upload-photos";
 import type { AdjustmentResult } from "@/lib/adjustment-types";
 import { buildAdjustmentReportText } from "@/lib/format-adjustment-report";
 import { buildAdjustmentDiagnostics } from "@/lib/adjustment-review-items";
@@ -168,32 +167,8 @@ export default function NewAdjustmentPage() {
 
     const caseId = activeId;
     try {
-      const total = photos.length;
-      let uploadedCount = 0;
-      setLoadingStep(`사진 업로드 중… (0/${total})`);
-
-      // 브라우저 → Vercel Blob 직접 업로드(서버 바디 제한 우회). 압축본을 캐시에도 씀.
-      const CONCURRENCY = 6;
-      const imageUrls: string[] = new Array(total);
-      const compressedFiles: File[] = new Array(total);
-      let cursor = 0;
-      async function worker() {
-        while (cursor < total) {
-          const i = cursor++;
-          const compressed = await compressImage(photos[i]);
-          compressedFiles[i] = compressed;
-          const blob = await upload(compressed.name, compressed, {
-            access: "public",
-            handleUploadUrl: "/api/blob-upload",
-          });
-          imageUrls[i] = blob.url;
-          uploadedCount++;
-          setLoadingStep(`사진 업로드 중… (${uploadedCount}/${total})`);
-        }
-      }
-      await Promise.all(
-        Array.from({ length: Math.min(CONCURRENCY, total) }, worker),
-      );
+      const { urls: imageUrls, compressed: compressedFiles } =
+        await uploadPhotos(photos, setLoadingStep);
       void saveFiles(caseId, {
         estimate: estimateFile,
         photos: compressedFiles,

@@ -1,12 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { upload } from "@vercel/blob/client";
 import dynamic from "next/dynamic";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { PhotoGrid } from "@/components/PhotoGrid";
 import { ProcedureMasterDetail } from "@/components/ProcedureItemPanels";
-import { compressImage } from "@/lib/image-compress";
+import { uploadPhotos } from "@/lib/upload-photos";
 import { buildProcedureReportText } from "@/lib/format-procedure-report";
 import { buildProcedureReviewItems } from "@/lib/procedure-review-items";
 import type { ProcedureResult } from "@/lib/procedure-types";
@@ -156,31 +155,9 @@ export default function NewProcedurePage() {
 
     const caseId = activeId;
     try {
-      const total = photos.length;
-      let uploadedCount = 0;
-      setLoadingStep(`사진 업로드 중… (0/${total})`);
-
-      // 손해사정·선견적과 같은 절차: 브라우저 → Vercel Blob 직접 업로드. 압축본을 캐시에도 씀.
-      const CONCURRENCY = 6;
-      const imageUrls: string[] = new Array(total);
-      const compressed: File[] = new Array(total);
-      let cursor = 0;
-      async function worker() {
-        while (cursor < total) {
-          const i = cursor++;
-          const c = await compressImage(photos[i]);
-          compressed[i] = c;
-          const blob = await upload(c.name, c, {
-            access: "public",
-            handleUploadUrl: "/api/blob-upload",
-          });
-          imageUrls[i] = blob.url;
-          uploadedCount++;
-          setLoadingStep(`사진 업로드 중… (${uploadedCount}/${total})`);
-        }
-      }
-      await Promise.all(
-        Array.from({ length: Math.min(CONCURRENCY, total) }, worker),
+      const { urls: imageUrls, compressed } = await uploadPhotos(
+        photos,
+        setLoadingStep,
       );
       void saveProcedureFiles(caseId, { estimate: null, photos: compressed });
 

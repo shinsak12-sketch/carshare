@@ -1,12 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { upload } from "@vercel/blob/client";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { PhotoGrid } from "@/components/PhotoGrid";
 import { OpinionEditor } from "@/components/OpinionEditor";
 import { DiagnosticsPanel } from "@/components/DiagnosticsPanel";
-import { compressImage } from "@/lib/image-compress";
+import { uploadPhotos } from "@/lib/upload-photos";
 import type { AssessmentResult } from "@/lib/assessment-types";
 import { buildReportText, splitOpinionItems } from "@/lib/format-report";
 import { buildAssessmentDiagnostics } from "@/lib/assessment-diagnostics";
@@ -172,31 +171,9 @@ export default function NewAssessmentPage() {
 
     const caseId = activeId;
     try {
-      const total = photos.length;
-      let uploadedCount = 0;
-      setLoadingStep(`사진 업로드 중… (0/${total})`);
-
-      // 손해사정과 같은 절차: 브라우저 → Vercel Blob 직접 업로드(서버 바디 제한 우회). 압축본을 캐시에도 씀.
-      const CONCURRENCY = 6;
-      const imageUrls: string[] = new Array(total);
-      const compressed: File[] = new Array(total);
-      let cursor = 0;
-      async function worker() {
-        while (cursor < total) {
-          const i = cursor++;
-          const c = await compressImage(photos[i]);
-          compressed[i] = c;
-          const blob = await upload(c.name, c, {
-            access: "public",
-            handleUploadUrl: "/api/blob-upload",
-          });
-          imageUrls[i] = blob.url;
-          uploadedCount++;
-          setLoadingStep(`사진 업로드 중… (${uploadedCount}/${total})`);
-        }
-      }
-      await Promise.all(
-        Array.from({ length: Math.min(CONCURRENCY, total) }, worker),
+      const { urls: imageUrls, compressed } = await uploadPhotos(
+        photos,
+        setLoadingStep,
       );
       void saveAssessFiles(caseId, {
         estimate: estimateFile,
