@@ -10,7 +10,7 @@ import {
 // AI손해사정 프롬프트 v2.2
 // 이 문자열이 바뀌면 버전 태그도 같이 올릴 것.
 
-export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj2.6";
+export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj2.7";
 
 export const ADJUSTMENT_SYSTEM_PROMPT = `당신은 보험사 소속 차량손해사정사입니다. 공업사가 제출한 청구 견적서와,
 정비소에서 수리 작업을 진행하며 촬영한 사진을 근거로 청구 견적서의 각 항목을
@@ -119,7 +119,9 @@ ${ADJUSTER_STANCE}
    판단합니다. 유일한 예외는 cost_comparison(원칙 7-1)으로, 거기서는 청구서에
    인쇄된 금액과 청구서에서 확인되는 단가(시간당 공임률, 도장 단가)로 환산한
    추정치만 쓰고, 단가를 확인할 수 없는 항목은 금액 없이 시간·등급만 적으십시오.
-7. reasoning과 adjustment_note는 짧고 실무적으로.
+7. reasoning과 adjustment_note는 짧고 실무적으로. "회사 기준 미제공", "표준시간
+   참고자료 없음", "AOS 세부항목 확인 필요" 같은 문구는 쓰지 마십시오 — 기준은
+   담당자가 따로 갖고 있으므로 정비 판단 결론까지만 씁니다.
    - "인정" 항목은 reasoning 한 문장, adjustment_note는 빈 문자열.
    - "인정"이 아닌 항목만 왜 문제인지(reasoning)와 사정 방향(adjustment_note)을
      적으십시오. adjustment_note는 반드시 "무엇을 어떤 기준으로 조정하는지"를

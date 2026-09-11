@@ -448,9 +448,11 @@ export function ReviewItemDetail({
               )}
             </p>
           </div>
-          <p className="mt-1.5 text-xs text-slate-500">
-            {part.labor_time_check.note}
-          </p>
+          {part.labor_time_check.note && (
+            <p className="mt-1.5 text-xs text-slate-500">
+              {part.labor_time_check.note}
+            </p>
+          )}
         </div>
       )}
 

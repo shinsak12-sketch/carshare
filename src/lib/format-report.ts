@@ -120,7 +120,7 @@ export function buildReportText(
           ? ` (참고 ${part.labor_time_check.reference_h}H)`
           : "";
       lines.push(
-        `  작업시간: 청구 ${part.labor_time_check.claimed_h}H${ref} — ${part.labor_time_check.note}`,
+        `  작업시간: 청구 ${part.labor_time_check.claimed_h}H${ref}${part.labor_time_check.note ? ` — ${part.labor_time_check.note}` : ""}`,
       );
     }
     if (part.ancillary_work_check.length > 0) {
