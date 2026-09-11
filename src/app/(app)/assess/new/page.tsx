@@ -4,11 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { OpinionEditor } from "@/components/OpinionEditor";
-import { ReviewMasterDetail } from "@/components/ReviewItemPanels";
+import { DiagnosticsPanel } from "@/components/DiagnosticsPanel";
 import { compressImage } from "@/lib/image-compress";
 import type { AssessmentResult } from "@/lib/assessment-types";
 import { buildReportText, splitOpinionItems } from "@/lib/format-report";
-import { buildReviewItems } from "@/lib/review-items";
+import { buildAssessmentDiagnostics } from "@/lib/assessment-diagnostics";
 import {
   assessCaseTitle,
   deleteAssessCase,
@@ -43,8 +43,8 @@ export default function NewAssessmentPage() {
   const [opinionOpen, setOpinionOpen] = useState(false);
 
   const result = active?.result ?? null;
-  const reviewItems = useMemo(
-    () => (result ? buildReviewItems(result) : []),
+  const diagnostics = useMemo(
+    () => (result ? buildAssessmentDiagnostics(result) : null),
     [result],
   );
 
@@ -601,14 +601,16 @@ export default function NewAssessmentPage() {
             ) : (
               <>
                 <div className="min-h-0 flex-1">
-                  <ReviewMasterDetail
-                    items={reviewItems}
-                    onHoverPhotos={setHighlightedPhotos}
-                    onOpenPhoto={(n) => {
-                      if (n >= 1 && n <= imagePreviews.length)
-                        setLightboxIndex(n - 1);
-                    }}
-                  />
+                  {diagnostics && (
+                    <DiagnosticsPanel
+                      diagnostics={diagnostics}
+                      onHoverPhotos={setHighlightedPhotos}
+                      onOpenPhoto={(n) => {
+                        if (n >= 1 && n <= imagePreviews.length)
+                          setLightboxIndex(n - 1);
+                      }}
+                    />
+                  )}
                 </div>
                 <button
                   type="button"

@@ -1,7 +1,7 @@
 // 선견적진단 프롬프트 v3.0
 // 이 문자열이 바뀌면 PromptVersion 테이블에 새 버전으로 기록해야 함 (오답 리뷰 루프 참고)
 
-export const PROMPT_VERSION_TAG = "v3.8";
+export const PROMPT_VERSION_TAG = "v3.9";
 
 // ---------------------------------------------------------------------------
 // 공통 블록 — 선견적진단·정비공정·AI손해사정이 같은 판단 기준을 써야 세 도구의
@@ -216,6 +216,16 @@ ${ADJUSTER_STANCE}
 
 [2단계 — 작업 정도(수준) 판정]
 부위별로 청구된 작업 수준이 사진상 손상 정도에 비해 적절한지 판정하십시오.
+parts는 청구서의 공임·도장 항목을 부위(판넬) 단위 트리로 재구성해 채우십시오.
+- group: 부위(판넬) 이름. 같은 부위의 교환/판금/도장/부수 항목은 같은 group.
+  예: "프런트범퍼".
+- role: "메인" = 그 부위의 핵심 작업(교환·판금·수리·복원 공임), "도장" = 그 부위의
+  도장 항목(교환도장·보수도장·컬러매칭·가열건조 등), "부수" = 그 부위 작업에
+  딸린 탈착·O/H·소부품 교환 공임. 부위마다 메인은 하나이며, 도장·부수는
+  각각 별도 parts 항목으로 두고 같은 group을 적으십시오.
+- 부품비 라인은 parts에 넣지 않습니다(공임·도장만). 부수작업 중 별도 공임
+  항목으로 청구된 것은 parts의 "부수" 항목으로, 청구서에 항목이 없지만 검토가
+  필요한 부수작업은 메인 항목의 ancillary_work_check에 적으십시오.
 [경미손상 판정기준]의 적용대상 외판부품에는 1~3유형을 적용하고, 판금·수리
 시간은 [판금·수리 시간 판단]에 따라, 부수작업은 [부수작업·중복 판단]에 따라,
 도장은 [도장 판단]에 따라 판단하십시오.
@@ -363,6 +373,8 @@ export const ASSESSMENT_RESPONSE_SCHEMA = {
         additionalProperties: false,
         properties: {
           part_name: { type: "string" },
+          group: { type: "string" },
+          role: { type: "string", enum: ["메인", "도장", "부수"] },
           claimed_action: { type: "string" },
           damage_type: {
             type: "string",
@@ -422,6 +434,8 @@ export const ASSESSMENT_RESPONSE_SCHEMA = {
         },
         required: [
           "part_name",
+          "group",
+          "role",
           "claimed_action",
           "damage_type",
           "reasoning",

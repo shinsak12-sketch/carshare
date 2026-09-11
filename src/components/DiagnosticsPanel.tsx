@@ -15,8 +15,8 @@ import type {
 } from "@/lib/adjustment-review-items";
 
 // 우측 컬럼을 좌우 2분할: 왼쪽 = 메인 판넬(브랜치) 목록, 오른쪽 = 선택한 판넬의
-// 하위 작업(메인 공임 → 도장 → 부수) 판정. 부품비는 판단 대상이 아님.
-// ✖/⚠/✔ 집계는 독립 판정만(연동 항목 제외).
+// 하위 작업(메인 공임 → 도장 → 부수) 판정. 손해사정·선견적이 같은 뷰 모델(DiagItemView)로
+// 이 패널을 공유함. ✖/⚠/✔ 집계는 독립 판정만(연동 항목 제외).
 
 const SEVERITY_META: Record<
   DiagnosticSeverity,
@@ -58,12 +58,6 @@ const SEVERITY_META: Record<
   },
 };
 
-const ROLE_LABEL: Record<ItemDiagnostic["item"]["role"], string> = {
-  메인: "메인",
-  도장: "도장",
-  부수: "부수",
-};
-
 function VerdictBadge({
   verdict,
   small = false,
@@ -82,7 +76,7 @@ function VerdictBadge({
   );
 }
 
-export function AdjustmentDiagnostics({
+export function DiagnosticsPanel({
   diagnostics,
   onHoverPhotos,
   onOpenPhoto,
@@ -170,10 +164,10 @@ export function AdjustmentDiagnostics({
             const m = SEVERITY_META[b.severity];
             const active = selected?.id === b.id;
             const subErr = b.children.filter(
-              (c) => !c.item.follows_parent && c.severity === "error",
+              (c) => !c.view.followsParent && c.severity === "error",
             ).length;
             const subWarn = b.children.filter(
-              (c) => !c.item.follows_parent && c.severity === "warn",
+              (c) => !c.view.followsParent && c.severity === "warn",
             ).length;
             return (
               <button
@@ -297,10 +291,10 @@ function Row({
   onHoverPhotos: (refs: number[]) => void;
   onOpenPhoto: (photoNo: number) => void;
 }) {
-  const it = d.item;
-  const follows = it.follows_parent && !isMain;
+  const it = d.view;
+  const follows = it.followsParent && !isMain;
   const m = SEVERITY_META[d.severity];
-  const refs = it.photo_refs;
+  const refs = it.photoRefs;
 
   return (
     <div
@@ -314,7 +308,7 @@ function Row({
         {follows ? "↳" : m.glyph}
       </span>
       <span className="w-6 shrink-0 pt-0.5 text-right font-mono text-[10px] tabular-nums text-slate-400">
-        {d.lineNo}
+        {d.lineNo ?? ""}
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <div className="flex items-start justify-between gap-2">
@@ -324,17 +318,17 @@ function Row({
             <span
               className={`mr-1 rounded px-1 py-px text-[9px] font-bold ${isMain ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500"}`}
             >
-              {ROLE_LABEL[it.role]}
+              {it.roleLabel}
             </span>
-            {it.item_name}
+            {it.itemName}
             <span className="font-normal text-slate-400">
               {" "}
-              · {it.claimed_action}
+              · {it.claimedAction}
             </span>
-            {it.claimed_hours != null && (
+            {it.claimedHours != null && (
               <span className="font-mono text-slate-500">
                 {" "}
-                {it.claimed_hours}H
+                {it.claimedHours}H
               </span>
             )}
           </span>
@@ -352,9 +346,9 @@ function Row({
           </span>
         </div>
         {follows ? (
-          it.adjustment_note && (
+          it.note && (
             <p className="text-[11px] leading-relaxed text-slate-500">
-              → {it.adjustment_note}
+              → {it.note}
             </p>
           )
         ) : (
@@ -362,23 +356,39 @@ function Row({
             className={`text-xs leading-relaxed ${d.severity === "pass" ? "text-slate-400" : "text-slate-600"}`}
           >
             {it.reasoning}
-            {it.adjustment_note && (
-              <span className="font-semibold text-slate-900">
-                {" "}
-                → {it.adjustment_note}
-              </span>
+            {it.note && (
+              <span className="font-semibold text-slate-900"> → {it.note}</span>
             )}
           </p>
         )}
-        {!follows && it.cost_comparison && (
-          <CostComparisonCard c={it.cost_comparison} />
+        {!follows && it.extras.length > 0 && (
+          <div className="mt-0.5 flex flex-col gap-1">
+            {it.extras.map((x, i) => (
+              <p
+                key={i}
+                className={`rounded-lg px-2.5 py-1.5 text-[11px] leading-relaxed ${
+                  x.tone === "warn"
+                    ? "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200/70"
+                    : x.tone === "ok"
+                      ? "bg-emerald-50 text-emerald-900 ring-1 ring-inset ring-emerald-200/70"
+                      : "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200/70"
+                }`}
+              >
+                <span className="mr-1 font-bold">{x.label}</span>
+                {x.text}
+              </p>
+            ))}
+          </div>
         )}
-        {!follows && (
+        {!follows && it.costComparison && (
+          <CostComparisonCard c={it.costComparison} />
+        )}
+        {!follows && (it.evidenceLabel || refs.length > 0) && (
           <div className="flex flex-wrap items-center gap-1 text-[10px] text-slate-400">
-            <span>{it.photo_evidence}</span>
+            {it.evidenceLabel && <span>{it.evidenceLabel}</span>}
             {refs.length > 0 && (
               <>
-                <span>· 근거사진</span>
+                <span>{it.evidenceLabel ? "· " : ""}근거사진</span>
                 {refs.map((n) => (
                   <button
                     key={n}

@@ -26,6 +26,10 @@ export interface AncillaryWorkCheck {
 
 export interface PartAssessment {
   part_name: string;
+  // 부위(판넬) 그룹과 역할 — 손해사정과 같은 트리(메인 → 도장 → 부수)로 화면에 묶기 위함.
+  // 예전 결과에는 없을 수 있어 optional.
+  group?: string;
+  role?: "메인" | "도장" | "부수";
   claimed_action: string;
   damage_type: DamageType;
   reasoning: string;

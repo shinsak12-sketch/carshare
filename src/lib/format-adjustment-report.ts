@@ -7,26 +7,27 @@ import {
 const GLYPH = { error: "✖", warn: "⚠", pass: "✔" } as const;
 
 function rowText(d: ItemDiagnostic, isMain: boolean): string[] {
-  const it = d.item;
-  const follows = it.follows_parent && !isMain;
-  const hours = it.claimed_hours != null ? ` ${it.claimed_hours}H` : "";
+  const it = d.view;
+  const follows = it.followsParent && !isMain;
+  const hours = it.claimedHours != null ? ` ${it.claimedHours}H` : "";
   const indent = isMain ? "" : "    ";
   const mark = follows ? "↳" : GLYPH[d.severity];
-  const role = !isMain && it.role !== "메인" ? `[${it.role}] ` : "";
-  const head = `${indent}${mark} ${String(d.lineNo).padStart(3)}  ${role}${it.item_name} · ${it.claimed_action}${hours}  → ${follows ? "연동" : it.verdict}`;
+  const role = !isMain && it.roleLabel !== "메인" ? `[${it.roleLabel}] ` : "";
+  const no = d.lineNo != null ? String(d.lineNo).padStart(3) : "   ";
+  const head = `${indent}${mark} ${no}  ${role}${it.itemName} · ${it.claimedAction}${hours}  → ${follows ? "연동" : it.verdict}`;
   if (follows)
-    return it.adjustment_note
-      ? [head, `${indent}        → ${it.adjustment_note}`]
-      : [head];
-  const refs = it.photo_refs.length
-    ? ` · 근거사진 ${it.photo_refs.join(", ")}`
+    return it.note ? [head, `${indent}        → ${it.note}`] : [head];
+  const refs = it.photoRefs.length
+    ? ` · 근거사진 ${it.photoRefs.join(", ")}`
     : "";
   const lines = [
     head,
-    `${indent}        ${it.reasoning}${it.adjustment_note ? ` → ${it.adjustment_note}` : ""}${refs}`,
+    `${indent}        ${it.reasoning}${it.note ? ` → ${it.note}` : ""}${refs}`,
   ];
-  if (it.cost_comparison) {
-    const c = it.cost_comparison;
+  for (const x of it.extras)
+    lines.push(`${indent}        [${x.label}] ${x.text}`);
+  if (it.costComparison) {
+    const c = it.costComparison;
     lines.push(`${indent}        [교환 vs 수리 비교]`);
     lines.push(`${indent}          교환안(청구서): ${c.replace_option}`);
     lines.push(`${indent}          수리안(추정): ${c.repair_option}`);
@@ -80,10 +81,11 @@ export function buildAdjustmentReportText(
       (d): d is ItemDiagnostic => d !== null,
     );
     for (const d of all) {
-      const it = d.item;
-      const hours = it.claimed_hours != null ? ` ${it.claimed_hours}H` : "";
+      const it = d.view;
+      const hours = it.claimedHours != null ? ` ${it.claimedHours}H` : "";
+      const no = d.lineNo != null ? String(d.lineNo).padStart(3) : "   ";
       lines.push(
-        `✔  ${String(d.lineNo).padStart(3)}  ${b.label} › ${it.item_name} · ${it.claimed_action}${hours}`,
+        `✔  ${no}  ${b.label} › ${it.itemName} · ${it.claimedAction}${hours}`,
       );
     }
   }

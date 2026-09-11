@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { upload } from "@vercel/blob/client";
 import { ImageLightbox } from "@/components/ImageLightbox";
-import { AdjustmentDiagnostics } from "@/components/AdjustmentDiagnostics";
+import { DiagnosticsPanel } from "@/components/DiagnosticsPanel";
 import { compressImage } from "@/lib/image-compress";
 import type { AdjustmentResult } from "@/lib/adjustment-types";
 import { buildAdjustmentReportText } from "@/lib/format-adjustment-report";
@@ -565,7 +565,7 @@ export default function NewAdjustmentPage() {
         {result && diagnostics && active && (
           <div className="flex flex-col gap-4 xl:min-h-0">
             <div className="min-h-0 flex-1">
-              <AdjustmentDiagnostics
+              <DiagnosticsPanel
                 diagnostics={diagnostics}
                 onHoverPhotos={setHighlightedPhotos}
                 onOpenPhoto={(n) => {

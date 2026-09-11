@@ -48,7 +48,7 @@ export function isMinorDamageType(
   return t === "1유형" || t === "2유형" || t === "3유형";
 }
 
-function partVerdictLabel(part: PartAssessment): VerdictLabel {
+export function partVerdictLabel(part: PartAssessment): VerdictLabel {
   if (part.verdict === "인정가능") return "인정";
   if (part.verdict === "불인정") return "불인정";
 
