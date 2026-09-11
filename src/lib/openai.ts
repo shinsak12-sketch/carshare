@@ -81,6 +81,10 @@ function toUserError(err: unknown): Error {
     return new Error(
       `AI 서버(OpenAI) 일시 오류(${status})입니다. 잠시 후 다시 시도해주세요.${rid}`,
     );
+  if (status === 429 && /insufficient_quota|billing|credit/i.test(message))
+    return new Error(
+      `OpenAI 크레딧이 부족합니다. 결제/충전 후 다시 시도해주세요.${rid}`,
+    );
   if (status === 429)
     return new Error(
       `AI 서버 사용량 제한(429)입니다. 잠시 후 다시 시도해주세요.${rid}`,
@@ -94,8 +98,8 @@ function toUserError(err: unknown): Error {
   return err instanceof Error ? err : new Error(message);
 }
 
-// 세 도구 공통 호출. SDK 재시도까지 실패한 5xx/타임아웃이면 추론 강도를 low로 낮춰
-// 한 번 더 시도 — 사진이 많은 건에서 medium 추론이 서버 쪽에서 터지는 경우 대비.
+// 세 도구 공통 호출. SDK 재시도까지 실패한 5xx/타임아웃이면 같은 조건으로 한 번 더 시도.
+// 추론 강도는 절대 낮추지 않음 — 판단 품질이 곧 결과라서(담당자 지시).
 export async function createCompletionResilient(
   openai: OpenAI,
   params: ChatParams,
@@ -107,14 +111,10 @@ export async function createCompletionResilient(
     console.error("[ai] completion failed:", d);
     const retryable =
       d.status === undefined || d.status >= 500 || d.status === 408;
-    const effort = (params as { reasoning_effort?: string }).reasoning_effort;
-    if (retryable && effort && effort !== "low" && effort !== "none") {
-      console.warn("[ai] retrying once with reasoning_effort=low");
+    if (retryable) {
+      console.warn("[ai] retrying once with the same parameters");
       try {
-        return await openai.chat.completions.create({
-          ...params,
-          reasoning_effort: "low",
-        } as ChatParams);
+        return await openai.chat.completions.create(params);
       } catch (err2) {
         console.error("[ai] retry failed:", describeError(err2));
         throw toUserError(err2);
