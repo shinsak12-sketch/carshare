@@ -102,7 +102,12 @@ export function buildReportText(
 
   result.parts.forEach((part, i) => {
     lines.push(`${i + 1}. ${part.part_name} (청구: ${part.claimed_action})`);
-    lines.push(part.reasoning);
+    lines.push(
+      part.reasoning +
+        (part.photo_refs?.length
+          ? ` · 근거사진 ${part.photo_refs.join(", ")}`
+          : ""),
+    );
     const verdictLine =
       part.verdict === "협의대상" && part.required_action
         ? `→ 판정: ${part.damage_type} · 협의대상 — ${part.required_action}`

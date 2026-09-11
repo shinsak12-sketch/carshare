@@ -1,7 +1,20 @@
-export type DamageType = "1유형" | "2유형" | "3유형" | "비대상(교환예외)" | "손상없음";
+export type DamageType =
+  | "1유형"
+  | "2유형"
+  | "3유형"
+  | "비대상(교환예외)"
+  | "손상없음";
 export type Confidence = "높음" | "중간" | "낮음";
-export type ReferenceVerdict = "적정" | "과다" | "과소" | "기준 미제공 - 확인 필요";
-export type GeneralAssessment = "적정" | "과다 의심" | "과소 의심" | "판단 어려움";
+export type ReferenceVerdict =
+  | "적정"
+  | "과다"
+  | "과소"
+  | "기준 미제공 - 확인 필요";
+export type GeneralAssessment =
+  | "적정"
+  | "과다 의심"
+  | "과소 의심"
+  | "판단 어려움";
 export type PartVerdict = "인정가능" | "협의대상" | "불인정";
 
 export interface AncillaryWorkCheck {
@@ -27,12 +40,15 @@ export interface PartAssessment {
   ancillary_work_check: AncillaryWorkCheck[];
   verdict: PartVerdict;
   required_action: string;
+  // 판단 근거가 된 파손 사진 번호(1부터). 화면에서 해당 사진 강조에 씀.
+  photo_refs?: number[];
 }
 
 export interface RepairScopeConcern {
   item: string;
   issue: string;
   reasoning: string;
+  photo_refs?: number[];
 }
 
 export interface OverallRepairScopeReview {
@@ -40,7 +56,11 @@ export interface OverallRepairScopeReview {
   concerns: RepairScopeConcern[];
 }
 
-export type OtherFindingVerdict = "인정가능" | "협의대상" | "불인정" | "확인불가";
+export type OtherFindingVerdict =
+  | "인정가능"
+  | "협의대상"
+  | "불인정"
+  | "확인불가";
 
 export interface OtherFinding {
   category: string;

@@ -1,13 +1,32 @@
-import type { AssessmentResult, DamageType, OtherFindingVerdict, PartAssessment } from "./assessment-types";
+import type {
+  AssessmentResult,
+  DamageType,
+  OtherFindingVerdict,
+  PartAssessment,
+} from "./assessment-types";
 
 // 목록/상세 화면에서 공통으로 쓰는 판정 배지. 회사 참고자료 판정(적정/과다/과소)과는
 // 별개로, 담당자가 목록만 보고도 "이건 정상/이건 과다청구/이건 그냥 확인만
 // 필요"를 바로 구분할 수 있게 5개로 단순화한 것.
-export type VerdictLabel = "인정" | "협의필요" | "과다청구" | "조사필요" | "불인정";
+export type VerdictLabel =
+  | "인정"
+  | "협의필요"
+  | "과다청구"
+  | "조사필요"
+  | "불인정";
 
-export const VERDICT_ORDER: VerdictLabel[] = ["불인정", "과다청구", "협의필요", "조사필요", "인정"];
+export const VERDICT_ORDER: VerdictLabel[] = [
+  "불인정",
+  "과다청구",
+  "협의필요",
+  "조사필요",
+  "인정",
+];
 
-export const VERDICT_STYLES: Record<VerdictLabel, { bar: string; badge: string }> = {
+export const VERDICT_STYLES: Record<
+  VerdictLabel,
+  { bar: string; badge: string }
+> = {
   인정: { bar: "bg-emerald-500", badge: "bg-emerald-600" },
   협의필요: { bar: "bg-amber-500", badge: "bg-amber-500" },
   과다청구: { bar: "bg-orange-500", badge: "bg-orange-600" },
@@ -23,7 +42,9 @@ export const TYPE_BADGE_CLASS =
 // 경미손상 1~3유형은 외판부품(범퍼·펜더·도어 등)에만 의미가 있는 분류라,
 // "비대상(교환예외)"·"손상없음" 같은 값까지 배지로 노출하면 오히려
 // 판정 배지와 헷갈림 — 실제 1~3유형일 때만 유형 배지를 붙임.
-export function isMinorDamageType(t?: DamageType): t is "1유형" | "2유형" | "3유형" {
+export function isMinorDamageType(
+  t?: DamageType,
+): t is "1유형" | "2유형" | "3유형" {
   return t === "1유형" || t === "2유형" || t === "3유형";
 }
 
@@ -35,7 +56,10 @@ function partVerdictLabel(part: PartAssessment): VerdictLabel {
   // 더 구체적으로 표시하고, 사진 판독 신뢰도가 낮아서 협의대상이 된 경우는
   // "조사필요"(추가 확인 필요)로 구분. 둘 다 아니면 일반 "협의필요".
   const lt = part.labor_time_check;
-  if (lt.claimed_h !== null && (lt.general_assessment === "과다 의심" || lt.reference_verdict === "과다")) {
+  if (
+    lt.claimed_h !== null &&
+    (lt.general_assessment === "과다 의심" || lt.reference_verdict === "과다")
+  ) {
     return "과다청구";
   }
   if (part.evidence_confidence === "낮음") return "조사필요";
@@ -49,9 +73,22 @@ const findingVerdictLabel: Record<OtherFindingVerdict, VerdictLabel> = {
   확인불가: "조사필요",
 };
 
-export type ReviewItem =
-  | { id: string; kind: "consistency"; verdict: VerdictLabel; title: string; section: string; warning: string }
-  | { id: string; kind: "concern-ok"; verdict: VerdictLabel; title: string; section: string }
+export type ReviewItem = { photoRefs: number[] } & (
+  | {
+      id: string;
+      kind: "consistency";
+      verdict: VerdictLabel;
+      title: string;
+      section: string;
+      warning: string;
+    }
+  | {
+      id: string;
+      kind: "concern-ok";
+      verdict: VerdictLabel;
+      title: string;
+      section: string;
+    }
   | {
       id: string;
       kind: "concern";
@@ -89,7 +126,8 @@ export type ReviewItem =
       section: string;
       description: string;
       referenceBasis: string;
-    };
+    }
+);
 
 export const SECTION_LABELS = {
   consistency: "정합성",
@@ -110,6 +148,7 @@ export function buildReviewItems(result: AssessmentResult): ReviewItem[] {
       title: "사고 정합성 경고",
       section: SECTION_LABELS.consistency,
       warning: result.physical_consistency.warning,
+      photoRefs: [],
     });
   }
 
@@ -120,13 +159,14 @@ export function buildReviewItems(result: AssessmentResult): ReviewItem[] {
       verdict: "인정",
       title: "전체 수리범위 적정",
       section: SECTION_LABELS.scope,
+      photoRefs: [],
     });
   } else {
     result.overall_repair_scope_review.concerns.forEach((c, i) => {
       // 관련 부위를 찾아서 그 부위의 실제 판정/유형을 그대로 물려받게 함 —
       // "전체범위"라는 두루뭉술한 라벨 대신 실제로 뭐가 문제인지 배지로 바로 보이게.
       const matched = result.parts.find(
-        (p) => c.item.includes(p.part_name) || p.part_name.includes(c.item)
+        (p) => c.item.includes(p.part_name) || p.part_name.includes(c.item),
       );
       items.push({
         id: `concern-${i}`,
@@ -138,6 +178,7 @@ export function buildReviewItems(result: AssessmentResult): ReviewItem[] {
         item: c.item,
         issue: c.issue,
         reasoning: c.reasoning,
+        photoRefs: c.photo_refs ?? matched?.photo_refs ?? [],
       });
     });
   }
@@ -151,10 +192,14 @@ export function buildReviewItems(result: AssessmentResult): ReviewItem[] {
       title: `${i + 1}. ${part.part_name}`,
       section: SECTION_LABELS.parts,
       part,
+      photoRefs: part.photo_refs ?? [],
     });
   });
 
-  if (result.claimed_but_not_visible.length > 0 || result.damage_but_not_claimed.length > 0) {
+  if (
+    result.claimed_but_not_visible.length > 0 ||
+    result.damage_but_not_claimed.length > 0
+  ) {
     items.push({
       id: "mismatch",
       kind: "mismatch",
@@ -163,6 +208,7 @@ export function buildReviewItems(result: AssessmentResult): ReviewItem[] {
       section: SECTION_LABELS.mismatch,
       visible: result.claimed_but_not_visible,
       claimed: result.damage_but_not_claimed,
+      photoRefs: [],
     });
   }
 
@@ -175,6 +221,7 @@ export function buildReviewItems(result: AssessmentResult): ReviewItem[] {
       section: SECTION_LABELS.findings,
       description: f.description,
       referenceBasis: f.reference_basis,
+      photoRefs: [],
     });
   });
 

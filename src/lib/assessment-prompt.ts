@@ -1,7 +1,7 @@
 // 선견적진단 프롬프트 v3.0
 // 이 문자열이 바뀌면 PromptVersion 테이블에 새 버전으로 기록해야 함 (오답 리뷰 루프 참고)
 
-export const PROMPT_VERSION_TAG = "v3.5";
+export const PROMPT_VERSION_TAG = "v3.6";
 
 // ---------------------------------------------------------------------------
 // 공통 블록 — 선견적진단·정비공정·AI손해사정이 같은 판단 기준을 써야 세 도구의
@@ -252,6 +252,10 @@ ${ADJUSTER_STANCE}
     reasoning 끝에 품질인증부품 적용 가능 부품인지 한 줄 언급하십시오.
 11. [담당자 추가 의견]이 제공된 경우 반드시 검토에 반영하되, 의견 자체를
     사실로 받아쓰지 말고 사진·선견적 근거로 확인한 결과를 서술하십시오.
+12. photo_refs에는 그 판정의 근거가 된 파손 사진 번호(첨부 순서대로 1부터)를
+    적으십시오. 부위별 판정(parts)과 1단계 concerns 모두 해당합니다. 근거
+    사진이 없으면 빈 배열로 두되, 그 경우 reasoning에 왜 사진 없이 판단했는지
+    적으십시오.
 
 # 반드시 verdict를 "협의대상"으로 분류해야 하는 경우
 - 소재 변형 여부가 다른 각도 사진 없이는 판별 불가
@@ -318,8 +322,9 @@ export const ASSESSMENT_RESPONSE_SCHEMA = {
               item: { type: "string" },
               issue: { type: "string" },
               reasoning: { type: "string" },
+              photo_refs: { type: "array", items: { type: "integer" } },
             },
-            required: ["item", "issue", "reasoning"],
+            required: ["item", "issue", "reasoning", "photo_refs"],
           },
         },
       },
@@ -338,7 +343,10 @@ export const ASSESSMENT_RESPONSE_SCHEMA = {
             enum: ["1유형", "2유형", "3유형", "비대상(교환예외)", "손상없음"],
           },
           reasoning: { type: "string" },
-          evidence_confidence: { type: "string", enum: ["높음", "중간", "낮음"] },
+          evidence_confidence: {
+            type: "string",
+            enum: ["높음", "중간", "낮음"],
+          },
           labor_time_check: {
             type: "object",
             additionalProperties: false,
@@ -355,7 +363,13 @@ export const ASSESSMENT_RESPONSE_SCHEMA = {
               },
               note: { type: "string" },
             },
-            required: ["claimed_h", "reference_h", "reference_verdict", "general_assessment", "note"],
+            required: [
+              "claimed_h",
+              "reference_h",
+              "reference_verdict",
+              "general_assessment",
+              "note",
+            ],
           },
           ancillary_work_check: {
             type: "array",
@@ -368,11 +382,17 @@ export const ASSESSMENT_RESPONSE_SCHEMA = {
                 mechanically_plausible: { type: "boolean" },
                 note: { type: "string" },
               },
-              required: ["item", "in_allowed_list", "mechanically_plausible", "note"],
+              required: [
+                "item",
+                "in_allowed_list",
+                "mechanically_plausible",
+                "note",
+              ],
             },
           },
           verdict: { type: "string", enum: ["인정가능", "협의대상", "불인정"] },
           required_action: { type: "string" },
+          photo_refs: { type: "array", items: { type: "integer" } },
         },
         required: [
           "part_name",
@@ -384,6 +404,7 @@ export const ASSESSMENT_RESPONSE_SCHEMA = {
           "ancillary_work_check",
           "verdict",
           "required_action",
+          "photo_refs",
         ],
       },
     },
@@ -398,7 +419,10 @@ export const ASSESSMENT_RESPONSE_SCHEMA = {
           category: { type: "string" },
           description: { type: "string" },
           reference_basis: { type: "string" },
-          verdict: { type: "string", enum: ["인정가능", "협의대상", "불인정", "확인불가"] },
+          verdict: {
+            type: "string",
+            enum: ["인정가능", "협의대상", "불인정", "확인불가"],
+          },
         },
         required: ["category", "description", "reference_basis", "verdict"],
       },

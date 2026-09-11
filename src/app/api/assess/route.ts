@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { del } from "@vercel/blob";
-import { prisma } from "@/lib/prisma";
 import { getModel, getOpenAI, getReasoningEffort } from "@/lib/openai";
 import {
   ASSESSMENT_RESPONSE_SCHEMA,
-  PROMPT_VERSION_TAG,
   SYSTEM_PROMPT,
 } from "@/lib/assessment-prompt";
 import { matchReferenceSections } from "@/lib/reference-sections";
@@ -16,21 +14,6 @@ import { redactPersonalInfo } from "@/lib/pii-redact";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
-
-async function getActivePromptVersion() {
-  const active = await prisma.promptVersion.findFirst({
-    where: { isActive: true },
-  });
-  if (active) return active;
-  return prisma.promptVersion.create({
-    data: {
-      createdBy: "system",
-      promptText: SYSTEM_PROMPT,
-      changeSummary: `초기 버전 (${PROMPT_VERSION_TAG})`,
-      isActive: true,
-    },
-  });
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -115,10 +98,9 @@ async function runAssess(
   imageUrls: string[],
   estimateFile: File | null,
 ) {
-  const [rawEstimateText, promptVersion] = await Promise.all([
-    estimateFile ? extractEstimateText(estimateFile) : Promise.resolve(null),
-    getActivePromptVersion(),
-  ]);
+  const rawEstimateText = estimateFile
+    ? await extractEstimateText(estimateFile)
+    : null;
 
   // 선견적 원문에서 고객명·연락처·주소 등 개인정보를 지운 뒤에만 AI 프롬프트에
   // 쓰고, 이 텍스트 자체도 DB에 저장하지 않음(사진과 동일한 정책).
@@ -177,32 +159,17 @@ async function runAssess(
   }
   const aiResult: AssessmentResult = JSON.parse(raw);
 
-  // 사진과 선견적 원문은 위에서 GPT 호출에만 쓰고 DB에는 저장하지 않음
-  // (개인정보 보관 최소화 방침 — 사진과 동일하게 적용).
-  const created = await prisma.assessmentCase.create({
-    data: {
-      userId: user.id,
-      manufacturer: vehicle.manufacturer,
-      model: vehicle.model,
-      year: vehicle.year,
-      damagedPart: vehicle.damagedPart,
-      memo: vehicle.memo,
-      aiResult: aiResult as unknown as object,
-      promptVersionId: promptVersion.id,
-    },
-  });
+  // 결과·사진·선견적 원문 모두 서버에 저장하지 않음(손해사정과 동일). 브라우저 캐시에만 남음.
 
   const { ip, userAgent } = getRequestMeta(req);
   void logAudit({
     action: AuditAction.ASSESSMENT_SUBMITTED,
     actorUserId: user.id,
     actorEmployeeId: user.employeeId,
-    targetType: "AssessmentCase",
-    targetId: created.id,
     detail: `${vehicle.manufacturer} ${vehicle.model}`,
     ip,
     userAgent,
   });
 
-  return NextResponse.json({ id: created.id, result: aiResult });
+  return NextResponse.json({ result: aiResult });
 }

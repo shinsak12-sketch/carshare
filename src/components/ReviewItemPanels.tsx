@@ -92,7 +92,15 @@ function itemDamageType(item: ReviewItem): string | undefined {
 
 // 마스터-디테일: 좌측 항목 목록(단계별 카드) → 클릭하면 우측에 상세. 두 패널은 각각 독립 스크롤.
 // 손해사정 화면과 같은 형태로 맞춤. 첫 진입 시 문제 항목(인정 아님) 중 첫 번째를 자동 선택.
-export function ReviewMasterDetail({ items }: { items: ReviewItem[] }) {
+export function ReviewMasterDetail({
+  items,
+  onHoverPhotos,
+  onOpenPhoto,
+}: {
+  items: ReviewItem[];
+  onHoverPhotos?: (refs: number[]) => void;
+  onOpenPhoto?: (photoNo: number) => void;
+}) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [syncedItems, setSyncedItems] = useState<ReviewItem[]>(items);
   if (items !== syncedItems) {
@@ -149,6 +157,8 @@ export function ReviewMasterDetail({ items }: { items: ReviewItem[] }) {
                       key={item.id}
                       type="button"
                       onClick={() => setSelectedId(item.id)}
+                      onMouseEnter={() => onHoverPhotos?.(item.photoRefs)}
+                      onMouseLeave={() => onHoverPhotos?.([])}
                       className={`flex w-full items-stretch overflow-hidden text-left transition-colors last:rounded-b-2xl ${
                         isSel
                           ? "bg-slate-100 shadow-[inset_3px_0_0_rgb(15,23,42)]"
@@ -182,7 +192,7 @@ export function ReviewMasterDetail({ items }: { items: ReviewItem[] }) {
         </div>
 
         <div className="min-h-0 min-w-0 self-stretch overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
-          <ReviewItemDetail item={selected} />
+          <ReviewItemDetail item={selected} onOpenPhoto={onOpenPhoto} />
         </div>
       </div>
     </div>
@@ -238,7 +248,38 @@ function DetailHeader({
   );
 }
 
-export function ReviewItemDetail({ item }: { item: ReviewItem | null }) {
+function PhotoRefs({
+  refs,
+  onOpenPhoto,
+}: {
+  refs: number[];
+  onOpenPhoto?: (n: number) => void;
+}) {
+  if (!refs.length) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-400">
+      <span>근거사진</span>
+      {refs.map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onOpenPhoto?.(n)}
+          className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-slate-600 shadow-sm transition-colors hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700"
+        >
+          {n}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function ReviewItemDetail({
+  item,
+  onOpenPhoto,
+}: {
+  item: ReviewItem | null;
+  onOpenPhoto?: (photoNo: number) => void;
+}) {
   if (!item) {
     return (
       <p className="text-sm text-slate-400">
@@ -295,6 +336,7 @@ export function ReviewItemDetail({ item }: { item: ReviewItem | null }) {
           <FieldLabel>근거:</FieldLabel>
           {item.reasoning}
         </p>
+        <PhotoRefs refs={item.photoRefs} onOpenPhoto={onOpenPhoto} />
       </div>
     );
   }
@@ -369,6 +411,7 @@ export function ReviewItemDetail({ item }: { item: ReviewItem | null }) {
       </p>
 
       <p className="text-sm leading-relaxed text-slate-700">{part.reasoning}</p>
+      <PhotoRefs refs={item.photoRefs} onOpenPhoto={onOpenPhoto} />
 
       {part.verdict === "협의대상" && part.required_action && (
         <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 shadow-[inset_0_0_0_1px_rgba(217,119,6,0.15)]">

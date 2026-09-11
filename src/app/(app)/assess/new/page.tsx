@@ -36,6 +36,7 @@ export default function NewAssessmentPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [highlightedPhotos, setHighlightedPhotos] = useState<number[]>([]);
   const [showEstimate, setShowEstimate] = useState(true);
   const [reportCopied, setReportCopied] = useState(false);
 
@@ -89,6 +90,7 @@ export default function NewAssessmentPage() {
       setEstimateFile(f.estimate);
       setFileInputKey((k) => k + 1);
       setError(null);
+      setHighlightedPhotos([]);
     })();
     return () => {
       cancelled = true;
@@ -496,6 +498,9 @@ export default function NewAssessmentPage() {
                           />
                         );
                       }
+                      const highlighted = highlightedPhotos.includes(i + 1);
+                      const dimmed =
+                        highlightedPhotos.length > 0 && !highlighted;
                       return (
                         <div key={i} className="group relative aspect-square">
                           <button
@@ -508,10 +513,20 @@ export default function NewAssessmentPage() {
                             <img
                               src={p.url}
                               alt={`파손 사진 ${i + 1}`}
-                              className="pointer-events-none h-full w-full rounded-lg border border-slate-200 object-cover transition-all duration-200 ease-out group-hover:relative group-hover:z-30 group-hover:scale-[4.6] group-hover:shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)]"
+                              className={`pointer-events-none h-full w-full rounded-lg border object-cover transition-all duration-200 ease-out group-hover:relative group-hover:z-30 group-hover:scale-[4.6] group-hover:opacity-100 group-hover:shadow-[0_20px_45px_-12px_rgba(15,23,42,0.45)] ${
+                                highlighted
+                                  ? "border-blue-500 ring-4 ring-blue-400/60 shadow-[0_0_0_2px_white,0_8px_20px_-6px_rgba(37,99,235,0.7)]"
+                                  : "border-slate-200"
+                              } ${dimmed ? "opacity-35" : ""}`}
                             />
                           </button>
-                          <span className="pointer-events-none absolute left-1 top-1 rounded-md bg-white/85 px-1.5 py-0.5 font-mono text-[10px] font-bold leading-none text-slate-600 shadow-sm transition-opacity group-hover:opacity-0">
+                          <span
+                            className={`pointer-events-none absolute left-1 top-1 rounded-md px-1.5 py-0.5 font-mono text-[10px] font-bold leading-none shadow-sm transition-colors group-hover:opacity-0 ${
+                              highlighted
+                                ? "bg-blue-600 text-white"
+                                : "bg-white/85 text-slate-600"
+                            }`}
+                          >
                             {i + 1}
                           </span>
                         </div>
@@ -571,7 +586,14 @@ export default function NewAssessmentPage() {
               </div>
             )}
             <div className="min-h-0 flex-1">
-              <ReviewMasterDetail items={reviewItems} />
+              <ReviewMasterDetail
+                items={reviewItems}
+                onHoverPhotos={setHighlightedPhotos}
+                onOpenPhoto={(n) => {
+                  if (n >= 1 && n <= imagePreviews.length)
+                    setLightboxIndex(n - 1);
+                }}
+              />
             </div>
             <div className="max-h-[42%] shrink-0 xl:flex xl:min-h-0 xl:flex-col">
               <OpinionEditor
