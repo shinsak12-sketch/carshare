@@ -43,12 +43,14 @@ export default function NewAdjustmentLabPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [highlightedPhotos, setHighlightedPhotos] = useState<number[]>([]);
-  const [showEstimate, setShowEstimate] = useState(true);
-  const [showPdf, setShowPdf] = useState(false);
-  const [reportCopied, setReportCopied] = useState(false);
-  // 모바일에선 틀 고정된 입력바가 화면을 너무 차지해서 접을 수 있게 (xl 이상은 항상 펼침)
-  const [formOpen, setFormOpen] = useState(true);
+  // 라이트박스가 넘겨보는 사진 묶음. null = 전체 사진, 배열 = 특정 항목의 근거사진 번호(1부터)만.
+  // 근거사진 번호를 눌러 열면 ‹ › 가 그 항목 근거사진 안에서만 돌아 닫았다 다시 여는 수고를 덜어줌.
+  const [lightboxSet, setLightboxSet] = useState<{
+    photos: number[];
+    title: string;
+  } | null>(null);
+  // 사진 그리드 접기(100장 넘게 붙으면 표가 아래로 밀리니까)
+  const [photosOpen, setPhotosOpen] = useState(true);
 
   const result = active?.result ?? null;
   // 결과 → 판정 트리 + 견적서 행(line_no) → 판정 색인. 색인은 견적서 표 옆에
@@ -72,6 +74,30 @@ export default function NewAdjustmentLabPage() {
     () => () => imagePreviews.forEach((p) => URL.revokeObjectURL(p.url)),
     [imagePreviews],
   );
+  // 근거사진 번호(1부터) 클릭 → 그 항목의 근거사진 묶음만 라이트박스로
+  function openEvidencePhoto(n: number, refs?: number[], itemName?: string) {
+    if (n < 1 || n > imagePreviews.length) return;
+    const valid = (refs ?? []).filter(
+      (r) => r >= 1 && r <= imagePreviews.length,
+    );
+    if (valid.length > 1) {
+      setLightboxSet({
+        photos: valid,
+        title: `${itemName ?? ""} 근거사진`.trim(),
+      });
+      setLightboxIndex(valid.indexOf(n));
+    } else {
+      setLightboxSet(null);
+      setLightboxIndex(n - 1);
+    }
+  }
+  const [highlightedPhotos, setHighlightedPhotos] = useState<number[]>([]);
+  const [showEstimate, setShowEstimate] = useState(true);
+  const [showPdf, setShowPdf] = useState(false);
+  const [reportCopied, setReportCopied] = useState(false);
+  // 모바일에선 틀 고정된 입력바가 화면을 너무 차지해서 접을 수 있게 (xl 이상은 항상 펼침)
+  const [formOpen, setFormOpen] = useState(true);
+
   const estimatePreviewUrl = useMemo(
     () => (estimateFile ? URL.createObjectURL(estimateFile) : null),
     [estimateFile],
@@ -651,14 +677,34 @@ export default function NewAdjustmentLabPage() {
           {(imagePreviews.length > 0 || estimatePreviewUrl) && (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
               {imagePreviews.length > 0 && (
-                <PhotoGrid
-                  previews={imagePreviews}
-                  label="수리작업 사진"
-                  highlighted={highlightedPhotos}
-                  accent="purple"
-                  onOpen={setLightboxIndex}
-                  columns={20}
-                />
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setPhotosOpen((v) => !v)}
+                    className="absolute right-0 top-0 z-10 rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                  >
+                    {photosOpen
+                      ? "사진 접기 ▲"
+                      : `사진 펼치기 ▾ (${imagePreviews.length}장)`}
+                  </button>
+                  {photosOpen ? (
+                    <PhotoGrid
+                      previews={imagePreviews}
+                      label="수리작업 사진"
+                      highlighted={highlightedPhotos}
+                      accent="purple"
+                      onOpen={(i) => {
+                        setLightboxSet(null);
+                        setLightboxIndex(i);
+                      }}
+                      columns={20}
+                    />
+                  ) : (
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                      수리작업 사진 ({imagePreviews.length}) — 접힘
+                    </p>
+                  )}
+                </div>
               )}
 
               {estimatePreviewUrl && (
@@ -702,10 +748,7 @@ export default function NewAdjustmentLabPage() {
                         judgments={result ? judgmentMap : null}
                         consistency={diagnostics?.consistency ?? null}
                         onHoverPhotos={setHighlightedPhotos}
-                        onOpenPhoto={(n) => {
-                          if (n >= 1 && n <= imagePreviews.length)
-                            setLightboxIndex(n - 1);
-                        }}
+                        onOpenPhoto={openEvidencePhoto}
                       />
                     </div>
                   ) : (
@@ -742,10 +785,7 @@ export default function NewAdjustmentLabPage() {
               <DiagnosticsTree
                 diagnostics={diagnostics}
                 onHoverPhotos={setHighlightedPhotos}
-                onOpenPhoto={(n) => {
-                  if (n >= 1 && n <= imagePreviews.length)
-                    setLightboxIndex(n - 1);
-                }}
+                onOpenPhoto={openEvidencePhoto}
               />
             </div>
           </div>
@@ -754,10 +794,23 @@ export default function NewAdjustmentLabPage() {
 
       {lightboxIndex !== null && (
         <ImageLightbox
-          urls={imagePreviews.map((p) => p.url)}
+          urls={
+            lightboxSet
+              ? lightboxSet.photos.map((n) => imagePreviews[n - 1].url)
+              : imagePreviews.map((p) => p.url)
+          }
+          labels={
+            lightboxSet
+              ? lightboxSet.photos.map((n) => `사진 ${n}`)
+              : imagePreviews.map((_, i) => `사진 ${i + 1}`)
+          }
+          title={lightboxSet?.title}
           index={lightboxIndex}
           onIndexChange={setLightboxIndex}
-          onClose={() => setLightboxIndex(null)}
+          onClose={() => {
+            setLightboxIndex(null);
+            setLightboxSet(null);
+          }}
         />
       )}
     </main>

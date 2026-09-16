@@ -111,7 +111,7 @@ function Judgment({
   onOpenPhoto,
 }: {
   d: ItemDiagnostic;
-  onOpenPhoto?: (photoNo: number) => void;
+  onOpenPhoto?: (photoNo: number, refs: number[], itemName: string) => void;
 }) {
   const it = d.view;
   const refs = it.photoRefs;
@@ -123,52 +123,55 @@ function Judgment({
     );
   }
   return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <p
-        className={`text-xs leading-relaxed ${d.severity === "pass" ? "text-slate-500" : "text-slate-700"}`}
-      >
-        {it.reasoning}
-        {it.note && (
-          <span className="font-semibold text-slate-900"> → {it.note}</span>
+    <div className="flex min-w-0 gap-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p
+          className={`text-xs leading-relaxed ${d.severity === "pass" ? "text-slate-500" : "text-slate-700"}`}
+        >
+          {it.reasoning}
+          {it.note && (
+            <span className="font-semibold text-slate-900"> → {it.note}</span>
+          )}
+        </p>
+        {it.extras.length > 0 && (
+          <div className="flex flex-col gap-1">
+            {it.extras.map((x, i) => (
+              <p
+                key={i}
+                className={`rounded-lg px-2.5 py-1.5 text-[11px] leading-relaxed ${
+                  x.tone === "warn"
+                    ? "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200/70"
+                    : x.tone === "ok"
+                      ? "bg-emerald-50 text-emerald-900 ring-1 ring-inset ring-emerald-200/70"
+                      : "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200/70"
+                }`}
+              >
+                <span className="mr-1 font-bold">{x.label}</span>
+                {x.text}
+              </p>
+            ))}
+          </div>
         )}
-      </p>
-      {it.extras.length > 0 && (
-        <div className="flex flex-col gap-1">
-          {it.extras.map((x, i) => (
-            <p
-              key={i}
-              className={`rounded-lg px-2.5 py-1.5 text-[11px] leading-relaxed ${
-                x.tone === "warn"
-                  ? "bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-200/70"
-                  : x.tone === "ok"
-                    ? "bg-emerald-50 text-emerald-900 ring-1 ring-inset ring-emerald-200/70"
-                    : "bg-slate-50 text-slate-700 ring-1 ring-inset ring-slate-200/70"
-              }`}
-            >
-              <span className="mr-1 font-bold">{x.label}</span>
-              {x.text}
-            </p>
-          ))}
-        </div>
-      )}
-      {it.costComparison && <CostComparisonCard c={it.costComparison} />}
+        {it.costComparison && <CostComparisonCard c={it.costComparison} />}
+      </div>
+      {/* 근거사진은 우측에 정렬 — 의견 본문과 분리돼 한눈에 찾기 쉽게 */}
       {(it.evidenceLabel || refs.length > 0) && (
-        <div className="flex flex-wrap items-center gap-1 text-[10px] text-slate-400">
+        <div className="flex max-w-[12rem] shrink-0 flex-col items-end gap-1 text-[10px] text-slate-400">
           {it.evidenceLabel && <span>{it.evidenceLabel}</span>}
           {refs.length > 0 && (
-            <>
-              <span>{it.evidenceLabel ? "· " : ""}근거사진</span>
+            <div className="flex flex-wrap justify-end gap-1">
               {refs.map((n) => (
                 <button
                   key={n}
                   type="button"
-                  onClick={() => onOpenPhoto?.(n)}
+                  title={`사진 ${n} 확대 (이 항목 근거사진만 넘겨봄)`}
+                  onClick={() => onOpenPhoto?.(n, refs, it.itemName)}
                   className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono font-semibold text-slate-600 ring-1 ring-inset ring-slate-200 transition-colors hover:bg-slate-900 hover:text-white"
                 >
                   {n}
                 </button>
               ))}
-            </>
+            </div>
           )}
         </div>
       )}
@@ -187,7 +190,7 @@ function Row({
   judged: boolean;
   d?: ItemDiagnostic;
   onHoverPhotos?: (refs: number[]) => void;
-  onOpenPhoto?: (photoNo: number) => void;
+  onOpenPhoto?: (photoNo: number, refs: number[], itemName: string) => void;
 }) {
   const badge = badgeOf(line);
   const isPart = line.kind === "부품";
@@ -294,7 +297,7 @@ export function EstimateTreeView({
   judgments?: Map<string, ItemDiagnostic> | null;
   consistency?: AdjustmentDiagnostics["consistency"];
   onHoverPhotos?: (refs: number[]) => void;
-  onOpenPhoto?: (photoNo: number) => void;
+  onOpenPhoto?: (photoNo: number, refs: number[], itemName: string) => void;
 }) {
   const judged = !!judgments && judgments.size > 0;
   const kinds = useMemo(() => {

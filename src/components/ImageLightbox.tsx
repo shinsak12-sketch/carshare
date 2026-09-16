@@ -7,17 +7,24 @@ export function ImageLightbox({
   index,
   onIndexChange,
   onClose,
+  labels,
+  title,
 }: {
   urls: string[];
   index: number;
   onIndexChange: (i: number) => void;
   onClose: () => void;
+  // 하단 카운터에 붙일 사진 이름(예: "사진 17"). 근거사진 일부만 넘길 때 실제 번호를 보여주기 위함
+  labels?: string[];
+  // 어떤 묶음을 보고 있는지(예: "리어범퍼 교환 근거사진")
+  title?: string;
 }) {
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
       if (e.key === "ArrowRight") onIndexChange((index + 1) % urls.length);
-      if (e.key === "ArrowLeft") onIndexChange((index - 1 + urls.length) % urls.length);
+      if (e.key === "ArrowLeft")
+        onIndexChange((index - 1 + urls.length) % urls.length);
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
@@ -67,9 +74,15 @@ export function ImageLightbox({
         </button>
       )}
 
-      {urls.length > 1 && (
-        <div className="absolute bottom-6 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
-          {index + 1} / {urls.length}
+      {(urls.length > 1 || labels || title) && (
+        <div className="absolute bottom-6 flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+          {title && <span className="text-white/70">{title}</span>}
+          {labels?.[index] && <span>{labels[index]}</span>}
+          {urls.length > 1 && (
+            <span className="tabular-nums text-white/80">
+              {index + 1} / {urls.length}
+            </span>
+          )}
         </div>
       )}
     </div>
