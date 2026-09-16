@@ -58,6 +58,21 @@ export const SEVERITY_META: Record<
   },
 };
 
+// 추론 판정 배지 — 사진에 직접 안 보이는 부위를 충격 경로로 추론해 판정한 항목.
+// 담당자가 이 항목만 따로 검토하므로 판정 배지 옆에 항상 붙임.
+export function InferredBadge({ small = false }: { small?: boolean }) {
+  return (
+    <span
+      title="사진에 직접 보이지 않는 부위 — 파손 형태·충격 방향으로 추론한 판정"
+      className={`inline-flex shrink-0 items-center rounded-full border border-dashed border-violet-400 bg-violet-50 font-bold text-violet-700 ${
+        small ? "px-1.5 py-px text-[9px]" : "px-2 py-0.5 text-[10px]"
+      }`}
+    >
+      추론
+    </span>
+  );
+}
+
 export function VerdictBadge({
   verdict,
   small = false,
@@ -342,7 +357,10 @@ function Row({
                 ↳ 연동
               </span>
             ) : (
-              <VerdictBadge verdict={it.verdict} />
+              <>
+                {it.basis === "추론" && <InferredBadge />}
+                <VerdictBadge verdict={it.verdict} />
+              </>
             )}
           </span>
         </div>

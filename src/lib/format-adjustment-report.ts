@@ -14,7 +14,8 @@ function rowText(d: ItemDiagnostic, isMain: boolean): string[] {
   const mark = follows ? "↳" : GLYPH[d.severity];
   const role = !isMain && it.roleLabel !== "메인" ? `[${it.roleLabel}] ` : "";
   const no = d.lineNo != null ? String(d.lineNo).padStart(3) : "   ";
-  const head = `${indent}${mark} ${no}  ${role}${it.itemName} · ${it.claimedAction}${hours}  → ${follows ? "연동" : it.verdict}`;
+  const basis = !follows && it.basis === "추론" ? " [추론]" : "";
+  const head = `${indent}${mark} ${no}  ${role}${it.itemName} · ${it.claimedAction}${hours}  → ${follows ? "연동" : it.verdict}${basis}`;
   if (follows)
     return it.note ? [head, `${indent}        → ${it.note}`] : [head];
   const refs = it.photoRefs.length

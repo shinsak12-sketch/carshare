@@ -30,6 +30,8 @@ export interface DiagItemView {
   reasoning: string;
   note: string;
   evidenceLabel: string | null;
+  // "추론"이면 사진에 직접 안 보이는 부위를 충격 경로로 추론한 판정 → 배지로 구분
+  basis?: "직접확인" | "추론";
   photoRefs: number[];
   damageType?: string;
   costComparison: CostComparison | null;
@@ -148,6 +150,7 @@ function toView(item: AdjustmentItem): DiagItemView {
     reasoning: item.reasoning,
     note: item.adjustment_note,
     evidenceLabel: item.photo_evidence,
+    basis: item.judgment_basis,
     photoRefs: item.photo_refs,
     damageType: isMinorDamageType(item.damage_type ?? undefined)
       ? (item.damage_type ?? undefined)

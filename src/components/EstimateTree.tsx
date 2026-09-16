@@ -10,6 +10,7 @@ import type {
 import { TYPE_BADGE_CLASS } from "@/lib/review-items";
 import {
   CostComparisonCard,
+  InferredBadge,
   SEVERITY_META,
   VerdictBadge,
 } from "./DiagnosticsPanel";
@@ -103,7 +104,7 @@ const GRID_BASE =
   "grid grid-cols-[2.5rem_4.75rem_minmax(0,1fr)_3.5rem_6rem_6rem] items-center gap-x-2";
 // 판정 모드: 견적 열은 그대로 두고 오른쪽에 판정 배지 + 검토 의견(넓게) 열을 덧붙임
 const GRID_JUDGED =
-  "grid grid-cols-[2.5rem_4.75rem_minmax(11rem,1fr)_3.5rem_6rem_6rem_5.5rem_minmax(18rem,2.2fr)] items-start gap-x-2";
+  "grid grid-cols-[2.5rem_4.75rem_minmax(11rem,1fr)_3.5rem_6rem_6rem_6.5rem_minmax(18rem,2.2fr)] items-start gap-x-2";
 
 // 행 오른쪽 검토 의견 셀 — 우측 결과 패널의 Row 내용을 한 칸에 압축
 function Judgment({
@@ -252,7 +253,7 @@ function Row({
       </span>
       {judged && (
         <>
-          <span className="flex items-center gap-1 pt-px">
+          <span className="flex flex-wrap items-center gap-1 pt-px">
             {d ? (
               follows ? (
                 <span className="inline-flex shrink-0 items-center rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600">
@@ -266,6 +267,7 @@ function Row({
                     {m!.glyph}
                   </span>
                   <VerdictBadge verdict={d.verdict} />
+                  {d.view.basis === "추론" && <InferredBadge small />}
                 </>
               )
             ) : (
@@ -313,11 +315,14 @@ export function EstimateTreeView({
   const [sevOn, setSevOn] = useState<Set<DiagnosticSeverity>>(
     () => new Set(SEVERITIES),
   );
+  // "추론만": 사진에 안 보이는 부위를 충격 경로로 추론한 판정만 남김(담당자 별도 검토용)
+  const [inferredOnly, setInferredOnly] = useState(false);
   const [syncedTree, setSyncedTree] = useState<Tree>(tree);
   if (syncedTree !== tree) {
     setSyncedTree(tree);
     setOn(new Set(kinds));
     setSevOn(new Set(SEVERITIES));
+    setInferredOnly(false);
   }
   const allOn = kinds.every((k) => on.has(k));
 
@@ -326,8 +331,13 @@ export function EstimateTreeView({
     if (!d || d.view.followsParent) return "pass";
     return d.severity;
   };
+  const isInferred = (l: EstimateLine) =>
+    judgments?.get(judgmentKey(l.line_no))?.view.basis === "추론";
   const rows = tree.rows.filter(
-    (l) => on.has(badgeOf(l)) && (!judged || sevOn.has(sevOfLine(l))),
+    (l) =>
+      on.has(badgeOf(l)) &&
+      (!judged || sevOn.has(sevOfLine(l))) &&
+      (!inferredOnly || isInferred(l)),
   );
   const labor = rows.reduce((s, l) => s + (l.before.labor ?? 0), 0);
   const part = rows.reduce((s, l) => s + (l.before.part ?? 0), 0);
@@ -347,6 +357,13 @@ export function EstimateTreeView({
     for (const d of judgments.values())
       if (!d.view.followsParent) c[d.severity] += 1;
     return c;
+  }, [judgments]);
+  const inferredCount = useMemo(() => {
+    if (!judgments) return 0;
+    let n = 0;
+    for (const d of judgments.values())
+      if (!d.view.followsParent && d.view.basis === "추론") n += 1;
+    return n;
   }, [judgments]);
 
   function toggle(k: string) {
@@ -391,6 +408,23 @@ export function EstimateTreeView({
               </button>
             );
           })}
+          {inferredCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setInferredOnly((v) => !v)}
+              title="사진에 직접 보이지 않는 부위를 충격 경로로 추론해 판정한 항목만 보기"
+              className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm font-bold transition-all active:scale-95 ${
+                inferredOnly
+                  ? "border-violet-600 bg-violet-600 text-white shadow-[0_4px_10px_-4px_rgba(124,58,237,0.6)]"
+                  : "border-dashed border-violet-300 bg-white text-violet-600 hover:bg-violet-50"
+              }`}
+            >
+              <span className="tabular-nums">{inferredCount}</span>
+              <span className="text-[11px] font-semibold opacity-80">
+                추론만
+              </span>
+            </button>
+          )}
           <span className="text-[11px] text-slate-400">
             행에 마우스를 올리면 근거사진이 표시됨
           </span>

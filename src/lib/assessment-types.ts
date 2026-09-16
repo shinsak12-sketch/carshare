@@ -34,6 +34,8 @@ export interface PartAssessment {
   damage_type: DamageType;
   reasoning: string;
   evidence_confidence: Confidence;
+  // 필요성 판단 근거: 직접확인 / 추론(사진에 안 보이는 부위를 충격 경로로 추론). 예전 결과엔 없음
+  judgment_basis?: "직접확인" | "추론";
   labor_time_check: {
     claimed_h: number | null;
     reference_h: number | null; // 회사 참고자료 기준 (없으면 null)

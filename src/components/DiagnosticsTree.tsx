@@ -10,6 +10,7 @@ import type {
 } from "@/lib/adjustment-review-items";
 import {
   CostComparisonCard,
+  InferredBadge,
   SEVERITY_META,
   VerdictBadge,
 } from "./DiagnosticsPanel";
@@ -246,7 +247,10 @@ function Row({
                 ↳ 연동
               </span>
             ) : (
-              <VerdictBadge verdict={it.verdict} />
+              <>
+                {it.basis === "추론" && <InferredBadge />}
+                <VerdictBadge verdict={it.verdict} />
+              </>
             )}
           </span>
         </div>

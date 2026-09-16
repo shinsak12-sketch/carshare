@@ -6,6 +6,9 @@ import type { VerdictLabel } from "./review-items";
 export type AdjustmentVerdict = VerdictLabel;
 
 export type PhotoEvidence = "직접확인" | "간접확인" | "확인불가";
+// 필요성 판단의 근거 — 직접확인(파손 사진·청구서 구조로 확인) / 추론(충격 경로로 추론).
+// 담당자가 추론 항목만 따로 검토할 수 있게 화면·복사 텍스트에 구분 표시함.
+export type JudgmentBasis = "직접확인" | "추론";
 
 // 청구 항목의 역할 — 메인(공임의 핵심 작업) / 도장 / 부수(탈착·O/H 등).
 // 부품비 라인은 판단 대상이 아님(공임 판정 보고 담당자가 AOS에서 처리).
@@ -28,6 +31,8 @@ export interface AdjustmentItem {
   // 시간 과다 여부 판단(사진 속 손상 난이도 대비)에 씀. 그 외 항목은 null.
   claimed_hours: number | null;
   photo_evidence: PhotoEvidence;
+  // 예전 결과(adj3.0 이전)에는 없어서 optional
+  judgment_basis?: JudgmentBasis;
   // 판단 근거가 된 사진 번호(1부터). 화면에서 해당 사진을 강조하는 데 씀.
   photo_refs: number[];
   // 경미손상 적용대상 부품이고 수리 전 손상 상태가 사진에서 확인될 때만 채움.

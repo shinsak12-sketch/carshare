@@ -90,6 +90,7 @@ function partView(part: PartAssessment, lineNo: number): DiagItemView {
     note: part.verdict === "협의대상" ? part.required_action : "",
     evidenceLabel:
       part.evidence_confidence === "낮음" ? "사진 판독 신뢰도 낮음" : null,
+    basis: part.judgment_basis,
     photoRefs: part.photo_refs ?? [],
     damageType: isMinorDamageType(part.damage_type)
       ? part.damage_type

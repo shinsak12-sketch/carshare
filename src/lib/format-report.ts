@@ -108,10 +108,11 @@ export function buildReportText(
           ? ` · 근거사진 ${part.photo_refs.join(", ")}`
           : ""),
     );
+    const basis = part.judgment_basis === "추론" ? " [추론]" : "";
     const verdictLine =
       part.verdict === "협의대상" && part.required_action
-        ? `→ 판정: ${part.damage_type} · 협의대상 — ${part.required_action}`
-        : `→ 판정: ${part.damage_type} · ${part.verdict}`;
+        ? `→ 판정: ${part.damage_type} · 협의대상${basis} — ${part.required_action}`
+        : `→ 판정: ${part.damage_type} · ${part.verdict}${basis}`;
     lines.push(verdictLine);
 
     if (part.labor_time_check.claimed_h !== null) {
