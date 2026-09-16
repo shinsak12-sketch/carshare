@@ -24,7 +24,7 @@ const ACCENT: Record<PhotoAccent, { ring: string; badge: string }> = {
   },
 };
 
-const PREVIEW = 440; // 확대 크기(px, 정사각 박스 안에 contain)
+const PREVIEW_MAX = 440; // 확대 크기(px, 정사각 박스 안에 contain). 좁은 화면에선 화면 폭에 맞춤
 
 export function PhotoGrid({
   previews,
@@ -43,6 +43,7 @@ export function PhotoGrid({
     index: number;
     left: number;
     top: number;
+    size: number;
   } | null>(null);
   const a = ACCENT[accent];
 
@@ -61,6 +62,7 @@ export function PhotoGrid({
   function enter(e: React.MouseEvent<HTMLElement>, index: number) {
     const r = e.currentTarget.getBoundingClientRect();
     const margin = 12;
+    const PREVIEW = Math.min(PREVIEW_MAX, window.innerWidth - margin * 2);
     // 원본 칸 오른쪽 아래로 펼치되 화면 밖으로 나가면 반대편/안쪽으로 밀어넣음
     let left = r.left;
     let top = r.top;
@@ -68,7 +70,7 @@ export function PhotoGrid({
       left = Math.max(margin, r.right - PREVIEW);
     if (top + PREVIEW + margin > window.innerHeight)
       top = Math.max(margin, window.innerHeight - PREVIEW - margin);
-    setHover({ index, left, top });
+    setHover({ index, left, top, size: PREVIEW });
   }
 
   const cells = Math.max(18, Math.ceil(previews.length / 9) * 9);
@@ -78,7 +80,7 @@ export function PhotoGrid({
       <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">
         {label} ({previews.length})
       </p>
-      <div className="grid grid-cols-9 gap-2">
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 xl:grid-cols-9">
         {Array.from({ length: cells }).map((_, i) => {
           const p = previews[i];
           if (!p) {
@@ -129,8 +131,8 @@ export function PhotoGrid({
           style={{
             left: hover.left,
             top: hover.top,
-            width: PREVIEW,
-            height: PREVIEW,
+            width: hover.size,
+            height: hover.size,
           }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
