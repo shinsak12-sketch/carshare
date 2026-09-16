@@ -86,7 +86,7 @@ async function handleAdjustment(req: NextRequest) {
     memo ? `[담당자 추가 의견]\n${memo}` : null,
     `[청구 견적서 원문 텍스트]\n${estimateText}`,
     ...matchedSections.map((s) => `[참고자료: ${s.name}]\n${s.content}`),
-    `첨부된 사진은 파손 상태 사진이 아니라 수리작업 진행/완료 사진이며, 총 ${imageUrls.length}장이 첨부 순서대로 1번부터 번호가 매겨져 있습니다.`,
+    `첨부된 사진은 총 ${imageUrls.length}장이며 첨부 순서대로 1번부터 번호가 매겨져 있습니다. 수리 전 파손 상태 사진과 수리 작업 진행/완료 사진이 섞여 있으니, 먼저 어느 사진이 수리 전 파손 상태인지 구분한 뒤 판단하십시오.`,
   ].filter(Boolean);
 
   // 백그라운드 작업으로 시작만 하고 작업 ID 반환. 사진(Blob)은 작업이 끝날 때 /api/ai-job 에서 지움.
