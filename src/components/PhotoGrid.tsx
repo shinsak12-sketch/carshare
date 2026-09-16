@@ -80,7 +80,7 @@ export function PhotoGrid({
       <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">
         {label} ({previews.length})
       </p>
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 xl:grid-cols-9">
+      <div className="grid grid-cols-9 gap-2">
         {Array.from({ length: cells }).map((_, i) => {
           const p = previews[i];
           if (!p) {
