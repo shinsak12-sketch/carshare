@@ -18,7 +18,7 @@ import type {
 // 하위 작업(메인 공임 → 도장 → 부수) 판정. 손해사정·선견적이 같은 뷰 모델(DiagItemView)로
 // 이 패널을 공유함. ✖/⚠/✔ 집계는 독립 판정만(연동 항목 제외).
 
-const SEVERITY_META: Record<
+export const SEVERITY_META: Record<
   DiagnosticSeverity,
   {
     glyph: string;
@@ -58,7 +58,7 @@ const SEVERITY_META: Record<
   },
 };
 
-function VerdictBadge({
+export function VerdictBadge({
   verdict,
   small = false,
 }: {
@@ -410,7 +410,7 @@ function Row({
 }
 
 // 애매한 교환 건: 교환안 vs 수리안을 나란히 — 담당자가 회사 손익 관점에서 바로 비교
-function CostComparisonCard({ c }: { c: CostComparison }) {
+export function CostComparisonCard({ c }: { c: CostComparison }) {
   return (
     <div className="mt-1 rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_4px_12px_-8px_rgba(217,119,6,0.35)]">
       <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">

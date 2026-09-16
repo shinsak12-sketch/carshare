@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { PhotoGrid } from "@/components/PhotoGrid";
-import { DiagnosticsPanel } from "@/components/DiagnosticsPanel";
+import { DiagnosticsTree } from "@/components/DiagnosticsTree";
 import { uploadPhotos } from "@/lib/upload-photos";
 import { runAiJob } from "@/lib/ai-job-client";
 import type { AdjustmentResult } from "@/lib/adjustment-types";
@@ -651,7 +651,7 @@ export default function NewAdjustmentLabPage() {
         {result && diagnostics && active && (
           <div className="flex flex-col gap-4 xl:min-h-0">
             <div className="min-h-0 flex-1">
-              <DiagnosticsPanel
+              <DiagnosticsTree
                 diagnostics={diagnostics}
                 onHoverPhotos={setHighlightedPhotos}
                 onOpenPhoto={(n) => {
