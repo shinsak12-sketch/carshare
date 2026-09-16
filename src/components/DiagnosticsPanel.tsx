@@ -89,14 +89,11 @@ export function DiagnosticsPanel({
     new Set(["error", "warn"]),
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  // 모바일(xl 미만): 좌우 분할이 안 되니 목록 → (탭) → 상세 전체 폭으로 전환
-  const [mobileDetail, setMobileDetail] = useState(false);
   // 새 결과가 오면 선택 초기화 (렌더 중 상태 조정 패턴)
   const [synced, setSynced] = useState<Diagnostics | null>(null);
   if (synced !== diagnostics) {
     setSynced(diagnostics);
     setSelectedId(null);
-    setMobileDetail(false);
   }
 
   const { consistency, branches, counts } = diagnostics;
@@ -153,13 +150,10 @@ export function DiagnosticsPanel({
       )}
 
       {/* 판넬 목록과 하위 작업은 각각 독립 스크롤 */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[260px_1fr]">
-        {/* 좌: 메인 판넬 목록 (모바일에선 상세 보는 동안 숨김) */}
-        <div
-          className={`min-h-0 flex-col divide-y divide-slate-100 self-stretch overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)] ${
-            mobileDetail ? "hidden xl:flex" : "flex"
-          }`}
-        >
+      {/* 좌우 분할 유지. 좁은 화면에선 픽셀 고정 대신 유동 비율(2:3)로 전체 폭을 씀 */}
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-3 xl:grid-cols-[260px_1fr]">
+        {/* 좌: 메인 판넬 목록 */}
+        <div className="flex min-h-0 flex-col divide-y divide-slate-100 self-stretch overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
           {visible.length === 0 && (
             <p className="px-3 py-6 text-center text-xs text-slate-400">
               {counts.error + counts.warn === 0
@@ -180,10 +174,7 @@ export function DiagnosticsPanel({
               <button
                 key={b.id}
                 type="button"
-                onClick={() => {
-                  setSelectedId(b.id);
-                  setMobileDetail(true);
-                }}
+                onClick={() => setSelectedId(b.id)}
                 className={`flex items-start gap-2 px-3 py-2.5 text-left transition-colors first:rounded-t-2xl last:rounded-b-2xl ${
                   active
                     ? `${m.bg} shadow-[inset_3px_0_0_currentColor] ${m.text}`
@@ -226,19 +217,8 @@ export function DiagnosticsPanel({
           })}
         </div>
 
-        {/* 우: 선택한 판넬의 하위 작업 (모바일에선 목록에서 항목을 눌렀을 때만 전체 폭으로) */}
-        <div
-          className={`min-h-0 min-w-0 self-stretch overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)] ${
-            mobileDetail ? "block" : "hidden xl:block"
-          }`}
-        >
-          <button
-            type="button"
-            onClick={() => setMobileDetail(false)}
-            className="flex w-full items-center gap-1.5 border-b border-slate-100 px-3 py-2 text-left text-xs font-bold text-slate-600 hover:bg-slate-50 xl:hidden"
-          >
-            ← 판넬 목록으로
-          </button>
+        {/* 우: 선택한 판넬의 하위 작업 */}
+        <div className="min-h-0 min-w-0 self-stretch overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
           {selected ? (
             <BranchDetail
               branch={selected}

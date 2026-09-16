@@ -70,7 +70,7 @@ export function ProcedureMasterDetail({
         )}
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 xl:grid-cols-[300px_1fr]">
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-3 xl:grid-cols-[300px_1fr]">
         <div className="flex min-h-0 flex-col gap-3 self-stretch overflow-y-auto pr-0.5">
           {groups.map((group, gi) => (
             <div
