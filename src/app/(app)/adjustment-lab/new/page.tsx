@@ -5,7 +5,7 @@ import { ImageLightbox } from "@/components/ImageLightbox";
 import { PhotoGrid } from "@/components/PhotoGrid";
 import { DiagnosticsTree } from "@/components/DiagnosticsTree";
 import { EstimateTreeView } from "@/components/EstimateTree";
-import type { EstimateTree } from "@/lib/estimate-tree";
+import { isEstimateTree, type EstimateTree } from "@/lib/estimate-tree";
 import { uploadPhotos } from "@/lib/upload-photos";
 import { runAiJob } from "@/lib/ai-job-client";
 import type { AdjustmentResult } from "@/lib/adjustment-types";
@@ -664,7 +664,7 @@ export default function NewAdjustmentLabPage() {
                     >
                       {showEstimate ? "견적서 숨기기 ▲" : "청구 견적서 보기 ▾"}
                     </button>
-                    {active?.estimateTree && (
+                    {isEstimateTree(active?.estimateTree) && (
                       <button
                         type="button"
                         onClick={() => setShowPdf((v) => !v)}
@@ -680,9 +680,13 @@ export default function NewAdjustmentLabPage() {
                       </span>
                     )}
                   </div>
-                  {showEstimate && active?.estimateTree && !showPdf ? (
+                  {showEstimate &&
+                  isEstimateTree(active?.estimateTree) &&
+                  !showPdf ? (
                     <div className="mt-3 rounded-xl border border-slate-200">
-                      <EstimateTreeView tree={active.estimateTree} />
+                      <EstimateTreeView
+                        tree={active.estimateTree as EstimateTree}
+                      />
                     </div>
                   ) : (
                     showEstimate && (
