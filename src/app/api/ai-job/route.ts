@@ -2,6 +2,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { getJobStatus } from "@/lib/ai-job";
 import { deleteBlobs, sweepStaleBlobs } from "@/lib/blob-cleanup";
+import { completeRunByJob, failRunByJob } from "@/lib/ai-usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -36,11 +37,24 @@ export async function POST(req: NextRequest) {
   try {
     const status = await getJobStatus(id);
     if (status.status === "completed" || status.status === "failed") {
+      // 사용량 기록 확정(토큰·비용). 결과 본문은 저장하지 않고 판정 집계만.
+      try {
+        if (status.status === "completed")
+          await completeRunByJob(id, status.usage, status.result);
+        else await failRunByJob(id, status.error, status.usage);
+      } catch (e) {
+        console.error("[/api/ai-job] usage record failed:", e);
+      }
       after(async () => {
         await deleteBlobs(imageUrls, "/api/ai-job");
         await sweepStaleBlobs("/api/ai-job");
       });
     }
+    // usage는 서버 기록용 — 브라우저엔 상태·결과만 돌려줌
+    if (status.status === "completed")
+      return NextResponse.json({ status: "completed", result: status.result });
+    if (status.status === "failed")
+      return NextResponse.json({ status: "failed", error: status.error });
     return NextResponse.json(status);
   } catch (err) {
     const message =

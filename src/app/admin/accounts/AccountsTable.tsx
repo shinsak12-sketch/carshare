@@ -28,7 +28,11 @@ const statusLabel: Record<Status, string> = {
   DISABLED: "비활성화",
 };
 
-export function AccountsTable({ initialUsers }: { initialUsers: AccountRow[] }) {
+export function AccountsTable({
+  initialUsers,
+}: {
+  initialUsers: AccountRow[];
+}) {
   const [users, setUsers] = useState(initialUsers);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,11 +51,15 @@ export function AccountsTable({ initialUsers }: { initialUsers: AccountRow[] }) 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "처리에 실패했습니다.");
       if (data.user) {
-        setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, ...data.user } : u)));
+        setUsers((prev) =>
+          prev.map((u) => (u.id === id ? { ...u, ...data.user } : u)),
+        );
       }
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
+      setError(
+        err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.",
+      );
       return false;
     } finally {
       setBusyId(null);
@@ -83,7 +91,9 @@ export function AccountsTable({ initialUsers }: { initialUsers: AccountRow[] }) 
 
       {pending.length > 0 && (
         <div className="flex flex-col gap-3">
-          <h2 className="text-sm font-bold text-amber-800">승인 대기 ({pending.length})</h2>
+          <h2 className="text-sm font-bold text-amber-800">
+            승인 대기 ({pending.length})
+          </h2>
           {pending.map((u) => (
             <div
               key={u.id}
@@ -92,7 +102,9 @@ export function AccountsTable({ initialUsers }: { initialUsers: AccountRow[] }) 
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-slate-900">{u.name}</span>
-                  <span className="font-mono text-xs text-slate-500">{u.employeeId}</span>
+                  <span className="font-mono text-xs text-slate-500">
+                    {u.employeeId}
+                  </span>
                 </div>
                 <p className="mt-1 text-xs text-slate-400">
                   신청일 {new Date(u.createdAt).toLocaleString("ko-KR")}
@@ -120,7 +132,9 @@ export function AccountsTable({ initialUsers }: { initialUsers: AccountRow[] }) 
       )}
 
       <div className="flex flex-col gap-3">
-        <h2 className="text-sm font-bold text-slate-700">전체 계정 ({others.length})</h2>
+        <h2 className="text-sm font-bold text-slate-700">
+          전체 계정 ({others.length})
+        </h2>
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead>
@@ -134,16 +148,24 @@ export function AccountsTable({ initialUsers }: { initialUsers: AccountRow[] }) 
             </thead>
             <tbody>
               {others.map((u) => (
-                <tr key={u.id} className="border-b border-slate-50 last:border-0">
+                <tr
+                  key={u.id}
+                  className="border-b border-slate-50 last:border-0"
+                >
                   <td className="px-4 py-3">
                     <div className="font-semibold text-slate-900">{u.name}</div>
-                    <div className="font-mono text-xs text-slate-400">{u.employeeId}</div>
+                    <div className="font-mono text-xs text-slate-400">
+                      {u.employeeId}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <button
                       disabled={busyId === u.id}
                       onClick={() =>
-                        callAction(u.id, { action: "set_role", role: u.role === "ADMIN" ? "EMPLOYEE" : "ADMIN" })
+                        callAction(u.id, {
+                          action: "set_role",
+                          role: u.role === "ADMIN" ? "EMPLOYEE" : "ADMIN",
+                        })
                       }
                       className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-slate-600 transition-all duration-150 hover:bg-slate-100 active:scale-95 disabled:opacity-50"
                       title="클릭하여 역할 전환"
@@ -166,7 +188,9 @@ export function AccountsTable({ initialUsers }: { initialUsers: AccountRow[] }) 
                       {u.status === "ACTIVE" && (
                         <button
                           disabled={busyId === u.id}
-                          onClick={() => callAction(u.id, { action: "disable" })}
+                          onClick={() =>
+                            callAction(u.id, { action: "disable" })
+                          }
                           className="rounded-full border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600 transition-all duration-150 hover:bg-slate-50 active:scale-95 disabled:opacity-50"
                         >
                           비활성화
@@ -222,7 +246,10 @@ export function AccountsTable({ initialUsers }: { initialUsers: AccountRow[] }) 
               ))}
               {others.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">
+                  <td
+                    colSpan={5}
+                    className="px-4 py-8 text-center text-sm text-slate-400"
+                  >
                     등록된 계정이 없습니다.
                   </td>
                 </tr>

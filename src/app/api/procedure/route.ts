@@ -1,12 +1,20 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { startStructuredJob } from "@/lib/ai-job";
 import {
+  PROCEDURE_PROMPT_VERSION_TAG,
   PROCEDURE_RESPONSE_SCHEMA,
   PROCEDURE_SYSTEM_PROMPT,
 } from "@/lib/procedure-prompt";
 import { getCurrentUser } from "@/lib/session";
 import { sweepStaleBlobs } from "@/lib/blob-cleanup";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
+import {
+  attachJob,
+  completeRun,
+  createRun,
+  failRun,
+  normalizePlate,
+} from "@/lib/ai-usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -64,14 +72,32 @@ async function handleProcedure(req: NextRequest) {
   ].filter(Boolean);
 
   // 백그라운드 작업으로 시작만 하고 작업 ID 반환. 사진(Blob)은 작업이 끝날 때 /api/ai-job 에서 지움.
-  const started = await startStructuredJob({
-    system: PROCEDURE_SYSTEM_PROMPT,
-    userText: contextLines.join("\n\n"),
-    imageUrls,
-    schemaName: "procedure_result",
-    schema: PROCEDURE_RESPONSE_SCHEMA as unknown as Record<string, unknown>,
-    effort: "medium",
+  const run = await createRun({
+    user,
+    tool: "procedure",
+    promptVersion: PROCEDURE_PROMPT_VERSION_TAG,
+    photoCount: imageUrls.length,
+    plateNo: normalizePlate(
+      form.get("plateNo") ? String(form.get("plateNo")) : null,
+    ),
   });
+
+  let started;
+  try {
+    started = await startStructuredJob({
+      system: PROCEDURE_SYSTEM_PROMPT,
+      userText: contextLines.join("\n\n"),
+      imageUrls,
+      schemaName: "procedure_result",
+      schema: PROCEDURE_RESPONSE_SCHEMA as unknown as Record<string, unknown>,
+      effort: "medium",
+    });
+  } catch (err) {
+    await failRun(run.id, err instanceof Error ? err.message : String(err));
+    throw err;
+  }
+  if ("jobId" in started) await attachJob(run.id, started.jobId);
+  else await completeRun(run.id, started.usage, started.result);
 
   const { ip, userAgent } = getRequestMeta(req);
   void logAudit({
@@ -87,5 +113,7 @@ async function handleProcedure(req: NextRequest) {
     await sweepStaleBlobs("/api/procedure");
   });
 
-  return NextResponse.json(started);
+  return NextResponse.json(
+    "jobId" in started ? started : { result: started.result },
+  );
 }

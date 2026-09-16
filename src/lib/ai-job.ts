@@ -1,5 +1,6 @@
 import type OpenAI from "openai";
 import { getModel, getOpenAI, getReasoningEffort } from "./openai";
+import type { TokenUsage } from "./pricing-defaults";
 
 // AI 판단을 OpenAI 백그라운드 작업으로 던지고 작업 ID만 돌려준다.
 // Vercel 함수는 GPT 응답을 기다리지 않으므로 제한시간(300초)과 무관하고,
@@ -15,7 +16,38 @@ export interface StructuredJobInput {
   effort: "low" | "medium";
 }
 
-export type JobStart = { jobId: string } | { result: unknown };
+export type JobStart =
+  | { jobId: string }
+  | { result: unknown; usage: TokenUsage };
+
+// OpenAI Responses / Chat 응답의 usage를 공통 형태로
+export function usageOf(u: unknown): TokenUsage {
+  const x = u as
+    | {
+        input_tokens?: number;
+        output_tokens?: number;
+        input_tokens_details?: { cached_tokens?: number };
+        output_tokens_details?: { reasoning_tokens?: number };
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        prompt_tokens_details?: { cached_tokens?: number };
+        completion_tokens_details?: { reasoning_tokens?: number };
+      }
+    | null
+    | undefined;
+  return {
+    inputTokens: x?.input_tokens ?? x?.prompt_tokens ?? 0,
+    cachedInputTokens:
+      x?.input_tokens_details?.cached_tokens ??
+      x?.prompt_tokens_details?.cached_tokens ??
+      0,
+    outputTokens: x?.output_tokens ?? x?.completion_tokens ?? 0,
+    reasoningTokens:
+      x?.output_tokens_details?.reasoning_tokens ??
+      x?.completion_tokens_details?.reasoning_tokens ??
+      0,
+  };
+}
 
 function describe(err: unknown): string {
   const e = err as {
@@ -71,7 +103,7 @@ export async function startStructuredJob(
     });
     const raw = completion.choices[0]?.message?.content;
     if (!raw) throw new Error("AI 응답을 받지 못했습니다.");
-    return { result: JSON.parse(raw) };
+    return { result: JSON.parse(raw), usage: usageOf(completion.usage) };
   }
 
   try {
@@ -115,8 +147,8 @@ export async function startStructuredJob(
 
 export type JobStatus =
   | { status: "queued" | "in_progress" }
-  | { status: "completed"; result: unknown }
-  | { status: "failed"; error: string };
+  | { status: "completed"; result: unknown; usage: TokenUsage }
+  | { status: "failed"; error: string; usage: TokenUsage };
 
 export async function getJobStatus(jobId: string): Promise<JobStatus> {
   const openai = getOpenAI();
@@ -139,11 +171,17 @@ export async function getJobStatus(jobId: string): Promise<JobStatus> {
     void openai.responses
       .delete(jobId)
       .catch((e) => console.warn("[ai-job] delete failed:", e));
-    if (!raw) return { status: "failed", error: "AI 응답이 비어 있습니다." };
+    const usage = usageOf(resp.usage);
+    if (!raw)
+      return { status: "failed", error: "AI 응답이 비어 있습니다.", usage };
     try {
-      return { status: "completed", result: JSON.parse(raw) };
+      return { status: "completed", result: JSON.parse(raw), usage };
     } catch {
-      return { status: "failed", error: "AI 응답을 해석하지 못했습니다." };
+      return {
+        status: "failed",
+        error: "AI 응답을 해석하지 못했습니다.",
+        usage,
+      };
     }
   }
   const reason =
@@ -152,5 +190,9 @@ export async function getJobStatus(jobId: string): Promise<JobStatus> {
       ? `응답 미완료(${resp.incomplete_details.reason})`
       : `상태: ${resp.status}`);
   void openai.responses.delete(jobId).catch(() => undefined);
-  return { status: "failed", error: `AI 판단 실패 — ${reason}` };
+  return {
+    status: "failed",
+    error: `AI 판단 실패 — ${reason}`,
+    usage: usageOf(resp.usage),
+  };
 }

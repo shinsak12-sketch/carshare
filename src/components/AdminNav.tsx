@@ -6,8 +6,10 @@ import { useState } from "react";
 
 const TABS = [
   { href: "/admin", label: "개요" },
+  { href: "/admin/usage", label: "사용량 통계" },
+  { href: "/admin/runs", label: "실행 이력" },
+  { href: "/admin/pricing", label: "단가" },
   { href: "/admin/accounts", label: "계정 관리" },
-  { href: "/admin/history", label: "진단 이력" },
   { href: "/admin/logs", label: "접속·활동 기록" },
 ];
 
@@ -51,13 +53,18 @@ export function AdminNav({ name }: { name: string }) {
       </div>
       <nav className="no-scrollbar mx-auto flex max-w-5xl gap-1.5 overflow-x-auto px-4 pb-2.5 sm:px-6">
         {TABS.map((tab) => {
-          const active = tab.href === "/admin" ? pathname === "/admin" : pathname.startsWith(tab.href);
+          const active =
+            tab.href === "/admin"
+              ? pathname === "/admin"
+              : pathname.startsWith(tab.href);
           return (
             <Link
               key={tab.href}
               href={tab.href}
               className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-semibold transition-all duration-150 active:scale-95 ${
-                active ? "bg-slate-900 text-white shadow-sm" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                active
+                  ? "bg-slate-900 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
               {tab.label}

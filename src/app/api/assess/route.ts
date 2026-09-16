@@ -16,6 +16,17 @@ import {
   formatEstimateTableForPrompt,
 } from "@/lib/estimate-tree";
 import { redactPersonalInfo } from "@/lib/pii-redact";
+import {
+  attachJob,
+  completeRun,
+  createRun,
+  estimateAmountOf,
+  extractClaimNo,
+  extractPlateNo,
+  failRun,
+  normalizePlate,
+} from "@/lib/ai-usage";
+import { PROMPT_VERSION_TAG } from "@/lib/assessment-prompt";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -85,6 +96,7 @@ async function handleAssess(req: NextRequest) {
     vehicle,
     imageUrls,
     hasEstimate ? (estimateFile as File) : null,
+    normalizePlate(form.get("plateNo") ? String(form.get("plateNo")) : null),
   );
 }
 
@@ -94,6 +106,7 @@ async function runAssess(
   vehicle: VehicleInfo,
   imageUrls: string[],
   estimateFile: File | null,
+  inputPlateNo: string | null,
 ) {
   const rawEstimateText = estimateFile
     ? await extractEstimateText(estimateFile)
@@ -101,19 +114,33 @@ async function runAssess(
   // 좌표 기반으로 읽은 항목표를 같이 넘김 — 화면의 견적서 표와 line_no가 1:1로 맞게.
   // 표를 못 읽는 양식(스캔본 등)이면 원문 텍스트만으로 진행.
   let estimateTableText: string | null = null;
+  let estimateAmount: number | null = null;
   if (estimateFile) {
     try {
       const rows = await parseEstimateTable(
         Buffer.from(await estimateFile.arrayBuffer()),
       );
-      if (rows.length)
-        estimateTableText = formatEstimateTableForPrompt(
-          buildEstimateTree(rows),
-        );
+      if (rows.length) {
+        const tree = buildEstimateTree(rows);
+        estimateTableText = formatEstimateTableForPrompt(tree);
+        estimateAmount = estimateAmountOf(tree);
+      }
     } catch (err) {
       console.warn("[/api/assess] estimate table parse failed:", err);
     }
+    // 스캔본·이미지 PDF 금지 — 판정을 행에 붙일 수 없고 금액 정책도 못 봄
+    if (!estimateTableText) {
+      return NextResponse.json(
+        {
+          error:
+            "선견적 항목 표를 읽을 수 없습니다. 스캔본·이미지 PDF는 사용할 수 없으니 AOS에서 내려받은 텍스트 PDF를 첨부하거나, 선견적 없이 사진만으로 진단해주세요.",
+        },
+        { status: 400 },
+      );
+    }
   }
+  const plateNo = inputPlateNo ?? extractPlateNo(rawEstimateText);
+  const claimNo = extractClaimNo(rawEstimateText);
 
   // 선견적 원문에서 고객명·연락처·주소 등 개인정보를 지운 뒤에만 AI 프롬프트에
   // 쓰고, 이 텍스트 자체도 DB에 저장하지 않음(사진과 동일한 정책).
@@ -137,15 +164,33 @@ async function runAssess(
     `첨부된 사진은 총 ${imageUrls.length}장이며 첨부 순서대로 1번부터 번호가 매겨져 있습니다.`,
   ].filter(Boolean);
 
-  // 백그라운드 작업으로 시작만 하고 작업 ID 반환. 사진(Blob)은 작업이 끝날 때 /api/ai-job 에서 지움.
-  const started = await startStructuredJob({
-    system: SYSTEM_PROMPT,
-    userText: contextLines.join("\n\n"),
-    imageUrls,
-    schemaName: "assessment_result",
-    schema: ASSESSMENT_RESPONSE_SCHEMA as unknown as Record<string, unknown>,
-    effort: "medium",
+  const run = await createRun({
+    user,
+    tool: "assess",
+    promptVersion: PROMPT_VERSION_TAG,
+    photoCount: imageUrls.length,
+    estimateAmount,
+    plateNo,
+    claimNo,
   });
+
+  // 백그라운드 작업으로 시작만 하고 작업 ID 반환. 사진(Blob)은 작업이 끝날 때 /api/ai-job 에서 지움.
+  let started;
+  try {
+    started = await startStructuredJob({
+      system: SYSTEM_PROMPT,
+      userText: contextLines.join("\n\n"),
+      imageUrls,
+      schemaName: "assessment_result",
+      schema: ASSESSMENT_RESPONSE_SCHEMA as unknown as Record<string, unknown>,
+      effort: "medium",
+    });
+  } catch (err) {
+    await failRun(run.id, err instanceof Error ? err.message : String(err));
+    throw err;
+  }
+  if ("jobId" in started) await attachJob(run.id, started.jobId);
+  else await completeRun(run.id, started.usage, started.result);
 
   // 결과·사진·선견적 원문 모두 서버에 저장하지 않음(손해사정과 동일). 브라우저 캐시에만 남음.
   const { ip, userAgent } = getRequestMeta(req);
@@ -162,5 +207,7 @@ async function runAssess(
     await sweepStaleBlobs("/api/assess");
   });
 
-  return NextResponse.json(started);
+  return NextResponse.json(
+    "jobId" in started ? started : { result: started.result },
+  );
 }

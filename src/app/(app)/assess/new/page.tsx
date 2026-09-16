@@ -352,6 +352,7 @@ export default function NewAssessPage() {
       formData.append("model", active.model);
       if (active.year.trim()) formData.append("year", active.year.trim());
       formData.append("memo", active.memo);
+      formData.append("plateNo", active.plateNo ?? "");
       formData.append("imageUrls", JSON.stringify(imageUrls));
 
       setLoadingStep("AI 진단 중… (사진이 많으면 수 분 소요될 수 있음)");

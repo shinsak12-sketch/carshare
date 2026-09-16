@@ -256,6 +256,7 @@ export default function NewProcedurePage() {
       formData.append("manufacturer", active.manufacturer);
       formData.append("model", active.model);
       formData.append("memo", active.memo);
+      formData.append("plateNo", active.plateNo ?? "");
 
       setLoadingStep("AI 판단 중… (사진이 많으면 수 분 소요될 수 있음)");
       const res = await fetch("/api/procedure", {

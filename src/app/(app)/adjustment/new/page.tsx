@@ -343,6 +343,7 @@ export default function NewAdjustmentPage() {
       formData.append("manufacturer", active.manufacturer);
       formData.append("model", active.model);
       formData.append("memo", active.memo);
+      formData.append("plateNo", active.plateNo ?? "");
       formData.append("imageUrls", JSON.stringify(imageUrls));
 
       setLoadingStep("AI 손해사정 중… (사진이 많으면 수 분 소요될 수 있음)");

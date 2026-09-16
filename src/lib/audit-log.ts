@@ -15,6 +15,7 @@ export const AuditAction = {
   ASSESSMENT_SUBMITTED: "ASSESSMENT_SUBMITTED",
   PROCEDURE_CHECKED: "PROCEDURE_CHECKED",
   ADJUSTMENT_CHECKED: "ADJUSTMENT_CHECKED",
+  PRICING_UPDATED: "PRICING_UPDATED",
 } as const;
 
 export type AuditActionType = (typeof AuditAction)[keyof typeof AuditAction];
@@ -48,7 +49,10 @@ export async function logAudit(params: {
   }
 }
 
-export function getRequestMeta(req: Request): { ip: string | null; userAgent: string | null } {
+export function getRequestMeta(req: Request): {
+  ip: string | null;
+  userAgent: string | null;
+} {
   const fwd = req.headers.get("x-forwarded-for");
   const ip = fwd ? fwd.split(",")[0].trim() : req.headers.get("x-real-ip");
   return { ip, userAgent: req.headers.get("user-agent") };

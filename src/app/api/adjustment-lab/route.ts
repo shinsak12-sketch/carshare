@@ -15,6 +15,17 @@ import {
 } from "@/lib/estimate-tree";
 import { redactPersonalInfo } from "@/lib/pii-redact";
 import { matchReferenceSections } from "@/lib/reference-sections";
+import {
+  attachJob,
+  completeRun,
+  createRun,
+  estimateAmountOf,
+  extractClaimNo,
+  extractPlateNo,
+  failRun,
+  normalizePlate,
+} from "@/lib/ai-usage";
+import { ADJUSTMENT_PROMPT_VERSION_TAG } from "@/lib/adjustment-lab-prompt";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -79,18 +90,35 @@ async function handleAdjustment(req: NextRequest) {
   }
 
   const rawEstimateText = await extractEstimateText(estimateFile);
-  // [실험] 좌표 기반으로 읽은 항목표를 같이 넘김 — 화면의 견적서 표와 line_no가 1:1로 맞게.
-  // 표를 못 읽는 양식이면(스캔본 등) 원문 텍스트만으로 진행.
+  // 좌표 기반으로 읽은 항목표를 같이 넘김 — 화면의 견적서 표와 line_no가 1:1로 맞게.
+  // 표를 못 읽는 양식(스캔본·이미지 PDF)은 사용 금지 — 판정을 행에 붙일 수 없고 금액 정책도 못 봄.
   let estimateTableText: string | null = null;
+  let estimateAmount: number | null = null;
   try {
     const rows = await parseEstimateTable(
       Buffer.from(await estimateFile.arrayBuffer()),
     );
-    if (rows.length)
-      estimateTableText = formatEstimateTableForPrompt(buildEstimateTree(rows));
+    if (rows.length) {
+      const tree = buildEstimateTree(rows);
+      estimateTableText = formatEstimateTableForPrompt(tree);
+      estimateAmount = estimateAmountOf(tree);
+    }
   } catch (err) {
     console.warn("[/api/adjustment-lab] estimate table parse failed:", err);
   }
+  if (!estimateTableText) {
+    return NextResponse.json(
+      {
+        error:
+          "견적서 항목 표를 읽을 수 없습니다. 스캔본·이미지 PDF는 사용할 수 없으니 AOS에서 내려받은 텍스트 PDF 견적서를 첨부해주세요.",
+      },
+      { status: 400 },
+    );
+  }
+  const plateNo =
+    normalizePlate(form.get("plateNo") ? String(form.get("plateNo")) : null) ??
+    extractPlateNo(rawEstimateText);
+  const claimNo = extractClaimNo(rawEstimateText);
 
   // 개인정보(고객명·연락처·주소 등)를 지운 뒤에만 AI 프롬프트에 사용하고,
   // 이 텍스트 자체도 저장하지 않음(사진과 동일한 정책).
@@ -109,15 +137,34 @@ async function handleAdjustment(req: NextRequest) {
     `첨부된 사진은 총 ${imageUrls.length}장이며 첨부 순서대로 1번부터 번호가 매겨져 있습니다. 수리 전 파손 상태 사진과 수리 작업 진행/완료 사진이 섞여 있으니, 먼저 어느 사진이 수리 전 파손 상태인지 구분한 뒤 판단하십시오.`,
   ].filter(Boolean);
 
-  // 백그라운드 작업으로 시작만 하고 작업 ID 반환. 사진(Blob)은 작업이 끝날 때 /api/ai-job 에서 지움.
-  const started = await startStructuredJob({
-    system: ADJUSTMENT_SYSTEM_PROMPT,
-    userText: contextLines.join("\n\n"),
-    imageUrls,
-    schemaName: "adjustment_result",
-    schema: ADJUSTMENT_RESPONSE_SCHEMA as unknown as Record<string, unknown>,
-    effort: "medium",
+  // 실행 기록(사용량 통계·이력용). 시작 시 queued, 완료 시 /api/ai-job이 토큰·비용을 확정.
+  const run = await createRun({
+    user,
+    tool: "adjustment",
+    promptVersion: ADJUSTMENT_PROMPT_VERSION_TAG,
+    photoCount: imageUrls.length,
+    estimateAmount,
+    plateNo,
+    claimNo,
   });
+
+  // 백그라운드 작업으로 시작만 하고 작업 ID 반환. 사진(Blob)은 작업이 끝날 때 /api/ai-job 에서 지움.
+  let started;
+  try {
+    started = await startStructuredJob({
+      system: ADJUSTMENT_SYSTEM_PROMPT,
+      userText: contextLines.join("\n\n"),
+      imageUrls,
+      schemaName: "adjustment_result",
+      schema: ADJUSTMENT_RESPONSE_SCHEMA as unknown as Record<string, unknown>,
+      effort: "medium",
+    });
+  } catch (err) {
+    await failRun(run.id, err instanceof Error ? err.message : String(err));
+    throw err;
+  }
+  if ("jobId" in started) await attachJob(run.id, started.jobId);
+  else await completeRun(run.id, started.usage, started.result);
 
   const { ip, userAgent } = getRequestMeta(req);
   void logAudit({
@@ -133,5 +180,7 @@ async function handleAdjustment(req: NextRequest) {
     await sweepStaleBlobs("/api/adjustment-lab");
   });
 
-  return NextResponse.json(started);
+  return NextResponse.json(
+    "jobId" in started ? started : { result: started.result },
+  );
 }

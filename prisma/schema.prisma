@@ -30,9 +30,9 @@ model User {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
-  sessions Session[]
-  cases    AssessmentCase[]
+  sessions  Session[]
   auditLogs AuditLog[]
+  aiRuns    AiRun[]
 
   @@index([status])
 }
@@ -71,42 +71,62 @@ model AuditLog {
   @@index([actorEmployeeId])
 }
 
-model PromptVersion {
-  id            String   @id @default(cuid())
-  createdAt     DateTime @default(now())
-  createdBy     String
-  promptText    String
-  changeSummary String
-  isActive      Boolean  @default(false)
+// AI 실행 1건 = 1행. 사용량 통계·실행 이력·사용 제한의 기준.
+// 결과 본문·사진·견적서는 저장하지 않음(정책). 판정 집계 숫자만 남김.
+model AiRun {
+  id         String    @id @default(cuid())
+  createdAt  DateTime  @default(now())
+  finishedAt DateTime?
 
-  cases AssessmentCase[]
+  userId     String?
+  user       User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  employeeId String
+
+  tool          String // assess | adjustment | procedure
+  promptVersion String
+  model         String
+  jobId         String? @unique
+
+  status        String // queued | succeeded | failed | blocked
+  errorMessage  String?
+  blockedReason String?
+
+  photoCount     Int     @default(0)
+  estimateAmount Int?
+  plateNo        String?
+  claimNo        String?
+
+  inputTokens       Int @default(0)
+  cachedInputTokens Int @default(0)
+  outputTokens      Int @default(0)
+  reasoningTokens   Int @default(0)
+
+  costUsd      Float?
+  costKrw      Int?
+  rateSnapshot Json?
+  durationMs   Int?
+
+  verdictCounts Json?
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([tool, createdAt])
+  @@index([plateNo])
+  @@index([status])
 }
 
-model AssessmentCase {
-  id        String   @id @default(cuid())
-  createdAt DateTime @default(now())
+// 모델별 단가(100만 토큰당 USD)와 환율. 실행 시점 값이 AiRun.rateSnapshot에 복사됨.
+model PricingRate {
+  id                 String   @id @default(cuid())
+  createdAt          DateTime @default(now())
+  effectiveFrom      DateTime @default(now())
+  updatedBy          String?
+  model              String
+  inputUsdPerM       Float
+  cachedInputUsdPerM Float
+  outputUsdPerM      Float
+  usdToKrw           Float
+  note               String?
 
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  manufacturer String
-  model        String
-  year         Int?
-  damagedPart  String?
-  memo         String?
-
-  estimateText String?
-
-  aiResult Json
-
-  groundTruthVerdict String?
-  groundTruthMemo    String?
-  confirmedBy        String?
-  confirmedAt        DateTime?
-
-  promptVersionId String?
-  promptVersion   PromptVersion? @relation(fields: [promptVersionId], references: [id])
-
-  // 사진은 GPT 호출 시점에만 메모리에서 쓰고 DB에는 저장하지 않음(저장소 절약).
-  @@index([createdAt])
+  @@index([model, effectiveFrom])
 }

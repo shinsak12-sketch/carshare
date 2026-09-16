@@ -14,7 +14,10 @@ const actionLabel: Record<string, string> = {
   ACCOUNT_ENABLED: "계정 재활성화",
   ACCOUNT_PASSWORD_RESET: "비밀번호 초기화",
   ACCOUNT_ROLE_CHANGED: "역할 변경",
-  ASSESSMENT_SUBMITTED: "AI 진단 실행",
+  ASSESSMENT_SUBMITTED: "선견적 실행",
+  ADJUSTMENT_CHECKED: "손해사정 실행",
+  PROCEDURE_CHECKED: "정비공정 실행",
+  PRICING_UPDATED: "단가 변경",
 };
 
 const actionTone: Record<string, string> = {
@@ -30,6 +33,9 @@ const actionTone: Record<string, string> = {
   ACCOUNT_PASSWORD_RESET: "bg-amber-100 text-amber-900",
   ACCOUNT_ROLE_CHANGED: "bg-blue-100 text-blue-900",
   ASSESSMENT_SUBMITTED: "bg-slate-100 text-slate-700",
+  ADJUSTMENT_CHECKED: "bg-slate-100 text-slate-700",
+  PROCEDURE_CHECKED: "bg-slate-100 text-slate-700",
+  PRICING_UPDATED: "bg-blue-100 text-blue-900",
 };
 
 export default async function LogsPage() {
@@ -43,7 +49,9 @@ export default async function LogsPage() {
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="text-xl font-bold text-slate-900">접속·활동 기록</h1>
-        <p className="mt-1 text-sm text-slate-500">최근 200건. 로그인/로그아웃, 계정 관리, AI 진단 실행 기록입니다.</p>
+        <p className="mt-1 text-sm text-slate-500">
+          최근 200건. 로그인/로그아웃, 계정 관리, AI 진단 실행 기록입니다.
+        </p>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -59,7 +67,10 @@ export default async function LogsPage() {
           </thead>
           <tbody>
             {logs.map((log) => (
-              <tr key={log.id} className="border-b border-slate-50 last:border-0 align-top">
+              <tr
+                key={log.id}
+                className="border-b border-slate-50 last:border-0 align-top"
+              >
                 <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
                   {log.createdAt.toLocaleString("ko-KR")}
                 </td>
@@ -73,15 +84,24 @@ export default async function LogsPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-xs text-slate-600">
-                  {log.actor ? `${log.actor.name}(${log.actor.employeeId})` : log.actorEmployeeId ?? "-"}
+                  {log.actor
+                    ? `${log.actor.name}(${log.actor.employeeId})`
+                    : (log.actorEmployeeId ?? "-")}
                 </td>
-                <td className="px-4 py-3 text-xs text-slate-600">{log.detail ?? "-"}</td>
-                <td className="px-4 py-3 font-mono text-xs text-slate-400">{log.ip ?? "-"}</td>
+                <td className="px-4 py-3 text-xs text-slate-600">
+                  {log.detail ?? "-"}
+                </td>
+                <td className="px-4 py-3 font-mono text-xs text-slate-400">
+                  {log.ip ?? "-"}
+                </td>
               </tr>
             ))}
             {logs.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-sm text-slate-400">
+                <td
+                  colSpan={5}
+                  className="px-4 py-8 text-center text-sm text-slate-400"
+                >
                   아직 기록이 없습니다.
                 </td>
               </tr>
