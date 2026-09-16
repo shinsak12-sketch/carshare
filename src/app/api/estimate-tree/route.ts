@@ -1,23 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  createCompletionResilient,
-  getModel,
-  getOpenAI,
-  getReasoningEffort,
-} from "@/lib/openai";
 import { getCurrentUser } from "@/lib/session";
-import { isPdfFile, extractEstimateText } from "@/lib/estimate-pdf";
-import { redactPersonalInfo } from "@/lib/pii-redact";
-import {
-  ESTIMATE_TREE_PROMPT,
-  ESTIMATE_TREE_SCHEMA,
-  type EstimateTree,
-} from "@/lib/estimate-tree";
+import { isPdfFile } from "@/lib/estimate-pdf";
+import { parseEstimateTable } from "@/lib/estimate-table";
+import { buildEstimateTree } from "@/lib/estimate-tree";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 60;
 
-// [실험] 견적서 PDF → 부위별 트리(JSON). 텍스트만 보내는 가벼운 호출(사진 없음).
+// [실험] 견적서 PDF(AOS 양식) → 항목 표를 좌표로 읽어 트리로. GPT 호출 없음(토큰 0).
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -41,42 +31,16 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-
-    const rawText = await extractEstimateText(file);
-    if (!rawText.trim()) {
+    const rows = await parseEstimateTable(
+      Buffer.from(await file.arrayBuffer()),
+    );
+    if (!rows.length) {
       return NextResponse.json(
-        { error: "견적서에서 텍스트를 읽지 못했습니다(스캔본이면 인식 불가)." },
+        { error: "견적서 항목 표를 찾지 못했습니다(양식이 다르거나 스캔본)." },
         { status: 422 },
       );
     }
-    const text = redactPersonalInfo(rawText);
-
-    const openai = getOpenAI();
-    const effort = getReasoningEffort("low");
-    const completion = await createCompletionResilient(openai, {
-      model: getModel(),
-      ...(effort ? { reasoning_effort: effort } : {}),
-      messages: [
-        { role: "system", content: ESTIMATE_TREE_PROMPT },
-        { role: "user", content: `[청구 견적서 원문 텍스트]\n${text}` },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "estimate_tree",
-          schema: ESTIMATE_TREE_SCHEMA,
-          strict: true,
-        },
-      },
-    });
-    const raw = completion.choices[0]?.message?.content;
-    if (!raw)
-      return NextResponse.json(
-        { error: "AI 응답을 받지 못했습니다." },
-        { status: 502 },
-      );
-    const tree: EstimateTree = JSON.parse(raw);
-    return NextResponse.json({ tree });
+    return NextResponse.json({ tree: buildEstimateTree(rows) });
   } catch (err) {
     console.error("[/api/estimate-tree] failed:", err);
     const message =
