@@ -318,10 +318,10 @@ export default function NewProcedurePage() {
     "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)] transition-all duration-150 outline-none focus:border-orange-500 focus:shadow-[inset_0_1px_3px_rgba(234,88,12,0.12)] focus:ring-2 focus:ring-orange-500/20";
 
   return (
-    <main className="mx-auto flex max-w-[1880px] flex-col px-6 py-8 lg:py-10 xl:h-[calc(100dvh-57px)] xl:py-4">
+    <main className="mx-auto flex max-w-[1880px] flex-col overflow-x-clip px-6 py-8 lg:py-10 xl:h-[calc(100dvh-57px)] xl:py-4">
       {/* 제목 + 탭 바 + 입력 바 — 틀 고정 */}
       <div className="sticky top-0 z-30 -mx-6 shrink-0 bg-[var(--background)] px-6 pt-1 xl:pt-0">
-        <div className="mb-3 flex shrink-0 items-end justify-between gap-4">
+        <div className="mb-3 flex shrink-0 flex-wrap items-end justify-between gap-x-4 gap-y-2">
           <div className="flex min-w-0 items-end gap-4">
             <h1 className="shrink-0 text-2xl font-bold text-slate-900 lg:text-3xl">
               정비공정 판단
@@ -368,7 +368,7 @@ export default function NewProcedurePage() {
               </button>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setFormOpen((v) => !v)}
@@ -377,9 +377,11 @@ export default function NewProcedurePage() {
               {formOpen ? "입력 접기 ▴" : "입력 펼치기 ▾"}
             </button>
             {loading && (
-              <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-xs font-bold text-orange-700 sm:text-sm">
+              <div className="flex min-w-0 max-w-full items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-xs font-bold text-orange-700 sm:text-sm">
                 <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-orange-300 border-t-orange-600" />
-                {loadingStep || "처리 중…"}
+                <span className="min-w-0 truncate">
+                  {loadingStep || "처리 중…"}
+                </span>
               </div>
             )}
             {result && (

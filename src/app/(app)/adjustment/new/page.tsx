@@ -322,10 +322,10 @@ export default function NewAdjustmentPage() {
     "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)] transition-all duration-150 outline-none focus:border-purple-500 focus:shadow-[inset_0_1px_3px_rgba(147,51,234,0.12)] focus:ring-2 focus:ring-purple-500/20";
 
   return (
-    <main className="mx-auto flex max-w-[1880px] flex-col px-6 py-8 lg:py-10 xl:h-[calc(100dvh-57px)] xl:py-4">
+    <main className="mx-auto flex max-w-[1880px] flex-col overflow-x-clip px-6 py-8 lg:py-10 xl:h-[calc(100dvh-57px)] xl:py-4">
       {/* 제목 + 탭 바 + 입력 바 — 엑셀 틀 고정처럼 페이지가 스크롤돼도 상단에 붙어 있음 */}
       <div className="sticky top-0 z-30 -mx-6 shrink-0 bg-[var(--background)] px-6 pt-1 xl:pt-0">
-        <div className="mb-3 flex shrink-0 items-end justify-between gap-4">
+        <div className="mb-3 flex shrink-0 flex-wrap items-end justify-between gap-x-4 gap-y-2">
           <div className="flex min-w-0 items-end gap-4">
             <h1 className="shrink-0 text-2xl font-bold text-slate-900 lg:text-3xl">
               AI 손해사정
@@ -372,7 +372,7 @@ export default function NewAdjustmentPage() {
               </button>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setFormOpen((v) => !v)}
@@ -381,9 +381,11 @@ export default function NewAdjustmentPage() {
               {formOpen ? "입력 접기 ▴" : "입력 펼치기 ▾"}
             </button>
             {loading && (
-              <div className="flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-4 py-2 text-xs font-bold text-purple-700 sm:text-sm">
+              <div className="flex min-w-0 max-w-full items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-4 py-2 text-xs font-bold text-purple-700 sm:text-sm">
                 <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-purple-300 border-t-purple-600" />
-                {loadingStep || "처리 중…"}
+                <span className="min-w-0 truncate">
+                  {loadingStep || "처리 중…"}
+                </span>
               </div>
             )}
             {result && (
