@@ -4,13 +4,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { PhotoGrid } from "@/components/PhotoGrid";
 import { DiagnosticsTree } from "@/components/DiagnosticsTree";
-import { EstimateTreeView } from "@/components/EstimateTree";
+import { EstimateTreeView, judgmentKey } from "@/components/EstimateTree";
 import { isEstimateTree, type EstimateTree } from "@/lib/estimate-tree";
 import { uploadPhotos } from "@/lib/upload-photos";
 import { runAiJob } from "@/lib/ai-job-client";
 import type { AdjustmentResult } from "@/lib/adjustment-types";
 import { buildAdjustmentReportText } from "@/lib/format-adjustment-report";
-import { buildAdjustmentDiagnostics } from "@/lib/adjustment-review-items";
+import {
+  buildAdjustmentDiagnostics,
+  type ItemDiagnostic,
+} from "@/lib/adjustment-review-items";
 import {
   caseTitle,
   deleteCase,
@@ -48,10 +51,18 @@ export default function NewAdjustmentLabPage() {
   const [formOpen, setFormOpen] = useState(true);
 
   const result = active?.result ?? null;
-  const diagnostics = useMemo(
-    () => (result ? buildAdjustmentDiagnostics(result) : null),
-    [result],
+  // 결과 → 판정 트리 + 견적서 행(line_no) → 판정 색인. 색인은 견적서 표 옆에
+  // 판정 열로 붙여 보여주기 위한 것. (수동 useMemo 없이 React Compiler에 맡김)
+  const diagnostics = result ? buildAdjustmentDiagnostics(result) : null;
+  const judgmentMap = new Map<string, ItemDiagnostic>(
+    (diagnostics?.branches ?? [])
+      .flatMap((b) => [b.main, ...b.children])
+      .filter((d): d is ItemDiagnostic => !!d && d.lineNo != null)
+      .map((d) => [judgmentKey(d.lineNo), d] as const),
   );
+  // 결과 + 구조화된 견적서가 있으면 표 하나에 판정을 인라인으로 → 우측 패널 없이 전체 폭 사용.
+  // (견적서 표가 없을 때만 예전처럼 우측에 트리 출력)
+  const inlineJudged = !!result && isEstimateTree(active?.estimateTree);
 
   const imagePreviews = useMemo(
     () => photos.map((f) => ({ url: URL.createObjectURL(f) })),
@@ -633,7 +644,9 @@ export default function NewAdjustmentLabPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:min-h-0 xl:flex-1 xl:grid-cols-[800px_980px] xl:items-stretch">
+      <div
+        className={`grid grid-cols-1 gap-6 xl:min-h-0 xl:flex-1 xl:items-stretch ${inlineJudged ? "xl:grid-cols-1" : "xl:grid-cols-[800px_980px]"}`}
+      >
         {/* 좌: 수리작업 사진 + 청구 견적서 (800px 고정) */}
         <div className="flex flex-col gap-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
           {(imagePreviews.length > 0 || estimatePreviewUrl) && (
@@ -686,6 +699,13 @@ export default function NewAdjustmentLabPage() {
                     <div className="mt-3 rounded-xl border border-slate-200">
                       <EstimateTreeView
                         tree={active.estimateTree as EstimateTree}
+                        judgments={result ? judgmentMap : null}
+                        consistency={diagnostics?.consistency ?? null}
+                        onHoverPhotos={setHighlightedPhotos}
+                        onOpenPhoto={(n) => {
+                          if (n >= 1 && n <= imagePreviews.length)
+                            setLightboxIndex(n - 1);
+                        }}
                       />
                     </div>
                   ) : (
@@ -716,7 +736,7 @@ export default function NewAdjustmentLabPage() {
         </div>
 
         {/* 우: 판넬 목록 → 하위 작업 판정(각각 독립 스크롤), 980px. 종합의견은 항목별 판정이 곧 결과라 없음 */}
-        {result && diagnostics && active && (
+        {result && diagnostics && active && !inlineJudged && (
           <div className="flex flex-col gap-4 xl:min-h-0">
             <div className="min-h-0 flex-1">
               <DiagnosticsTree
