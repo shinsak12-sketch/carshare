@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { PhotoGrid } from "@/components/PhotoGrid";
 import { DiagnosticsTree } from "@/components/DiagnosticsTree";
+import { EstimateTreeView } from "@/components/EstimateTree";
+import type { EstimateTree } from "@/lib/estimate-tree";
 import { uploadPhotos } from "@/lib/upload-photos";
 import { runAiJob } from "@/lib/ai-job-client";
 import type { AdjustmentResult } from "@/lib/adjustment-types";
@@ -40,6 +42,7 @@ export default function NewAdjustmentLabPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [highlightedPhotos, setHighlightedPhotos] = useState<number[]>([]);
   const [showEstimate, setShowEstimate] = useState(true);
+  const [showPdf, setShowPdf] = useState(false);
   const [reportCopied, setReportCopied] = useState(false);
   // 모바일에선 틀 고정된 입력바가 화면을 너무 차지해서 접을 수 있게 (xl 이상은 항상 펼침)
   const [formOpen, setFormOpen] = useState(true);
@@ -226,13 +229,51 @@ export default function NewAdjustmentLabPage() {
       void saveFiles(activeId, { estimate: estimateFile, photos: files });
   }
 
-  function handleEstimateChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleEstimateChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const caseId = activeId;
     setEstimateFile(file);
     setShowEstimate(true);
-    updateActive({ estimateName: file.name });
-    if (activeId) void saveFiles(activeId, { estimate: file, photos });
+    updateActive({
+      estimateName: file.name,
+      estimateTree: null,
+      estimateTreeStatus: "parsing",
+    });
+    if (caseId) void saveFiles(caseId, { estimate: file, photos });
+
+    // [실험] 견적서를 트리로 구조화 (텍스트만, 사진 없음)
+    try {
+      const fd = new FormData();
+      fd.append("estimate", file);
+      const res = await fetch("/api/estimate-tree", {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok)
+        throw new Error(data.error ?? "견적서 구조화에 실패했습니다.");
+      const tree = data.tree as EstimateTree;
+      setCases((prev) => {
+        const next = prev.map((c) =>
+          c.id === caseId
+            ? { ...c, estimateTree: tree, estimateTreeStatus: "idle" as const }
+            : c,
+        );
+        const updated = next.find((c) => c.id === caseId);
+        if (updated) void saveCase(updated);
+        return next;
+      });
+    } catch (err) {
+      setCases((prev) =>
+        prev.map((c) =>
+          c.id === caseId ? { ...c, estimateTreeStatus: "error" as const } : c,
+        ),
+      );
+      setError(
+        err instanceof Error ? err.message : "견적서 구조화에 실패했습니다.",
+      );
+    }
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -615,19 +656,42 @@ export default function NewAdjustmentLabPage() {
                       : ""
                   }
                 >
-                  <button
-                    type="button"
-                    onClick={() => setShowEstimate((v) => !v)}
-                    className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
-                  >
-                    {showEstimate ? "견적서 숨기기 ▲" : "청구 견적서 보기 ▾"}
-                  </button>
-                  {showEstimate && (
-                    <iframe
-                      src={`${estimatePreviewUrl}#zoom=75`}
-                      title="청구 견적서"
-                      className="mt-3 h-[75vh] w-full rounded-lg border border-slate-200"
-                    />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowEstimate((v) => !v)}
+                      className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                    >
+                      {showEstimate ? "견적서 숨기기 ▲" : "청구 견적서 보기 ▾"}
+                    </button>
+                    {active?.estimateTree && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPdf((v) => !v)}
+                        className="rounded-full border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:bg-slate-50"
+                      >
+                        {showPdf ? "트리로 보기" : "원본 PDF 보기"}
+                      </button>
+                    )}
+                    {active?.estimateTreeStatus === "parsing" && (
+                      <span className="flex items-center gap-1.5 text-[11px] font-medium text-fuchsia-700">
+                        <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-fuchsia-300 border-t-fuchsia-600" />
+                        견적서 트리 구조화 중…
+                      </span>
+                    )}
+                  </div>
+                  {showEstimate && active?.estimateTree && !showPdf ? (
+                    <div className="mt-3 rounded-xl border border-slate-200">
+                      <EstimateTreeView tree={active.estimateTree} />
+                    </div>
+                  ) : (
+                    showEstimate && (
+                      <iframe
+                        src={`${estimatePreviewUrl}#zoom=75`}
+                        title="청구 견적서"
+                        className="mt-3 h-[75vh] w-full rounded-lg border border-slate-200"
+                      />
+                    )
                   )}
                 </div>
               )}

@@ -1,4 +1,5 @@
 import type { AdjustmentCaseInfo, AdjustmentResult } from "./adjustment-types";
+import type { EstimateTree } from "./estimate-tree";
 import {
   caseTitleOf,
   createCaseStore,
@@ -18,6 +19,9 @@ export interface StoredCase {
   memo: string;
   photoCount: number;
   estimateName: string | null;
+  // [실험] 견적서를 부위별 트리로 구조화한 결과(PDF 뷰어 대신 표시)
+  estimateTree?: EstimateTree | null;
+  estimateTreeStatus?: "idle" | "parsing" | "error";
   result: AdjustmentResult | null;
   // 진행 중인 OpenAI 백그라운드 작업(새로고침 후 이어받기용). 끝나면 null
   jobId?: string | null;
