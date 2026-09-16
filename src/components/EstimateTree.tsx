@@ -82,7 +82,7 @@ function Amount({
 }
 
 const GRID =
-  "grid grid-cols-[2.5rem_3.5rem_minmax(0,1fr)_3.5rem_6rem_6rem] items-center gap-x-2";
+  "grid grid-cols-[2.5rem_4.75rem_minmax(0,1fr)_3.5rem_6rem_6rem] items-center gap-x-2";
 
 function Row({ line }: { line: EstimateLine }) {
   const badge = badgeOf(line);
@@ -96,13 +96,15 @@ function Row({ line }: { line: EstimateLine }) {
       <span className="text-right font-mono text-[10px] tabular-nums text-slate-400">
         {line.line_no}
       </span>
-      <span
-        className={`rounded px-1 py-px text-center text-[9px] font-bold ${BADGE[badge] ?? BADGE.기타}`}
-      >
-        {badge}
+      <span className={isPart ? "pl-5" : ""}>
+        <span
+          className={`inline-block w-full rounded px-1 py-px text-center text-[9px] font-bold ${BADGE[badge] ?? BADGE.기타}`}
+        >
+          {badge}
+        </span>
       </span>
       <span
-        className={`min-w-0 truncate text-xs ${isPart ? "pl-6 font-normal text-slate-600" : "font-medium text-slate-800"}`}
+        className={`min-w-0 truncate text-xs ${isPart ? "pl-2 font-normal text-slate-600" : "font-medium text-slate-800"}`}
         title={
           line.partCode
             ? `${displayName(line)} · 부품코드 ${line.partCode}`
