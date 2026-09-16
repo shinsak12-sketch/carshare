@@ -28,6 +28,13 @@ const APPS: AppTile[] = [
     icon: "⚖️",
     gradient: "from-purple-500 to-purple-700",
   },
+  // 실험용 복제본 — 프롬프트·API·캐시가 분리돼 있어 원본에 영향 없음. 비교 후 좋은 쪽을 남김
+  {
+    href: "/adjustment-lab/new",
+    label: "AI손해사정(실험)",
+    icon: "🧪",
+    gradient: "from-fuchsia-500 to-fuchsia-700",
+  },
 ];
 
 export default function Home() {
@@ -40,32 +47,47 @@ export default function Home() {
 
       <div className="relative flex flex-col items-center gap-10 lg:gap-14">
         <div className="text-center">
-          <h1 className="text-lg font-bold text-slate-900 lg:text-xl">차량 손상 AI 진단</h1>
-          <p className="mt-1 text-sm text-slate-400">원하는 기능을 선택하세요</p>
+          <h1 className="text-lg font-bold text-slate-900 lg:text-xl">
+            차량 손상 AI 진단
+          </h1>
+          <p className="mt-1 text-sm text-slate-400">
+            원하는 기능을 선택하세요
+          </p>
         </div>
 
         <div className="flex flex-wrap justify-center gap-x-10 gap-y-10 sm:gap-x-12 lg:gap-x-16 lg:gap-y-12">
           {APPS.map((app) =>
             app.disabled ? (
-              <div key={app.label} className="flex flex-col items-center gap-3 opacity-50">
+              <div
+                key={app.label}
+                className="flex flex-col items-center gap-3 opacity-50"
+              >
                 <div className="relative flex h-20 w-20 items-center justify-center rounded-[26px] bg-gradient-to-br from-slate-300 to-slate-400 text-4xl shadow-[0_1px_0_rgba(255,255,255,0.35)_inset,0_-3px_6px_rgba(15,23,42,0.15)_inset,0_10px_20px_-8px_rgba(15,23,42,0.4)] sm:h-24 sm:w-24 sm:text-[2.75rem] lg:h-28 lg:w-28 lg:text-5xl">
                   <span aria-hidden="true">{app.icon}</span>
                   <span className="absolute -bottom-2 rounded-full bg-slate-600 px-2.5 py-0.5 text-[10px] font-bold whitespace-nowrap text-white shadow-sm">
                     준비중
                   </span>
                 </div>
-                <span className="text-center text-xs font-medium text-slate-500 lg:text-sm">{app.label}</span>
+                <span className="text-center text-xs font-medium text-slate-500 lg:text-sm">
+                  {app.label}
+                </span>
               </div>
             ) : (
-              <Link key={app.href} href={app.href} className="group flex flex-col items-center gap-3">
+              <Link
+                key={app.href}
+                href={app.href}
+                className="group flex flex-col items-center gap-3"
+              >
                 <div
                   className={`flex h-20 w-20 items-center justify-center rounded-[26px] bg-gradient-to-br ${app.gradient} text-4xl shadow-[0_1px_0_rgba(255,255,255,0.35)_inset,0_-3px_6px_rgba(0,0,0,0.15)_inset,0_10px_22px_-8px_rgba(15,23,42,0.5)] transition-all duration-150 group-hover:-translate-y-1.5 group-hover:shadow-[0_1px_0_rgba(255,255,255,0.4)_inset,0_-3px_6px_rgba(0,0,0,0.15)_inset,0_16px_28px_-8px_rgba(15,23,42,0.55)] group-active:translate-y-0 group-active:scale-90 group-active:shadow-[0_2px_4px_rgba(0,0,0,0.25)_inset] sm:h-24 sm:w-24 sm:text-[2.75rem] lg:h-28 lg:w-28 lg:text-5xl`}
                 >
                   <span aria-hidden="true">{app.icon}</span>
                 </div>
-                <span className="text-center text-xs font-medium text-slate-700 lg:text-sm">{app.label}</span>
+                <span className="text-center text-xs font-medium text-slate-700 lg:text-sm">
+                  {app.label}
+                </span>
               </Link>
-            )
+            ),
           )}
         </div>
       </div>

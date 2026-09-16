@@ -18,9 +18,9 @@ import {
   saveCase,
   saveFiles,
   type StoredCase,
-} from "@/lib/adjustment-store";
+} from "@/lib/adjustment-lab-store";
 
-export default function NewAdjustmentPage() {
+export default function NewAdjustmentLabPage() {
   // 건별 탭 — 엑셀 시트처럼. 결과·사진·견적서는 IndexedDB에 캐시돼 새로고침해도 유지.
   const [cases, setCases] = useState<StoredCase[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -268,7 +268,7 @@ export default function NewAdjustmentPage() {
       formData.append("imageUrls", JSON.stringify(imageUrls));
 
       setLoadingStep("AI 손해사정 중… (사진이 많으면 수 분 소요될 수 있음)");
-      const res = await fetch("/api/adjustment", {
+      const res = await fetch("/api/adjustment-lab", {
         method: "POST",
         body: formData,
       });
@@ -320,7 +320,7 @@ export default function NewAdjustmentPage() {
   function handleExportJson() {
     if (!active?.result) return;
     const payload = {
-      tool: "adjustment",
+      tool: "adjustment-lab",
       exportedAt: new Date().toISOString(),
       caseInfo: {
         plateNo: active.plateNo,
@@ -380,6 +380,9 @@ export default function NewAdjustmentPage() {
           <div className="flex min-w-0 items-end gap-4">
             <h1 className="shrink-0 text-2xl font-bold text-slate-900 lg:text-3xl">
               AI 손해사정
+              <span className="ml-2 rounded-full bg-fuchsia-100 px-2 py-0.5 align-middle text-xs font-bold text-fuchsia-700">
+                실험
+              </span>
             </h1>
             <div className="flex min-w-0 items-end gap-1 overflow-x-auto">
               {cases.map((c, i) => {
