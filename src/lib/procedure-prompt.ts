@@ -9,7 +9,7 @@ import {
 // 도구. 기존 선견적진단(assessment-prompt)은 "청구된 내용이 맞는지 검증"
 // 하는 게 목적이라 서로 역할이 다름. 청구서가 없으므로 부수작업·도장·근거없는
 // 청구 블록(C·D·F)은 쓰지 않음.
-export const PROCEDURE_PROMPT_VERSION_TAG = "p2.5";
+export const PROCEDURE_PROMPT_VERSION_TAG = "p2.6";
 
 export const PROCEDURE_SYSTEM_PROMPT = `당신은 자동차 정비/충돌수리 전문지식을 갖춘 정비 공정 설계 AI이며, 보험사
 손해사정 부서를 위해 일합니다. 아직 선견적이 작성되지 않은 상태에서 파손
@@ -38,14 +38,21 @@ part_name/item 안에 "좌측/우측"을 넣지 말고 side 필드로만 표시�
   · 앞에서 마주보고 찍은 사진(그릴·헤드램프·앞번호판이 보임): 화면 왼쪽 =
     차량 우측(조수석), 화면 오른쪽 = 차량 좌측(운전석). 좌우가 뒤집힙니다.
   · 뒤에서 찍은 사진(트렁크·테일램프·뒷번호판이 보임): 화면 왼쪽 = 차량 좌측.
-  · 옆에서 찍은 사진: 차 앞머리가 화면 오른쪽을 향하면 보이는 면이 차량
-    좌측(운전석 측), 앞머리가 화면 왼쪽을 향하면 보이는 면이 차량 우측.
-  · 앞 코너를 비스듬히 찍은 사진(그릴과 한쪽 펜더가 같이 보임)은 "앞에서
-    찍은 사진"으로 취급합니다: 그릴이 화면 오른쪽에 있고 펜더가 왼쪽으로
-    이어지면 그 펜더는 차량 우측입니다.
-  운전석·핸들 위치, 사이드미러, 주유구, 번호판 등으로 교차검증하고, 손상
-  부위의 reasoning 첫 문장에 "앞 코너에서 촬영, 그릴이 화면 우측 → 손상면은
-  차량 우측"처럼 환산 근거를 한 줄 적으십시오.
+  · 옆에서 찍은 사진: 차 앞머리가 화면 오른쪽을 향하면 카메라 쪽으로 보이는
+    면이 차량 우측(조수석 측), 앞머리가 화면 왼쪽을 향하면 보이는 면이 차량
+    좌측(운전석 측). (차가 오른쪽으로 달리는 모습을 보면 내가 보는 면은 그
+    차의 오른쪽 옆구리입니다.)
+  · 앞 코너를 비스듬히 찍은 사진(그릴과 한쪽 펜더가 같이 보임): 그릴이 화면
+    오른쪽에 있고 펜더가 왼쪽으로 이어지면 그 펜더는 차량 우측, 그릴이 화면
+    왼쪽이면 차량 좌측입니다.
+  · 뒤 코너 사진: 테일램프·트렁크가 화면 왼쪽이고 옆면이 오른쪽으로 이어지면
+    그 옆면은 차량 우측, 반대면 좌측입니다.
+- 환산은 코드가 다시 확인합니다: 각 항목의 view_cue에 "어느 방향에서 찍었나",
+  "차 앞머리가 화면 어느 쪽을 향하나", "손상이 화면 어느 쪽에 있나"를 관찰
+  사실 그대로 적으십시오. 이 세 값은 판단이 아니라 사진에 보이는 사실입니다.
+  side는 그 환산 결과이며 view_cue와 모순되면 안 됩니다. 운전석·핸들 위치,
+  사이드미러, 주유구, 번호판으로 교차검증하고 reasoning 첫 문장에 환산
+  근거를 한 줄 적으십시오.
 - 한쪽만 손상이 보이면 그쪽으로 명확히 표시하고, 후드·트렁크·범퍼·그릴처럼
   중앙에 걸친 부품은 "중앙", 양쪽 손상이 사진으로 확인될 때만 "양쪽", 근거가
   없으면 reasoning에 "방향성 근거 없음"이라 밝히고 "양쪽"으로 표시하십시오.
@@ -173,6 +180,31 @@ ${LABOR_TIME_JUDGMENT}
 
 const SIDE_ENUM = ["좌", "우", "중앙", "양쪽"] as const;
 
+// 좌/우 환산용 관찰 사실 — AI는 사실만 적고, 차량 기준 좌/우는 코드가 결정한다
+// (normalizeProcedureSides). 거울 환산을 AI에 맡기면 반복적으로 틀려서.
+const VIEW_CUE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    // 촬영 방향: 앞에서 마주봄 / 뒤에서 / 옆에서 / 앞 코너 비스듬 / 뒤 코너 비스듬 / 위 / 판단불가
+    camera: {
+      type: "string",
+      enum: ["앞", "뒤", "옆", "앞코너", "뒤코너", "위", "불명"],
+    },
+    // 차 앞머리가 화면에서 향하는 방향
+    front_direction: {
+      type: "string",
+      enum: ["화면왼쪽", "화면오른쪽", "카메라쪽", "카메라반대쪽", "불명"],
+    },
+    // 손상(또는 추정 부위)이 화면에서 있는 쪽
+    damage_screen_side: {
+      type: "string",
+      enum: ["화면왼쪽", "화면오른쪽", "중앙", "불명"],
+    },
+  },
+  required: ["camera", "front_direction", "damage_screen_side"],
+} as const;
+
 export const REQUIRED_ACTION_ENUM = [
   "교환",
   "판금·도장",
@@ -196,6 +228,7 @@ export const PROCEDURE_RESPONSE_SCHEMA = {
         properties: {
           part_name: { type: "string" },
           side: { type: "string", enum: SIDE_ENUM },
+          view_cue: VIEW_CUE_SCHEMA,
           damage_type: {
             type: "string",
             enum: ["1유형", "2유형", "3유형", "비대상(교환예외)", "손상없음"],
@@ -211,6 +244,7 @@ export const PROCEDURE_RESPONSE_SCHEMA = {
         required: [
           "part_name",
           "side",
+          "view_cue",
           "damage_type",
           "required_action",
           "reasoning",
@@ -227,6 +261,7 @@ export const PROCEDURE_RESPONSE_SCHEMA = {
         properties: {
           item: { type: "string" },
           side: { type: "string", enum: SIDE_ENUM },
+          view_cue: VIEW_CUE_SCHEMA,
           suspicion_level: { type: "string", enum: ["높음", "중간", "낮음"] },
           reasoning: { type: "string" },
           recommended_check: { type: "string" },
@@ -235,6 +270,7 @@ export const PROCEDURE_RESPONSE_SCHEMA = {
         required: [
           "item",
           "side",
+          "view_cue",
           "suspicion_level",
           "reasoning",
           "recommended_check",

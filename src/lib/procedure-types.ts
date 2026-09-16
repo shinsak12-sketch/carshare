@@ -5,6 +5,18 @@ import type { Confidence, DamageType } from "./assessment-types";
 // "중앙", 실제로 양쪽 다 손상된 게 확인될 때만 "양쪽"으로 표시함.
 export type PartSide = "좌" | "우" | "중앙" | "양쪽";
 
+// AI가 적는 관찰 사실. 차량 기준 좌/우는 이걸로 코드가 환산함(normalizeProcedureSides).
+export interface ViewCue {
+  camera: "앞" | "뒤" | "옆" | "앞코너" | "뒤코너" | "위" | "불명";
+  front_direction:
+    | "화면왼쪽"
+    | "화면오른쪽"
+    | "카메라쪽"
+    | "카메라반대쪽"
+    | "불명";
+  damage_screen_side: "화면왼쪽" | "화면오른쪽" | "중앙" | "불명";
+}
+
 export type RequiredAction =
   | "교환"
   | "판금·도장"
@@ -18,6 +30,7 @@ export type RequiredAction =
 export interface DamagedPartSummary {
   part_name: string;
   side: PartSide;
+  view_cue?: ViewCue;
   damage_type: DamageType;
   // 그 부위에 필요한 작업 하나 — 목록 배지로 바로 보임. 예전 결과엔 없을 수 있음.
   required_action?: RequiredAction;
@@ -36,6 +49,7 @@ export type SuspicionLevel = "높음" | "중간" | "낮음";
 export interface SuspectedHiddenDamage {
   item: string;
   side: PartSide;
+  view_cue?: ViewCue;
   suspicion_level: SuspicionLevel;
   reasoning: string;
   recommended_check: string;

@@ -10,6 +10,7 @@ import { runAiJob } from "@/lib/ai-job-client";
 import { buildProcedureReportText } from "@/lib/format-procedure-report";
 import { buildProcedureReviewItems } from "@/lib/procedure-review-items";
 import type { ProcedureResult } from "@/lib/procedure-types";
+import { normalizeProcedureSides } from "@/lib/procedure-sides";
 import {
   deleteProcedureCase,
   emptyProcedureCase,
@@ -103,7 +104,9 @@ export default function NewProcedurePage() {
   }, [activeId]);
 
   // 결과를 원래 건에 저장(분석 도중 다른 탭으로 옮겼어도 원래 건에). 새로고침 후 이어받을 때도 씀
-  function storeResult(caseId: string, r: ProcedureResult) {
+  function storeResult(caseId: string, raw: ProcedureResult) {
+    // 좌/우는 AI의 관찰 사실로 코드가 최종 결정
+    const r = normalizeProcedureSides(raw);
     setCases((prev) => {
       const next = prev.map((c) =>
         c.id === caseId
