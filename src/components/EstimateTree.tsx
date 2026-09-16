@@ -136,10 +136,16 @@ export function EstimateTreeView({ tree }: { tree: Tree }) {
       [...set].filter((k) => !ORDER.includes(k)),
     );
   }, [tree]);
-  const [on, setOn] = useState<Set<string>>(new Set());
-  const rows = on.size
-    ? tree.rows.filter((l) => on.has(badgeOf(l)))
-    : tree.rows;
+  // 필터 = "보이는 작업 집합". 기본은 전부 켜짐. "전체" 칩은 전부 켜기/끄기 토글이라
+  // 부품만 빼고 보려면 부품 칩 하나만 끄고, 하나만 보려면 전체를 꺼서 비운 뒤 그 칩만 켜면 됨.
+  const [on, setOn] = useState<Set<string>>(() => new Set(kinds));
+  const [syncedTree, setSyncedTree] = useState<Tree>(tree);
+  if (syncedTree !== tree) {
+    setSyncedTree(tree);
+    setOn(new Set(kinds));
+  }
+  const allOn = kinds.every((k) => on.has(k));
+  const rows = tree.rows.filter((l) => on.has(badgeOf(l)));
   const labor = rows.reduce((s, l) => s + (l.before.labor ?? 0), 0);
   const part = rows.reduce((s, l) => s + (l.before.part ?? 0), 0);
   const counts = useMemo(() => {
@@ -163,9 +169,10 @@ export function EstimateTreeView({ tree }: { tree: Tree }) {
       <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-100 px-3 py-2">
         <button
           type="button"
-          onClick={() => setOn(new Set())}
+          onClick={() => setOn(allOn ? new Set() : new Set(kinds))}
+          title={allOn ? "전체 끄기" : "전체 켜기"}
           className={`rounded-full border px-2.5 py-1 text-[11px] font-bold transition-all active:scale-95 ${
-            on.size === 0
+            allOn
               ? "border-slate-900 bg-slate-900 text-white"
               : "border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
           }`}
