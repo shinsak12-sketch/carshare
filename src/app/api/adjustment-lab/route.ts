@@ -26,6 +26,7 @@ import {
   normalizePlate,
 } from "@/lib/ai-usage";
 import { ADJUSTMENT_PROMPT_VERSION_TAG } from "@/lib/adjustment-lab-prompt";
+import { enforcePolicy } from "@/lib/usage-policy";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -138,15 +139,24 @@ async function handleAdjustment(req: NextRequest) {
   ].filter(Boolean);
 
   // 실행 기록(사용량 통계·이력용). 시작 시 queued, 완료 시 /api/ai-job이 토큰·비용을 확정.
-  const run = await createRun({
+  const runInput = {
     user,
-    tool: "adjustment",
+    tool: "adjustment" as const,
     promptVersion: ADJUSTMENT_PROMPT_VERSION_TAG,
     photoCount: imageUrls.length,
     estimateAmount,
     plateNo,
     claimNo,
+  };
+  // 사용 정책(도구 on/off·사진 수·계정 한도·예산·견적 금액·같은 차량 재실행). 걸리면 여기서 끝
+  const denied = await enforcePolicy({
+    ...runInput,
+    role: user.role,
+    confirmDuplicate: form.get("confirmDuplicate") === "1",
   });
+  if (denied) return denied;
+
+  const run = await createRun(runInput);
 
   // 백그라운드 작업으로 시작만 하고 작업 ID 반환. 사진(Blob)은 작업이 끝날 때 /api/ai-job 에서 지움.
   let started;

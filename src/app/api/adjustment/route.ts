@@ -23,6 +23,7 @@ import {
   normalizePlate,
 } from "@/lib/ai-usage";
 import { ADJUSTMENT_PROMPT_VERSION_TAG } from "@/lib/adjustment-prompt";
+import { enforcePolicy } from "@/lib/usage-policy";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -125,15 +126,24 @@ async function handleAdjustment(req: NextRequest) {
     `첨부된 사진은 총 ${imageUrls.length}장이며 첨부 순서대로 1번부터 번호가 매겨져 있습니다. 수리 전 파손 상태 사진과 수리 작업 진행/완료 사진이 섞여 있으니, 먼저 어느 사진이 수리 전 파손 상태인지 구분한 뒤 판단하십시오.`,
   ].filter(Boolean);
 
-  const run = await createRun({
+  const runInput = {
     user,
-    tool: "adjustment",
+    tool: "adjustment" as const,
     promptVersion: ADJUSTMENT_PROMPT_VERSION_TAG,
     photoCount: imageUrls.length,
     estimateAmount,
     plateNo,
     claimNo,
+  };
+  // 사용 정책(도구 on/off·사진 수·계정 한도·예산·견적 금액·같은 차량 재실행). 걸리면 여기서 끝
+  const denied = await enforcePolicy({
+    ...runInput,
+    role: user.role,
+    confirmDuplicate: form.get("confirmDuplicate") === "1",
   });
+  if (denied) return denied;
+
+  const run = await createRun(runInput);
 
   // 백그라운드 작업으로 시작만 하고 작업 ID 반환. 사진(Blob)은 작업이 끝날 때 /api/ai-job 에서 지움.
   let started;

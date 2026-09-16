@@ -16,6 +16,7 @@ export const AuditAction = {
   PROCEDURE_CHECKED: "PROCEDURE_CHECKED",
   ADJUSTMENT_CHECKED: "ADJUSTMENT_CHECKED",
   PRICING_UPDATED: "PRICING_UPDATED",
+  POLICY_UPDATED: "POLICY_UPDATED",
 } as const;
 
 export type AuditActionType = (typeof AuditAction)[keyof typeof AuditAction];

@@ -6,7 +6,7 @@ import { ImageLightbox } from "@/components/ImageLightbox";
 import { PhotoGrid } from "@/components/PhotoGrid";
 import { ProcedureMasterDetail } from "@/components/ProcedureItemPanels";
 import { uploadPhotos } from "@/lib/upload-photos";
-import { runAiJob } from "@/lib/ai-job-client";
+import { postToolForm, runAiJob } from "@/lib/ai-job-client";
 import { buildProcedureReportText } from "@/lib/format-procedure-report";
 import { buildProcedureReviewItems } from "@/lib/procedure-review-items";
 import type { ProcedureResult } from "@/lib/procedure-types";
@@ -259,19 +259,11 @@ export default function NewProcedurePage() {
       formData.append("plateNo", active.plateNo ?? "");
 
       setLoadingStep("AI 판단 중… (사진이 많으면 수 분 소요될 수 있음)");
-      const res = await fetch("/api/procedure", {
-        method: "POST",
-        body: formData,
-      });
-
-      const contentType = res.headers.get("content-type") ?? "";
-      if (!contentType.includes("application/json")) {
-        const text = await res.text();
-        throw new Error(`서버 오류 (${res.status}): ${text.slice(0, 200)}`);
-      }
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "요청에 실패했습니다.");
+      const data = await postToolForm<ProcedureResult>(
+        "/api/procedure",
+        formData,
+        "사진",
+      );
       const r = await runAiJob<ProcedureResult>(
         data,
         imageUrls,

@@ -27,6 +27,7 @@ import {
   normalizePlate,
 } from "@/lib/ai-usage";
 import { PROMPT_VERSION_TAG } from "@/lib/assessment-prompt";
+import { enforcePolicy } from "@/lib/usage-policy";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -97,6 +98,7 @@ async function handleAssess(req: NextRequest) {
     imageUrls,
     hasEstimate ? (estimateFile as File) : null,
     normalizePlate(form.get("plateNo") ? String(form.get("plateNo")) : null),
+    form.get("confirmDuplicate") === "1",
   );
 }
 
@@ -107,6 +109,7 @@ async function runAssess(
   imageUrls: string[],
   estimateFile: File | null,
   inputPlateNo: string | null,
+  confirmDuplicate: boolean,
 ) {
   const rawEstimateText = estimateFile
     ? await extractEstimateText(estimateFile)
@@ -164,15 +167,23 @@ async function runAssess(
     `첨부된 사진은 총 ${imageUrls.length}장이며 첨부 순서대로 1번부터 번호가 매겨져 있습니다.`,
   ].filter(Boolean);
 
-  const run = await createRun({
+  const runInput = {
     user,
-    tool: "assess",
+    tool: "assess" as const,
     promptVersion: PROMPT_VERSION_TAG,
     photoCount: imageUrls.length,
     estimateAmount,
     plateNo,
     claimNo,
+  };
+  const denied = await enforcePolicy({
+    ...runInput,
+    role: user.role,
+    confirmDuplicate,
   });
+  if (denied) return denied;
+
+  const run = await createRun(runInput);
 
   // 백그라운드 작업으로 시작만 하고 작업 ID 반환. 사진(Blob)은 작업이 끝날 때 /api/ai-job 에서 지움.
   let started;

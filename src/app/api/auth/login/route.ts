@@ -14,7 +14,10 @@ export async function POST(req: NextRequest) {
   const password = String(form.get("password") ?? "");
 
   if (!employeeId || !password) {
-    return NextResponse.json({ error: "사번과 비밀번호를 입력해주세요." }, { status: 400 });
+    return NextResponse.json(
+      { error: "사번과 비밀번호를 입력해주세요." },
+      { status: 400 },
+    );
   }
 
   // 차단 여부 조회와 계정 조회는 서로 의존하지 않으므로 병렬로 보내 왕복 횟수를 줄임
@@ -39,11 +42,13 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(
       { error: "로그인 시도가 너무 많습니다. 15분 후 다시 시도해주세요." },
-      { status: 429 }
+      { status: 429 },
     );
   }
 
-  const passwordOk = user ? await verifyPassword(password, user.passwordHash) : false;
+  const passwordOk = user
+    ? await verifyPassword(password, user.passwordHash)
+    : false;
 
   if (!user || !passwordOk) {
     void logAudit({
@@ -54,20 +59,20 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(
       { error: "사번 또는 비밀번호가 올바르지 않습니다." },
-      { status: 401 }
+      { status: 401 },
     );
   }
 
   if (user.status === "PENDING") {
     return NextResponse.json(
       { error: "계정 승인 대기 중입니다. 관리자 승인 후 이용 가능합니다." },
-      { status: 403 }
+      { status: 403 },
     );
   }
   if (user.status !== "ACTIVE") {
     return NextResponse.json(
       { error: "이용이 제한된 계정입니다. 관리자에게 문의해주세요." },
-      { status: 403 }
+      { status: 403 },
     );
   }
 

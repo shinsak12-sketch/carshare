@@ -15,6 +15,7 @@ import {
   failRun,
   normalizePlate,
 } from "@/lib/ai-usage";
+import { enforcePolicy } from "@/lib/usage-policy";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -72,15 +73,23 @@ async function handleProcedure(req: NextRequest) {
   ].filter(Boolean);
 
   // 백그라운드 작업으로 시작만 하고 작업 ID 반환. 사진(Blob)은 작업이 끝날 때 /api/ai-job 에서 지움.
-  const run = await createRun({
+  const runInput = {
     user,
-    tool: "procedure",
+    tool: "procedure" as const,
     promptVersion: PROCEDURE_PROMPT_VERSION_TAG,
     photoCount: imageUrls.length,
     plateNo: normalizePlate(
       form.get("plateNo") ? String(form.get("plateNo")) : null,
     ),
+  };
+  const denied = await enforcePolicy({
+    ...runInput,
+    role: user.role,
+    confirmDuplicate: form.get("confirmDuplicate") === "1",
   });
+  if (denied) return denied;
+
+  const run = await createRun(runInput);
 
   let started;
   try {

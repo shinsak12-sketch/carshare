@@ -9,7 +9,10 @@ import { getCurrentUser } from "@/lib/session";
 export async function POST(request: Request): Promise<NextResponse> {
   const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+    return NextResponse.json(
+      { error: "로그인이 필요합니다." },
+      { status: 401 },
+    );
   }
 
   const body = (await request.json()) as HandleUploadBody;
@@ -27,7 +30,10 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return NextResponse.json(jsonResponse);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "업로드 토큰 발급에 실패했습니다.";
+    const message =
+      error instanceof Error
+        ? error.message
+        : "업로드 토큰 발급에 실패했습니다.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

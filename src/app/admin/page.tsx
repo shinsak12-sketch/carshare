@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getDashboardStats } from "@/lib/admin-stats";
+import { getAnomalies } from "@/lib/usage-policy";
 import { TOOL_LABEL, type AiTool } from "@/lib/ai-usage";
 import { krw, num, dt } from "@/lib/format-krw";
 import { StatusBadge } from "@/components/admin/StatusBadge";
@@ -7,7 +8,10 @@ import { StatusBadge } from "@/components/admin/StatusBadge";
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
-  const s = await getDashboardStats();
+  const [s, anomalies] = await Promise.all([
+    getDashboardStats(),
+    getAnomalies(),
+  ]);
 
   const tiles = [
     {
@@ -92,6 +96,41 @@ export default async function AdminDashboardPage() {
           </Link>
         ))}
       </div>
+
+      {anomalies.items.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <h2 className="text-sm font-bold text-slate-900">이상 징후</h2>
+          {anomalies.items.map((a, i) => (
+            <Link
+              key={i}
+              href={a.href}
+              className={`rounded-2xl border-l-4 px-5 py-3 text-sm transition-colors ${a.tone === "error" ? "border-red-500 bg-red-50 text-red-900 hover:bg-red-100" : "border-amber-500 bg-amber-50 text-amber-900 hover:bg-amber-100"}`}
+            >
+              {a.text}
+            </Link>
+          ))}
+        </div>
+      )}
+      {anomalies.policy.monthlyBudgetKrw != null && (
+        <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-xs text-slate-600 shadow-sm">
+          이번 달 예산 {krw(anomalies.policy.monthlyBudgetKrw)} 중{" "}
+          {krw(anomalies.monthSpent)} 사용 (
+          {Math.round(
+            (anomalies.monthSpent /
+              Math.max(1, anomalies.policy.monthlyBudgetKrw)) *
+              100,
+          )}
+          %)
+          <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-blue-500"
+              style={{
+                width: `${Math.min(100, (anomalies.monthSpent / Math.max(1, anomalies.policy.monthlyBudgetKrw)) * 100)}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {(s.pendingCount > 0 || s.loginFail24h >= 5) && (
         <div className="rounded-2xl border-l-4 border-amber-500 bg-amber-50 px-5 py-4 text-sm text-amber-900">

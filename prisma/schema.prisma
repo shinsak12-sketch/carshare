@@ -130,3 +130,11 @@ model PricingRate {
 
   @@index([model, effectiveFrom])
 }
+
+// 키-값 설정(정책·제한 등). value는 JSON, 형태는 코드(zod)에서 검증.
+model AppSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}

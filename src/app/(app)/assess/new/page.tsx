@@ -7,7 +7,7 @@ import { DiagnosticsTree } from "@/components/DiagnosticsTree";
 import { EstimateTreeView, judgmentKey } from "@/components/EstimateTree";
 import { isEstimateTree, type EstimateTree } from "@/lib/estimate-tree";
 import { uploadPhotos } from "@/lib/upload-photos";
-import { runAiJob } from "@/lib/ai-job-client";
+import { postToolForm, runAiJob } from "@/lib/ai-job-client";
 import { OpinionEditor } from "@/components/OpinionEditor";
 import type { AssessmentResult } from "@/lib/assessment-types";
 import { buildReportText, splitOpinionItems } from "@/lib/format-report";
@@ -356,23 +356,11 @@ export default function NewAssessPage() {
       formData.append("imageUrls", JSON.stringify(imageUrls));
 
       setLoadingStep("AI 진단 중… (사진이 많으면 수 분 소요될 수 있음)");
-      const res = await fetch("/api/assess", {
-        method: "POST",
-        body: formData,
-      });
-
-      const contentType = res.headers.get("content-type") ?? "";
-      if (!contentType.includes("application/json")) {
-        const text = await res.text();
-        throw new Error(
-          res.status === 413
-            ? "선견적(PDF) 용량이 너무 큽니다. 다른 파일로 다시 시도해주세요."
-            : `서버 오류 (${res.status}): ${text.slice(0, 200)}`,
-        );
-      }
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "요청에 실패했습니다.");
+      const data = await postToolForm<AssessmentResult>(
+        "/api/assess",
+        formData,
+        "선견적(PDF)",
+      );
       const r = await runAiJob<AssessmentResult>(
         data,
         imageUrls,
