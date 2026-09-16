@@ -8,6 +8,11 @@ import { getCurrentUser } from "@/lib/session";
 import { sweepStaleBlobs } from "@/lib/blob-cleanup";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 import { isPdfFile, extractEstimateText } from "@/lib/estimate-pdf";
+import { parseEstimateTable } from "@/lib/estimate-table";
+import {
+  buildEstimateTree,
+  formatEstimateTableForPrompt,
+} from "@/lib/estimate-tree";
 import { redactPersonalInfo } from "@/lib/pii-redact";
 import { matchReferenceSections } from "@/lib/reference-sections";
 
@@ -74,6 +79,18 @@ async function handleAdjustment(req: NextRequest) {
   }
 
   const rawEstimateText = await extractEstimateText(estimateFile);
+  // [실험] 좌표 기반으로 읽은 항목표를 같이 넘김 — 화면의 견적서 표와 line_no가 1:1로 맞게.
+  // 표를 못 읽는 양식이면(스캔본 등) 원문 텍스트만으로 진행.
+  let estimateTableText: string | null = null;
+  try {
+    const rows = await parseEstimateTable(
+      Buffer.from(await estimateFile.arrayBuffer()),
+    );
+    if (rows.length)
+      estimateTableText = formatEstimateTableForPrompt(buildEstimateTree(rows));
+  } catch (err) {
+    console.warn("[/api/adjustment-lab] estimate table parse failed:", err);
+  }
 
   // 개인정보(고객명·연락처·주소 등)를 지운 뒤에만 AI 프롬프트에 사용하고,
   // 이 텍스트 자체도 저장하지 않음(사진과 동일한 정책).
@@ -84,7 +101,10 @@ async function handleAdjustment(req: NextRequest) {
   const contextLines = [
     manufacturer || model ? `차량정보: ${manufacturer} ${model}`.trim() : null,
     memo ? `[담당자 추가 의견]\n${memo}` : null,
-    `[청구 견적서 원문 텍스트]\n${estimateText}`,
+    estimateTableText
+      ? `[청구 견적서 항목표 — line_no는 이 표의 NO를 그대로 쓰십시오]\n${estimateTableText}`
+      : null,
+    `[청구 견적서 원문 텍스트${estimateTableText ? " — 차량정보·합계 참고용, 항목은 위 항목표 기준" : ""}]\n${estimateText}`,
     ...matchedSections.map((s) => `[참고자료: ${s.name}]\n${s.content}`),
     `첨부된 사진은 파손 상태 사진이 아니라 수리작업 진행/완료 사진이며, 총 ${imageUrls.length}장이 첨부 순서대로 1번부터 번호가 매겨져 있습니다.`,
   ].filter(Boolean);

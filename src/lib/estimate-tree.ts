@@ -59,3 +59,26 @@ export function isEstimateTree(v: unknown): v is EstimateTree {
     )
   );
 }
+
+// [실험] GPT에 넘길 항목표 텍스트. 원문 텍스트는 열이 뒤섞여 항목 순번을 세기 어려우니
+// 좌표로 읽은 표를 "NO | 구분 | 작업 | 항목명 | 시간 | 청구 공임 | 청구 부품·재료" 로 정리해
+// line_no가 견적서 NO와 1:1로 맞게 한다. NO의 U 접두(U12)는 떼고 숫자만.
+export function formatEstimateTableForPrompt(tree: EstimateTree): string {
+  const won = (n: number | null) => (n == null ? "-" : String(n));
+  const lines = tree.rows.map((r) => {
+    const no = String(r.line_no).replace(/^U/i, "");
+    const hq =
+      r.kind === "부품"
+        ? r.qty != null && r.qty !== 1
+          ? `×${r.qty}`
+          : "-"
+        : r.hours != null
+          ? `${r.hours}H`
+          : "-";
+    return `${no} | ${r.kind} | ${r.action || "-"} | ${r.name} | ${hq} | 공임 ${won(r.before.labor)} | 부품·재료 ${won(r.before.part)}`;
+  });
+  return [
+    "NO | 구분 | 작업 | 항목명 | 시간/수량 | 청구 공임 | 청구 부품·재료",
+    ...lines,
+  ].join("\n");
+}
