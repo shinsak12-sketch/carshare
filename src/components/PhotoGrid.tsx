@@ -32,12 +32,15 @@ export function PhotoGrid({
   highlighted,
   accent,
   onOpen,
+  columns = 9,
 }: {
   previews: { url: string }[];
   label: string;
   highlighted: number[]; // 1부터
   accent: PhotoAccent;
   onOpen: (index: number) => void;
+  // xl 이상에서 한 줄에 몇 장. 기본 9(800px 컬럼용), 전체 폭 화면은 20 등으로 늘림. 그 아래 폭은 9 고정
+  columns?: number;
 }) {
   const [hover, setHover] = useState<{
     index: number;
@@ -73,14 +76,21 @@ export function PhotoGrid({
     setHover({ index, left, top, size: PREVIEW });
   }
 
-  const cells = Math.max(18, Math.ceil(previews.length / 9) * 9);
+  // 최소 두 줄은 자리 표시(빈 칸)로 채워 그리드 폭이 사진 수에 따라 흔들리지 않게
+  const cells = Math.max(
+    columns * 2,
+    Math.ceil(previews.length / columns) * columns,
+  );
 
   return (
     <div>
       <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">
         {label} ({previews.length})
       </p>
-      <div className="grid grid-cols-9 gap-2">
+      <div
+        className="grid grid-cols-9 gap-2 xl:grid-cols-[repeat(var(--cols),minmax(0,1fr))]"
+        style={{ "--cols": columns } as React.CSSProperties}
+      >
         {Array.from({ length: cells }).map((_, i) => {
           const p = previews[i];
           if (!p) {

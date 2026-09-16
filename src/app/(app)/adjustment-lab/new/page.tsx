@@ -644,10 +644,9 @@ export default function NewAdjustmentLabPage() {
         </div>
       )}
 
-      <div
-        className={`grid grid-cols-1 gap-6 xl:min-h-0 xl:flex-1 xl:items-stretch ${inlineJudged ? "xl:grid-cols-1" : "xl:grid-cols-[800px_980px]"}`}
-      >
-        {/* 좌: 수리작업 사진 + 청구 견적서 (800px 고정) */}
+      <div className="grid grid-cols-1 gap-6 xl:min-h-0 xl:flex-1 xl:items-stretch">
+        {/* [실험] 사진 + 견적서 표를 전체 폭으로. 결과는 표 옆 열로 붙으니 별도 우측 패널 없음
+            (견적서 표를 못 읽은 건만 아래에 트리로 출력) */}
         <div className="flex flex-col gap-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
           {(imagePreviews.length > 0 || estimatePreviewUrl) && (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
@@ -658,6 +657,7 @@ export default function NewAdjustmentLabPage() {
                   highlighted={highlightedPhotos}
                   accent="purple"
                   onOpen={setLightboxIndex}
+                  columns={20}
                 />
               )}
 
