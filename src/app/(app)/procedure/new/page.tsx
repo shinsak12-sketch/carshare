@@ -50,6 +50,8 @@ export default function NewProcedurePage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [highlightedPhotos, setHighlightedPhotos] = useState<number[]>([]);
   const [reportCopied, setReportCopied] = useState(false);
+  // 모바일에선 틀 고정된 입력바가 화면을 너무 차지해서 접을 수 있게 (xl 이상은 항상 펼침)
+  const [formOpen, setFormOpen] = useState(true);
   const [summaryCopied, setSummaryCopied] = useState(false);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
   // 종합요약은 마지막에 보는 것 — 평소엔 한 줄로 접어두고 펼치면 우측 전체를 씀
@@ -238,6 +240,7 @@ export default function NewProcedurePage() {
     }
     setLoading(true);
     setError(null);
+    setFormOpen(false);
     updateActive({ result: null, caseInfo: null, summaryDraft: "" });
 
     const caseId = activeId;
@@ -366,6 +369,13 @@ export default function NewProcedurePage() {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFormOpen((v) => !v)}
+              className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm transition-all hover:bg-slate-50 active:scale-95 xl:hidden"
+            >
+              {formOpen ? "입력 접기 ▴" : "입력 펼치기 ▾"}
+            </button>
             {loading && (
               <div className="flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-xs font-bold text-orange-700 sm:text-sm">
                 <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-orange-300 border-t-orange-600" />
@@ -390,7 +400,7 @@ export default function NewProcedurePage() {
         {/* 상단 가로 입력 바 — 선견적 없이 사진만 */}
         <form
           onSubmit={handleSubmit}
-          className="mb-4 grid shrink-0 grid-cols-1 gap-3 rounded-2xl rounded-tl-none border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)] md:grid-cols-2 xl:grid-cols-[1.4fr_120px_110px_110px_2fr_auto] xl:items-start"
+          className={`mb-4 grid shrink-0 grid-cols-1 gap-3 rounded-2xl rounded-tl-none border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)] md:grid-cols-2 xl:grid-cols-[1.4fr_120px_110px_110px_2fr_auto] xl:items-start ${formOpen ? "" : "hidden xl:grid"}`}
         >
           <div>
             <label className="mb-1 block truncate text-xs font-semibold text-slate-600">
