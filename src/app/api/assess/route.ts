@@ -10,6 +10,11 @@ import { getCurrentUser } from "@/lib/session";
 import { sweepStaleBlobs } from "@/lib/blob-cleanup";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 import { isPdfFile, extractEstimateText } from "@/lib/estimate-pdf";
+import { parseEstimateTable } from "@/lib/estimate-table";
+import {
+  buildEstimateTree,
+  formatEstimateTableForPrompt,
+} from "@/lib/estimate-tree";
 import { redactPersonalInfo } from "@/lib/pii-redact";
 
 export const runtime = "nodejs";
@@ -93,6 +98,22 @@ async function runAssess(
   const rawEstimateText = estimateFile
     ? await extractEstimateText(estimateFile)
     : null;
+  // 좌표 기반으로 읽은 항목표를 같이 넘김 — 화면의 견적서 표와 line_no가 1:1로 맞게.
+  // 표를 못 읽는 양식(스캔본 등)이면 원문 텍스트만으로 진행.
+  let estimateTableText: string | null = null;
+  if (estimateFile) {
+    try {
+      const rows = await parseEstimateTable(
+        Buffer.from(await estimateFile.arrayBuffer()),
+      );
+      if (rows.length)
+        estimateTableText = formatEstimateTableForPrompt(
+          buildEstimateTree(rows),
+        );
+    } catch (err) {
+      console.warn("[/api/assess] estimate table parse failed:", err);
+    }
+  }
 
   // 선견적 원문에서 고객명·연락처·주소 등 개인정보를 지운 뒤에만 AI 프롬프트에
   // 쓰고, 이 텍스트 자체도 DB에 저장하지 않음(사진과 동일한 정책).
@@ -106,8 +127,11 @@ async function runAssess(
     `차량정보: ${vehicle.manufacturer} ${vehicle.model} ${vehicle.year ? vehicle.year + "년식" : ""}`.trim(),
     vehicle.damagedPart ? `신고된 손상부위: ${vehicle.damagedPart}` : null,
     vehicle.memo ? `[담당자 추가 의견]\n${vehicle.memo}` : null,
+    estimateTableText
+      ? `[선견적 항목표 — line_no는 이 표의 NO를 그대로 쓰십시오]\n${estimateTableText}`
+      : null,
     estimateText
-      ? `[선견적 원문 텍스트]\n${estimateText}`
+      ? `[선견적 원문 텍스트${estimateTableText ? " — 차량정보·합계 참고용, 항목은 위 항목표 기준" : ""}]\n${estimateText}`
       : "선견적 데이터가 제공되지 않았습니다. 사진 기반 손상유형 판독만 수행하십시오.",
     ...matchedSections.map((s) => `[참고자료: ${s.name}]\n${s.content}`),
     `첨부된 사진은 총 ${imageUrls.length}장이며 첨부 순서대로 1번부터 번호가 매겨져 있습니다.`,

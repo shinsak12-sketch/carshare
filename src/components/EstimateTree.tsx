@@ -41,6 +41,8 @@ const BADGE_ON: Record<string, string> = {
 };
 const ORDER = ["교환", "탈착", "판금", "수리", "도장", "부품", "기타"];
 const SEVERITIES: DiagnosticSeverity[] = ["error", "warn", "pass"];
+// 기본 표시는 조정·확인만 — 딱 봐야 할 행만 뜨게. 통과는 칩을 켜서 봄
+const DEFAULT_SEV: DiagnosticSeverity[] = ["error", "warn"];
 
 const won = (n: number | null | undefined) =>
   n == null ? "" : n.toLocaleString("ko-KR");
@@ -311,9 +313,9 @@ export function EstimateTreeView({
   // 필터 = "보이는 작업 집합". 기본은 전부 켜짐. "전체" 칩은 전부 켜기/끄기 토글이라
   // 부품만 빼고 보려면 부품 칩 하나만 끄고, 하나만 보려면 전체를 꺼서 비운 뒤 그 칩만 켜면 됨.
   const [on, setOn] = useState<Set<string>>(() => new Set(kinds));
-  // 판정 필터(조정/확인/통과). 연동·미판정 행은 "통과" 칩을 따라감(문제 없는 행이니까).
+  // 판정 필터(조정/확인/통과). 기본은 통과 꺼짐. 연동·미판정 행은 "통과" 칩을 따라감(문제 없는 행이니까).
   const [sevOn, setSevOn] = useState<Set<DiagnosticSeverity>>(
-    () => new Set(SEVERITIES),
+    () => new Set(DEFAULT_SEV),
   );
   // "추론만": 사진에 안 보이는 부위를 충격 경로로 추론한 판정만 남김(담당자 별도 검토용)
   const [inferredOnly, setInferredOnly] = useState(false);
@@ -321,7 +323,7 @@ export function EstimateTreeView({
   if (syncedTree !== tree) {
     setSyncedTree(tree);
     setOn(new Set(kinds));
-    setSevOn(new Set(SEVERITIES));
+    setSevOn(new Set(DEFAULT_SEV));
     setInferredOnly(false);
   }
   const allOn = kinds.every((k) => on.has(k));

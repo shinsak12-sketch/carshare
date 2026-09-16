@@ -3,12 +3,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { PhotoGrid } from "@/components/PhotoGrid";
-import { DiagnosticsPanel } from "@/components/DiagnosticsPanel";
+import { DiagnosticsTree } from "@/components/DiagnosticsTree";
+import { EstimateTreeView, judgmentKey } from "@/components/EstimateTree";
+import { isEstimateTree, type EstimateTree } from "@/lib/estimate-tree";
 import { uploadPhotos } from "@/lib/upload-photos";
 import { runAiJob } from "@/lib/ai-job-client";
 import type { AdjustmentResult } from "@/lib/adjustment-types";
 import { buildAdjustmentReportText } from "@/lib/format-adjustment-report";
-import { buildAdjustmentDiagnostics } from "@/lib/adjustment-review-items";
+import {
+  buildAdjustmentDiagnostics,
+  type ItemDiagnostic,
+} from "@/lib/adjustment-review-items";
 import {
   caseTitle,
   deleteCase,
@@ -18,7 +23,7 @@ import {
   saveCase,
   saveFiles,
   type StoredCase,
-} from "@/lib/adjustment-store";
+} from "@/lib/adjustment-lab-store";
 
 export default function NewAdjustmentPage() {
   // 건별 탭 — 엑셀 시트처럼. 결과·사진·견적서는 IndexedDB에 캐시돼 새로고침해도 유지.
@@ -38,17 +43,28 @@ export default function NewAdjustmentPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [highlightedPhotos, setHighlightedPhotos] = useState<number[]>([]);
-  const [showEstimate, setShowEstimate] = useState(true);
-  const [reportCopied, setReportCopied] = useState(false);
-  // 모바일에선 틀 고정된 입력바가 화면을 너무 차지해서 접을 수 있게 (xl 이상은 항상 펼침)
-  const [formOpen, setFormOpen] = useState(true);
+  // 라이트박스가 넘겨보는 사진 묶음. null = 전체 사진, 배열 = 특정 항목의 근거사진 번호(1부터)만.
+  // 근거사진 번호를 눌러 열면 ‹ › 가 그 항목 근거사진 안에서만 돌아 닫았다 다시 여는 수고를 덜어줌.
+  const [lightboxSet, setLightboxSet] = useState<{
+    photos: number[];
+    title: string;
+  } | null>(null);
+  // 사진 그리드 접기(100장 넘게 붙으면 표가 아래로 밀리니까)
+  const [photosOpen, setPhotosOpen] = useState(true);
 
   const result = active?.result ?? null;
-  const diagnostics = useMemo(
-    () => (result ? buildAdjustmentDiagnostics(result) : null),
-    [result],
+  // 결과 → 판정 트리 + 견적서 행(line_no) → 판정 색인. 색인은 견적서 표 옆에
+  // 판정 열로 붙여 보여주기 위한 것. (수동 useMemo 없이 React Compiler에 맡김)
+  const diagnostics = result ? buildAdjustmentDiagnostics(result) : null;
+  const judgmentMap = new Map<string, ItemDiagnostic>(
+    (diagnostics?.branches ?? [])
+      .flatMap((b) => [b.main, ...b.children])
+      .filter((d): d is ItemDiagnostic => !!d && d.lineNo != null)
+      .map((d) => [judgmentKey(d.lineNo), d] as const),
   );
+  // 결과 + 구조화된 견적서가 있으면 표 하나에 판정을 인라인으로 → 우측 패널 없이 전체 폭 사용.
+  // (견적서 표가 없을 때만 예전처럼 우측에 트리 출력)
+  const inlineJudged = !!result && isEstimateTree(active?.estimateTree);
 
   const imagePreviews = useMemo(
     () => photos.map((f) => ({ url: URL.createObjectURL(f) })),
@@ -58,6 +74,30 @@ export default function NewAdjustmentPage() {
     () => () => imagePreviews.forEach((p) => URL.revokeObjectURL(p.url)),
     [imagePreviews],
   );
+  // 근거사진 번호(1부터) 클릭 → 그 항목의 근거사진 묶음만 라이트박스로
+  function openEvidencePhoto(n: number, refs?: number[], itemName?: string) {
+    if (n < 1 || n > imagePreviews.length) return;
+    const valid = (refs ?? []).filter(
+      (r) => r >= 1 && r <= imagePreviews.length,
+    );
+    if (valid.length > 1) {
+      setLightboxSet({
+        photos: valid,
+        title: `${itemName ?? ""} 근거사진`.trim(),
+      });
+      setLightboxIndex(valid.indexOf(n));
+    } else {
+      setLightboxSet(null);
+      setLightboxIndex(n - 1);
+    }
+  }
+  const [highlightedPhotos, setHighlightedPhotos] = useState<number[]>([]);
+  const [showEstimate, setShowEstimate] = useState(true);
+  const [showPdf, setShowPdf] = useState(false);
+  const [reportCopied, setReportCopied] = useState(false);
+  // 모바일에선 틀 고정된 입력바가 화면을 너무 차지해서 접을 수 있게 (xl 이상은 항상 펼침)
+  const [formOpen, setFormOpen] = useState(true);
+
   const estimatePreviewUrl = useMemo(
     () => (estimateFile ? URL.createObjectURL(estimateFile) : null),
     [estimateFile],
@@ -226,13 +266,51 @@ export default function NewAdjustmentPage() {
       void saveFiles(activeId, { estimate: estimateFile, photos: files });
   }
 
-  function handleEstimateChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleEstimateChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const caseId = activeId;
     setEstimateFile(file);
     setShowEstimate(true);
-    updateActive({ estimateName: file.name });
-    if (activeId) void saveFiles(activeId, { estimate: file, photos });
+    updateActive({
+      estimateName: file.name,
+      estimateTree: null,
+      estimateTreeStatus: "parsing",
+    });
+    if (caseId) void saveFiles(caseId, { estimate: file, photos });
+
+    // [실험] 견적서를 트리로 구조화 (텍스트만, 사진 없음)
+    try {
+      const fd = new FormData();
+      fd.append("estimate", file);
+      const res = await fetch("/api/estimate-tree", {
+        method: "POST",
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok)
+        throw new Error(data.error ?? "견적서 구조화에 실패했습니다.");
+      const tree = data.tree as EstimateTree;
+      setCases((prev) => {
+        const next = prev.map((c) =>
+          c.id === caseId
+            ? { ...c, estimateTree: tree, estimateTreeStatus: "idle" as const }
+            : c,
+        );
+        const updated = next.find((c) => c.id === caseId);
+        if (updated) void saveCase(updated);
+        return next;
+      });
+    } catch (err) {
+      setCases((prev) =>
+        prev.map((c) =>
+          c.id === caseId ? { ...c, estimateTreeStatus: "error" as const } : c,
+        ),
+      );
+      setError(
+        err instanceof Error ? err.message : "견적서 구조화에 실패했습니다.",
+      );
+    }
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -268,7 +346,7 @@ export default function NewAdjustmentPage() {
       formData.append("imageUrls", JSON.stringify(imageUrls));
 
       setLoadingStep("AI 손해사정 중… (사진이 많으면 수 분 소요될 수 있음)");
-      const res = await fetch("/api/adjustment", {
+      const res = await fetch("/api/adjustment-lab", {
         method: "POST",
         body: formData,
       });
@@ -320,7 +398,7 @@ export default function NewAdjustmentPage() {
   function handleExportJson() {
     if (!active?.result) return;
     const payload = {
-      tool: "adjustment",
+      tool: "adjustment-lab",
       exportedAt: new Date().toISOString(),
       caseInfo: {
         plateNo: active.plateNo,
@@ -589,19 +667,41 @@ export default function NewAdjustmentPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:min-h-0 xl:flex-1 xl:grid-cols-[800px_980px] xl:items-stretch">
-        {/* 좌: 수리작업 사진 + 청구 견적서 (800px 고정) */}
+      <div className="grid grid-cols-1 gap-6 xl:min-h-0 xl:flex-1 xl:items-stretch">
+        {/* [실험] 사진 + 견적서 표를 전체 폭으로. 결과는 표 옆 열로 붙으니 별도 우측 패널 없음
+            (견적서 표를 못 읽은 건만 아래에 트리로 출력) */}
         <div className="flex flex-col gap-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
           {(imagePreviews.length > 0 || estimatePreviewUrl) && (
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
               {imagePreviews.length > 0 && (
-                <PhotoGrid
-                  previews={imagePreviews}
-                  label="수리작업 사진"
-                  highlighted={highlightedPhotos}
-                  accent="purple"
-                  onOpen={setLightboxIndex}
-                />
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setPhotosOpen((v) => !v)}
+                    className="absolute right-0 top-0 z-10 rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                  >
+                    {photosOpen
+                      ? "사진 접기 ▲"
+                      : `사진 펼치기 ▾ (${imagePreviews.length}장)`}
+                  </button>
+                  {photosOpen ? (
+                    <PhotoGrid
+                      previews={imagePreviews}
+                      label="수리작업 사진"
+                      highlighted={highlightedPhotos}
+                      accent="purple"
+                      onOpen={(i) => {
+                        setLightboxSet(null);
+                        setLightboxIndex(i);
+                      }}
+                      columns={20}
+                    />
+                  ) : (
+                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                      수리작업 사진 ({imagePreviews.length}) — 접힘
+                    </p>
+                  )}
+                </div>
               )}
 
               {estimatePreviewUrl && (
@@ -612,19 +712,50 @@ export default function NewAdjustmentPage() {
                       : ""
                   }
                 >
-                  <button
-                    type="button"
-                    onClick={() => setShowEstimate((v) => !v)}
-                    className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
-                  >
-                    {showEstimate ? "견적서 숨기기 ▲" : "청구 견적서 보기 ▾"}
-                  </button>
-                  {showEstimate && (
-                    <iframe
-                      src={`${estimatePreviewUrl}#zoom=75`}
-                      title="청구 견적서"
-                      className="mt-3 h-[75vh] w-full rounded-lg border border-slate-200"
-                    />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowEstimate((v) => !v)}
+                      className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                    >
+                      {showEstimate ? "견적서 숨기기 ▲" : "청구 견적서 보기 ▾"}
+                    </button>
+                    {isEstimateTree(active?.estimateTree) && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPdf((v) => !v)}
+                        className="rounded-full border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:bg-slate-50"
+                      >
+                        {showPdf ? "트리로 보기" : "원본 PDF 보기"}
+                      </button>
+                    )}
+                    {active?.estimateTreeStatus === "parsing" && (
+                      <span className="flex items-center gap-1.5 text-[11px] font-medium text-fuchsia-700">
+                        <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-fuchsia-300 border-t-fuchsia-600" />
+                        견적서 트리 구조화 중…
+                      </span>
+                    )}
+                  </div>
+                  {showEstimate &&
+                  isEstimateTree(active?.estimateTree) &&
+                  !showPdf ? (
+                    <div className="mt-3 rounded-xl border border-slate-200">
+                      <EstimateTreeView
+                        tree={active.estimateTree as EstimateTree}
+                        judgments={result ? judgmentMap : null}
+                        consistency={diagnostics?.consistency ?? null}
+                        onHoverPhotos={setHighlightedPhotos}
+                        onOpenPhoto={openEvidencePhoto}
+                      />
+                    </div>
+                  ) : (
+                    showEstimate && (
+                      <iframe
+                        src={`${estimatePreviewUrl}#zoom=75`}
+                        title="청구 견적서"
+                        className="mt-3 h-[75vh] w-full rounded-lg border border-slate-200"
+                      />
+                    )
                   )}
                 </div>
               )}
@@ -645,16 +776,13 @@ export default function NewAdjustmentPage() {
         </div>
 
         {/* 우: 판넬 목록 → 하위 작업 판정(각각 독립 스크롤), 980px. 종합의견은 항목별 판정이 곧 결과라 없음 */}
-        {result && diagnostics && active && (
+        {result && diagnostics && active && !inlineJudged && (
           <div className="flex flex-col gap-4 xl:min-h-0">
             <div className="min-h-0 flex-1">
-              <DiagnosticsPanel
+              <DiagnosticsTree
                 diagnostics={diagnostics}
                 onHoverPhotos={setHighlightedPhotos}
-                onOpenPhoto={(n) => {
-                  if (n >= 1 && n <= imagePreviews.length)
-                    setLightboxIndex(n - 1);
-                }}
+                onOpenPhoto={openEvidencePhoto}
               />
             </div>
           </div>
@@ -663,10 +791,23 @@ export default function NewAdjustmentPage() {
 
       {lightboxIndex !== null && (
         <ImageLightbox
-          urls={imagePreviews.map((p) => p.url)}
+          urls={
+            lightboxSet
+              ? lightboxSet.photos.map((n) => imagePreviews[n - 1].url)
+              : imagePreviews.map((p) => p.url)
+          }
+          labels={
+            lightboxSet
+              ? lightboxSet.photos.map((n) => `사진 ${n}`)
+              : imagePreviews.map((_, i) => `사진 ${i + 1}`)
+          }
+          title={lightboxSet?.title}
           index={lightboxIndex}
           onIndexChange={setLightboxIndex}
-          onClose={() => setLightboxIndex(null)}
+          onClose={() => {
+            setLightboxIndex(null);
+            setLightboxSet(null);
+          }}
         />
       )}
     </main>

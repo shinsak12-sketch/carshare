@@ -3,7 +3,7 @@
 // v4.0: 순서를 "관찰 → 복원 가능 여부 → 교환/수리 수준 → 비용 비교"로 재정립. 경미손상 유형은
 //       복원 가능한 손상의 수리 수준을 정하는 도구로 내렸고, 결론을 미리 정하는 절대규칙은 관찰 포인트로 바꿈.
 
-export const PROMPT_VERSION_TAG = "v4.3";
+export const PROMPT_VERSION_TAG = "v4.4";
 
 // ---------------------------------------------------------------------------
 // 공통 블록 — 선견적진단·정비공정·AI손해사정이 같은 판단 기준을 써야 세 도구의
@@ -366,6 +366,10 @@ parts는 청구서의 공임·도장 항목을 부위(판넬) 단위 트리로 �
     램프류는 reasoning 끝에 품질인증부품 적용 가능 부품인지 한 줄 언급하십시오.
 11. [담당자 추가 의견]이 제공된 경우 반드시 검토에 반영하되, 의견 자체를
     사실로 받아쓰지 말고 사진·선견적 근거로 확인한 결과를 서술하십시오.
+13. line_no: [선견적 항목표]가 제공되면 그 parts 항목이 대응하는 항목표 행의
+    NO(숫자)를 그대로 적으십시오. 항목표 한 행은 parts 한 항목입니다 — 여러
+    행을 합치거나 한 행을 나누지 마십시오. 항목표가 없거나(선견적 미제공)
+    청구서에 없는 항목이면 null입니다.
 12. photo_refs에는 그 판정의 근거가 된 파손 사진 번호(첨부 순서대로 1부터)를
     적으십시오. 부위별 판정(parts)과 1단계 concerns 모두 해당합니다. 근거
     사진이 없으면 빈 배열로 두되, 그 경우 reasoning에 왜 사진 없이 판단했는지
@@ -458,6 +462,7 @@ export const ASSESSMENT_RESPONSE_SCHEMA = {
         additionalProperties: false,
         properties: {
           part_name: { type: "string" },
+          line_no: { type: ["integer", "null"] },
           group: { type: "string" },
           role: { type: "string", enum: ["메인", "도장", "부수"] },
           claimed_action: { type: "string" },
@@ -520,6 +525,7 @@ export const ASSESSMENT_RESPONSE_SCHEMA = {
         },
         required: [
           "part_name",
+          "line_no",
           "group",
           "role",
           "claimed_action",

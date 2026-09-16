@@ -28,13 +28,7 @@ const APPS: AppTile[] = [
     icon: "⚖️",
     gradient: "from-purple-500 to-purple-700",
   },
-  // 실험용 복제본 — 프롬프트·API·캐시가 분리돼 있어 원본에 영향 없음. 비교 후 좋은 쪽을 남김
-  {
-    href: "/adjustment-lab/new",
-    label: "AI손해사정(실험)",
-    icon: "🧪",
-    gradient: "from-fuchsia-500 to-fuchsia-700",
-  },
+  // 구버전(좌우 분할 디자인)은 /legacy/... 로 옮겨 관리자 설정에서만 접근
 ];
 
 export default function Home() {

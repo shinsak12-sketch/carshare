@@ -57,7 +57,10 @@ function samePart(concernItem: string, part: PartAssessment): boolean {
   return sameWork(concernItem, `${part.part_name} ${part.claimed_action}`);
 }
 
-function partView(part: PartAssessment, lineNo: number): DiagItemView {
+function partView(
+  part: PartAssessment,
+  lineNo: number | null | undefined,
+): DiagItemView {
   const extras: DiagItemView["extras"] = [];
   const lt = part.labor_time_check;
   if (lt.claimed_h !== null) {
@@ -80,7 +83,7 @@ function partView(part: PartAssessment, lineNo: number): DiagItemView {
   }
   return {
     roleLabel: part.role ?? "메인",
-    lineNo,
+    lineNo: lineNo ?? null,
     itemName: part.part_name,
     claimedAction: part.claimed_action,
     claimedHours: lt.claimed_h,
@@ -127,8 +130,10 @@ export function buildAssessmentDiagnostics(
 
   // concern은 정확 일치 → 정규화 일치 순으로, 역할(메인/도장/부수) 무관하게 해당 행에 붙임.
   // 판정은 parts 행이 기준이고 concern은 지적 내용만 부가 검토로.
+  // line_no가 있는 결과(v4.4+)는 그 번호(견적서 NO)로, 없는 예전 결과는 순번으로
+  const hasLineNos = result.parts.some((p) => p.line_no != null);
   result.parts.forEach((part, i) => {
-    const view = partView(part, i + 1);
+    const view = partView(part, hasLineNos ? part.line_no : i + 1);
     const key = part.group || part.part_name;
     concerns.forEach((c, ci) => {
       if (concernUsed.has(ci)) return;
