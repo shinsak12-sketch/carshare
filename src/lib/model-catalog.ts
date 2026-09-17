@@ -1,6 +1,6 @@
 // 관리자가 고를 수 있는 모델 목록. prisma·next 의존 없는 순수 상수(seed·클라이언트 공용).
 // 단가는 OpenAI 공개 요금표 기준 예측치 — 실제 청구와 다르면 단가 화면에서 수정.
-// gpt-5.6-sol만 실제 청구서로 검증됨(2026-09-17, 입력이 캐시 쓰기 단가로 청구).
+// gpt-5.6-sol·gpt-5는 실제 청구서로 검증됨(2026-09-17). Sol은 입력이 캐시 쓰기 단가로 청구.
 
 import { DEFAULT_MODEL, DEFAULT_RATE, type RateLike } from "./pricing-defaults";
 
@@ -40,8 +40,8 @@ export const MODEL_CATALOG: ModelSpec[] = [
       outputUsdPerM: 10,
       usdToKrw: KRW,
     },
-    verified: false,
-    note: "추론형. Sol 대비 입력 1/4·출력 1/2 수준. 사진 판독 정밀도는 낮아질 수 있음.",
+    verified: true,
+    note: "추론형. Sol 대비 입력 1/4·출력 1/2 수준(2026-09-17 청구 1건으로 단가 확인). 80장 손해사정 건에서 작업사진 판독 누락이 확인돼 손해사정용으로는 부적합.",
   },
   {
     id: "gpt-5-mini",
