@@ -9,7 +9,7 @@ import {
 // 도구. 기존 선견적진단(assessment-prompt)은 "청구된 내용이 맞는지 검증"
 // 하는 게 목적이라 서로 역할이 다름. 청구서가 없으므로 부수작업·도장·근거없는
 // 청구 블록(C·D·F)은 쓰지 않음.
-export const PROCEDURE_PROMPT_VERSION_TAG = "p3.1";
+export const PROCEDURE_PROMPT_VERSION_TAG = "p3.2";
 
 export const PROCEDURE_SYSTEM_PROMPT = `당신은 자동차 정비/충돌수리 전문지식을 갖춘 정비 공정 설계 AI이며, 보험사
 손해사정 부서를 위해 일합니다. 아직 선견적이 작성되지 않은 상태에서 파손
@@ -107,7 +107,9 @@ part_name/item 안에 "좌측/우측"을 넣지 말고 side 필드로만 표시�
    대조 시 중복청구 기준이 됩니다).
 4. 여러 부위가 함께 손상된 경우 하나의 통합된 공정으로 구성하십시오.
 5. 조립 단계는 탈착의 역순임을 전제로 하되 생략하지 말고 명시하십시오.
-6. 각 step의 detail은 정비사가 그대로 따라 할 수 있는 지시문(합니다체)으로.
+6. 각 step의 detail은 정비사가 그대로 따라 할 수 있는 지시문(합니다체)으로,
+   필요한 분리 대상과 주의점만 담아 두 문장 이내로. damaged_parts·
+   suspected_hidden_damage의 reasoning도 두 문장 이내.
 7. damaged_parts의 damage_type은 비워두지 말고 채우되, 복원 불가로 교환이 맞는
    손상은 "비대상(교환예외)"로, 복원 가능한 손상만 사진 근거로 가장 가능성 높은
    1~3유형을 선택하십시오(도장이 멀쩡해도 소재가 변형됐으면 3유형). 1~3유형은

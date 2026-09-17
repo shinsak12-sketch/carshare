@@ -9,6 +9,7 @@ import {
   isReasoningModel,
   type ModelTier,
 } from "@/lib/model-catalog";
+import { OUTPUT_DETAIL_LABEL, type OutputDetail } from "@/lib/output-mode";
 
 interface RateView {
   inputUsdPerM: number;
@@ -44,33 +45,43 @@ function estimate(id: string, r: RateView) {
 
 export function ModelPicker({
   current,
+  currentDetail,
   rates,
   usage,
   extraIds,
 }: {
   current: string;
+  currentDetail: OutputDetail;
   rates: Record<string, RateView>;
   usage: Record<string, UsageView>;
   extraIds: string[];
 }) {
   const router = useRouter();
   const [selected, setSelected] = useState(current);
+  const [detail, setDetail] = useState<OutputDetail>(currentDetail);
   const [custom, setCustom] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   const target = custom.trim() || selected;
+  const changed = target !== current || detail !== currentDetail;
   const base = rates[current];
   const baseCost = base ? estimate(current, base) : null;
 
   async function save() {
-    if (target === current) {
-      setMsg("이미 적용 중인 모델입니다.");
+    if (!changed) {
+      setMsg("변경된 내용이 없습니다.");
       return;
     }
+    const lines = [];
+    if (target !== current) lines.push(`모델 ${current} → ${target}`);
+    if (detail !== currentDetail)
+      lines.push(
+        `출력 ${OUTPUT_DETAIL_LABEL[currentDetail]} → ${OUTPUT_DETAIL_LABEL[detail]}`,
+      );
     if (
       !window.confirm(
-        `AI 모델을 ${current} → ${target} 로 바꿉니다. 이후 실행부터 적용됩니다. 계속할까요?`,
+        `${lines.join(", ")} 로 바꿉니다. 이후 실행부터 적용됩니다. 계속할까요?`,
       )
     )
       return;
@@ -80,11 +91,13 @@ export function ModelPicker({
       const res = await fetch("/api/admin/model", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: target }),
+        body: JSON.stringify({ model: target, detail }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "저장 실패");
-      setMsg(`적용됨: ${data.model}`);
+      setMsg(
+        `적용됨: ${data.model} · ${OUTPUT_DETAIL_LABEL[data.detail as OutputDetail]}`,
+      );
       setCustom("");
       setSelected(data.model);
       router.refresh();
@@ -219,6 +232,41 @@ export function ModelPicker({
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-4">
+          <div className="text-xs font-semibold text-slate-600">
+            출력 상세도
+          </div>
+          <div className="mt-1.5 inline-flex rounded-full bg-slate-100 p-1 shadow-inner">
+            {(["detailed", "brief"] as OutputDetail[]).map((d) => {
+              const on = detail === d;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDetail(d)}
+                  className={`rounded-full px-4 py-1.5 text-sm font-bold transition-all duration-150 active:scale-95 ${
+                    on
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  {OUTPUT_DETAIL_LABEL[d]}
+                  {d === currentDetail && (
+                    <span className="ml-1 text-[10px] font-semibold text-emerald-600">
+                      적용 중
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+            <b>상세</b>: 항목마다 근거 문장과 조정 설명을 지불보증 회신에 옮길
+            수 있는 문어체로 출력. <b>간략</b>: 판정·항목 수·근거 사진·직접확인/
+            추론 구분은 그대로 두고 근거를 한 구절로 압축. 출력 토큰이 줄어
+            비용이 내려가고, 실행 이력의 프롬프트 태그에 -brief가 붙습니다.
+          </p>
+        </div>
         <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
           목록에 없는 모델 ID 직접 입력
           <input
@@ -238,10 +286,12 @@ export function ModelPicker({
           <button
             type="button"
             onClick={save}
-            disabled={saving || target === current}
+            disabled={saving || !changed}
             className="rounded-full bg-slate-900 px-5 py-2 text-sm font-bold text-white transition-all hover:-translate-y-0.5 active:scale-95 disabled:opacity-40 disabled:hover:translate-y-0"
           >
-            {saving ? "적용 중…" : `${target} 로 변경`}
+            {saving
+              ? "적용 중…"
+              : `${target} · ${OUTPUT_DETAIL_LABEL[detail]} 로 적용`}
           </button>
           <Link
             href={`/admin/pricing?model=${encodeURIComponent(target)}`}

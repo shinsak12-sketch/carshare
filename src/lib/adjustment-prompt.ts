@@ -10,7 +10,7 @@ import {
 // AI손해사정 프롬프트 v2.2
 // 이 문자열이 바뀌면 버전 태그도 같이 올릴 것.
 
-export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj3.6";
+export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj3.7";
 
 export const ADJUSTMENT_SYSTEM_PROMPT = `당신은 보험사 소속 차량손해사정사입니다. 공업사가 제출한 청구 견적서와,
 수리 전 파손 상태 사진 및 수리 작업 진행·완료 사진을 근거로 청구 견적서의 각
@@ -41,10 +41,8 @@ ${ADJUSTER_STANCE}
    예: group "리어범퍼" 아래에 메인 = "리어범퍼 교환"(공임), 도장 = "리어범퍼
    교환도장", 부수 = "리어범퍼 사이드마운팅브라켓 탈착", "후방감지센서 탈착",
    "엠블럼 교환(공임)" 등.
-   - 메인 항목은 parent_line을 null로, 나머지는 같은 group 메인의 line_no를
-     parent_line에 적으십시오. 메인이 없는 단독 항목(가열건조비, 컬러매칭,
-     프레임수정기 등)은 group을 "도장 공통", "차체 공통"처럼 묶고 role
-     "부수", parent_line null로 두십시오.
+   - 메인이 없는 단독 항목(가열건조비, 컬러매칭, 프레임수정기 등)은 group을
+     "도장 공통", "차체 공통"처럼 묶고 role "부수"로 두십시오.
    - 연동(follows_parent): 교환도장은 메인 교환 판정을 따라옵니다. 메인 교환
      인정이면 교환도장도 인정, 메인이 불인정·과다청구(보수도장 조정)면 교환도장은
      "보수도장(Lv1/Lv2)으로 변경"입니다. verdict를 메인과 같게 두고 follows_parent
@@ -167,13 +165,13 @@ ${ADJUSTER_STANCE}
 7. reasoning과 adjustment_note는 짧고 실무적으로. "회사 기준 미제공", "표준시간
    참고자료 없음", "AOS 세부항목 확인 필요" 같은 문구는 쓰지 마십시오 — 기준은
    담당자가 따로 갖고 있으므로 정비 판단 결론까지만 씁니다.
-   - "인정" 항목의 reasoning은 1~2문장으로 짧게 하되 "보이는 것 → 결론"은
+   - "인정" 항목의 reasoning은 한 문장으로 하되 "보이는 것 → 결론"은
      빠뜨리지 마십시오. adjustment_note는 빈 문자열.
-   - "인정"이 아닌 항목만 왜 문제인지(reasoning)와 사정 방향(adjustment_note)을
-     적으십시오. adjustment_note는 반드시 "무엇을 어떤 기준으로 조정하는지"를
-     먼저 쓰고(예: "교환공임·교환도장 불인정, 보수도장(Lv1) 기준으로 사정" /
-     "판금 2.0H 이내로 조정(프런트펜더 최대인정시간)"), 거래처
-     관리 코멘트는 그 뒤에 붙이십시오.
+   - "인정"이 아닌 항목만 왜 문제인지(reasoning, 두 문장 이내)와 사정 방향
+     (adjustment_note, 한 문장)을 적으십시오. adjustment_note는 반드시 "무엇을
+     어떤 기준으로 조정하는지"를 먼저 쓰고(예: "교환공임·교환도장 불인정,
+     보수도장(Lv1) 기준으로 사정" / "판금 2.0H 이내로 조정(프런트펜더
+     최대인정시간)"), 거래처 관리 코멘트는 그 뒤에 붙이십시오.
 7-1. cost_comparison: 원칙 3의 ③(verdict "협의필요")에서만 채우고 그 외 null.
    담당자가 회사 손익 관점에서 교환·수리 중 무엇이 싼지 바로 보게 두 안을 나란히.
    - replace_option: 청구서상 교환안 구성과 금액(교환공임 + 부품가 + 교환도장 =
@@ -244,7 +242,6 @@ export const ADJUSTMENT_RESPONSE_SCHEMA = {
           line_no: { type: "integer" },
           group: { type: "string" },
           role: { type: "string", enum: ROLE_ENUM },
-          parent_line: { type: ["integer", "null"] },
           follows_parent: { type: "boolean" },
           item_name: { type: "string" },
           claimed_action: { type: "string" },
@@ -274,7 +271,6 @@ export const ADJUSTMENT_RESPONSE_SCHEMA = {
           "line_no",
           "group",
           "role",
-          "parent_line",
           "follows_parent",
           "item_name",
           "claimed_action",

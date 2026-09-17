@@ -1,6 +1,7 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { startStructuredJob } from "@/lib/ai-job";
 import { resolveModel } from "@/lib/ai-model";
+import { buildSystemPrompt, taggedPromptVersion } from "@/lib/output-mode";
 import {
   PROCEDURE_PROMPT_VERSION_TAG,
   PROCEDURE_RESPONSE_SCHEMA,
@@ -78,7 +79,10 @@ async function handleProcedure(req: NextRequest) {
   const runInput = {
     user,
     tool: "procedure" as const,
-    promptVersion: PROCEDURE_PROMPT_VERSION_TAG,
+    promptVersion: taggedPromptVersion(
+      PROCEDURE_PROMPT_VERSION_TAG,
+      aiModel.detail,
+    ),
     model: aiModel.id,
     photoCount: imageUrls.length,
     plateNo: normalizePlate(
@@ -97,7 +101,11 @@ async function handleProcedure(req: NextRequest) {
   let started;
   try {
     started = await startStructuredJob({
-      system: PROCEDURE_SYSTEM_PROMPT,
+      system: buildSystemPrompt(
+        PROCEDURE_SYSTEM_PROMPT,
+        PROCEDURE_RESPONSE_SCHEMA,
+        aiModel.detail,
+      ),
       userText: contextLines.join("\n\n"),
       imageUrls,
       schemaName: "procedure_result",

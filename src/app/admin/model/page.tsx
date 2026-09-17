@@ -60,9 +60,9 @@ export default async function ModelPage() {
       <div>
         <h1 className="text-xl font-bold text-slate-900">AI 모델</h1>
         <p className="mt-1 text-sm text-slate-500">
-          세 도구(선견적·손해사정·정비공정)가 공통으로 쓰는 모델. 저장 즉시 이후
-          실행부터 적용되고, 실행 이력에는 건마다 쓴 모델이 남습니다. 프롬프트는
-          모델과 무관하게 동일.
+          세 도구(선견적·손해사정·정비공정)가 공통으로 쓰는 모델과 출력 상세도.
+          저장 즉시 이후 실행부터 적용되고, 실행 이력에는 건마다 쓴 모델·모드가
+          남습니다. 프롬프트의 판단 기준은 모델·모드와 무관하게 동일.
           {setting.updatedAt && (
             <span className="ml-2 text-xs text-slate-400">
               마지막 변경 {fmtKst(setting.updatedAt)} ·{" "}
@@ -73,6 +73,7 @@ export default async function ModelPage() {
       </div>
       <ModelPicker
         current={setting.model}
+        currentDetail={setting.detail}
         rates={rateMap}
         usage={usage}
         extraIds={extra}

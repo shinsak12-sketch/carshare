@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { getModelSetting, saveModelSetting } from "@/lib/ai-model";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
+import { OUTPUT_DETAIL_LABEL, isOutputDetail } from "@/lib/output-mode";
 
 // AI 모델 변경(관리자). 저장 즉시 이후 실행부터 적용. 진행 중인 백그라운드 작업은 영향 없음.
 export async function POST(req: NextRequest) {
@@ -17,18 +18,27 @@ export async function POST(req: NextRequest) {
       { status: 403 },
     );
 
-  const body = (await req.json().catch(() => ({}))) as { model?: unknown };
+  const body = (await req.json().catch(() => ({}))) as {
+    model?: unknown;
+    detail?: unknown;
+  };
+  const before = await getModelSetting();
   const model =
-    typeof body.model === "string" ? body.model.trim().slice(0, 80) : "";
+    typeof body.model === "string" && body.model.trim()
+      ? body.model.trim().slice(0, 80)
+      : before.model;
   // OpenAI 모델 ID 형식만 허용(영문·숫자·.-_/ )
-  if (!model || !/^[a-zA-Z0-9][a-zA-Z0-9._\-/]*$/.test(model))
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._\-/]*$/.test(model))
     return NextResponse.json(
       { error: "모델 ID 형식이 올바르지 않습니다." },
       { status: 400 },
     );
+  const detail = isOutputDetail(body.detail) ? body.detail : before.detail;
 
-  const before = await getModelSetting();
-  await saveModelSetting(model, `${admin.name}(${admin.employeeId})`);
+  await saveModelSetting(
+    { model, detail },
+    `${admin.name}(${admin.employeeId})`,
+  );
 
   const { ip, userAgent } = getRequestMeta(req);
   void logAudit({
@@ -37,9 +47,9 @@ export async function POST(req: NextRequest) {
     actorEmployeeId: admin.employeeId,
     targetType: "AppSetting",
     targetId: "ai-model",
-    detail: `${before.model} → ${model}`,
+    detail: `${before.model}(${OUTPUT_DETAIL_LABEL[before.detail]}) → ${model}(${OUTPUT_DETAIL_LABEL[detail]})`,
     ip,
     userAgent,
   });
-  return NextResponse.json({ ok: true, model });
+  return NextResponse.json({ ok: true, model, detail });
 }

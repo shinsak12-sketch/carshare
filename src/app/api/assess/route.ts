@@ -1,6 +1,7 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { startStructuredJob } from "@/lib/ai-job";
 import { resolveModel } from "@/lib/ai-model";
+import { buildSystemPrompt, taggedPromptVersion } from "@/lib/output-mode";
 import {
   ASSESSMENT_RESPONSE_SCHEMA,
   SYSTEM_PROMPT,
@@ -172,7 +173,7 @@ async function runAssess(
   const runInput = {
     user,
     tool: "assess" as const,
-    promptVersion: PROMPT_VERSION_TAG,
+    promptVersion: taggedPromptVersion(PROMPT_VERSION_TAG, aiModel.detail),
     model: aiModel.id,
     photoCount: imageUrls.length,
     estimateAmount,
@@ -192,7 +193,11 @@ async function runAssess(
   let started;
   try {
     started = await startStructuredJob({
-      system: SYSTEM_PROMPT,
+      system: buildSystemPrompt(
+        SYSTEM_PROMPT,
+        ASSESSMENT_RESPONSE_SCHEMA,
+        aiModel.detail,
+      ),
       userText: contextLines.join("\n\n"),
       imageUrls,
       schemaName: "assessment_result",

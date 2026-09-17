@@ -1,6 +1,7 @@
 import type OpenAI from "openai";
 import { getOpenAI } from "./openai";
 import type { ResolvedModel } from "./ai-model";
+import { expandWireKeys, toWireSchema } from "./wire-keys";
 import type { TokenUsage } from "./pricing-defaults";
 
 // AI 판단을 OpenAI 백그라운드 작업으로 던지고 작업 ID만 돌려준다.
@@ -78,6 +79,8 @@ export async function startStructuredJob(
   // 추론형 모델만 reasoning.effort를 보냄(비추론형·Groq 모델은 파라미터를 모르면 400).
   // 추론 강도는 절대 낮추지 않음(담당자 지시).
   const effort = input.model.reasoning ? input.effort : undefined;
+  // 출력 토큰 절감: 모델에는 축약 키 스키마를 주고 응답은 원래 키로 되돌린다
+  const schema = toWireSchema(input.schema);
 
   // Groq(개발용)은 백그라운드 모드가 없어 동기 호출로 바로 결과 반환
   if (process.env.GROQ_API_KEY) {
@@ -100,14 +103,17 @@ export async function startStructuredJob(
         type: "json_schema",
         json_schema: {
           name: input.schemaName,
-          schema: input.schema,
+          schema,
           strict: true,
         },
       },
     });
     const raw = completion.choices[0]?.message?.content;
     if (!raw) throw new Error("AI 응답을 받지 못했습니다.");
-    return { result: JSON.parse(raw), usage: usageOf(completion.usage) };
+    return {
+      result: expandWireKeys(JSON.parse(raw)),
+      usage: usageOf(completion.usage),
+    };
   }
 
   try {
@@ -132,7 +138,7 @@ export async function startStructuredJob(
           format: {
             type: "json_schema",
             name: input.schemaName,
-            schema: input.schema,
+            schema,
             strict: true,
           },
         },
@@ -179,7 +185,11 @@ export async function getJobStatus(jobId: string): Promise<JobStatus> {
     if (!raw)
       return { status: "failed", error: "AI 응답이 비어 있습니다.", usage };
     try {
-      return { status: "completed", result: JSON.parse(raw), usage };
+      return {
+        status: "completed",
+        result: expandWireKeys(JSON.parse(raw)),
+        usage,
+      };
     } catch {
       return {
         status: "failed",

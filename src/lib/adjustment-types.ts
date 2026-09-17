@@ -21,7 +21,6 @@ export interface AdjustmentItem {
   group: string;
   role: ItemRole;
   // 같은 group의 메인 항목 line_no. 메인이면 null.
-  parent_line: number | null;
   // 이 항목의 판정이 메인 항목 판정의 결과로 따라온 것(연동)이면 true —
   // 화면·집계에서 독립 판정으로 세지 않음.
   follows_parent: boolean;

@@ -1,6 +1,7 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { startStructuredJob } from "@/lib/ai-job";
 import { resolveModel } from "@/lib/ai-model";
+import { buildSystemPrompt, taggedPromptVersion } from "@/lib/output-mode";
 import {
   ADJUSTMENT_RESPONSE_SCHEMA,
   ADJUSTMENT_SYSTEM_PROMPT,
@@ -142,7 +143,10 @@ async function handleAdjustment(req: NextRequest) {
   const runInput = {
     user,
     tool: "adjustment" as const,
-    promptVersion: ADJUSTMENT_PROMPT_VERSION_TAG,
+    promptVersion: taggedPromptVersion(
+      ADJUSTMENT_PROMPT_VERSION_TAG,
+      aiModel.detail,
+    ),
     model: aiModel.id,
     photoCount: imageUrls.length,
     estimateAmount,
@@ -163,7 +167,11 @@ async function handleAdjustment(req: NextRequest) {
   let started;
   try {
     started = await startStructuredJob({
-      system: ADJUSTMENT_SYSTEM_PROMPT,
+      system: buildSystemPrompt(
+        ADJUSTMENT_SYSTEM_PROMPT,
+        ADJUSTMENT_RESPONSE_SCHEMA,
+        aiModel.detail,
+      ),
       userText: contextLines.join("\n\n"),
       imageUrls,
       schemaName: "adjustment_result",
