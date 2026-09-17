@@ -74,6 +74,7 @@ export default async function ModelPage() {
       <ModelPicker
         current={setting.model}
         currentDetail={setting.detail}
+        currentStrictness={setting.strictness}
         rates={rateMap}
         usage={usage}
         extraIds={extra}

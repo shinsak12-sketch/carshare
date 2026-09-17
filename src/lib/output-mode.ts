@@ -45,8 +45,9 @@ export function buildSystemPrompt(
   base: string,
   schema: unknown,
   detail: OutputDetail,
+  extraBlocks: string[] = [], // 도구별 추가 블록(예: 손해사정 강도)
 ): string {
-  const parts = [base, wireKeyLegend(schema)];
+  const parts = [base, ...extraBlocks, wireKeyLegend(schema)];
   if (detail === "brief") parts.push(BRIEF_OUTPUT_BLOCK);
   return parts.filter(Boolean).join("\n\n");
 }

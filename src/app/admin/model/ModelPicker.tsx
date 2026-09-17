@@ -10,6 +10,11 @@ import {
   type ModelTier,
 } from "@/lib/model-catalog";
 import { OUTPUT_DETAIL_LABEL, type OutputDetail } from "@/lib/output-mode";
+import {
+  STRICTNESS_DESC,
+  STRICTNESS_LABEL,
+  type AdjustmentStrictness,
+} from "@/lib/adjustment-strictness";
 
 interface RateView {
   inputUsdPerM: number;
@@ -46,12 +51,14 @@ function estimate(id: string, r: RateView) {
 export function ModelPicker({
   current,
   currentDetail,
+  currentStrictness,
   rates,
   usage,
   extraIds,
 }: {
   current: string;
   currentDetail: OutputDetail;
+  currentStrictness: AdjustmentStrictness;
   rates: Record<string, RateView>;
   usage: Record<string, UsageView>;
   extraIds: string[];
@@ -59,12 +66,17 @@ export function ModelPicker({
   const router = useRouter();
   const [selected, setSelected] = useState(current);
   const [detail, setDetail] = useState<OutputDetail>(currentDetail);
+  const [strictness, setStrictness] =
+    useState<AdjustmentStrictness>(currentStrictness);
   const [custom, setCustom] = useState("");
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
   const target = custom.trim() || selected;
-  const changed = target !== current || detail !== currentDetail;
+  const changed =
+    target !== current ||
+    detail !== currentDetail ||
+    strictness !== currentStrictness;
   const base = rates[current];
   const baseCost = base ? estimate(current, base) : null;
 
@@ -79,6 +91,10 @@ export function ModelPicker({
       lines.push(
         `출력 ${OUTPUT_DETAIL_LABEL[currentDetail]} → ${OUTPUT_DETAIL_LABEL[detail]}`,
       );
+    if (strictness !== currentStrictness)
+      lines.push(
+        `손해사정 강도 ${STRICTNESS_LABEL[currentStrictness]} → ${STRICTNESS_LABEL[strictness]}`,
+      );
     if (
       !window.confirm(
         `${lines.join(", ")} 로 바꿉니다. 이후 실행부터 적용됩니다. 계속할까요?`,
@@ -91,7 +107,7 @@ export function ModelPicker({
       const res = await fetch("/api/admin/model", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: target, detail }),
+        body: JSON.stringify({ model: target, detail, strictness }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "저장 실패");
@@ -267,6 +283,59 @@ export function ModelPicker({
             비용이 내려가고, 실행 이력의 프롬프트 태그에 -brief가 붙습니다.
           </p>
         </div>
+        <div className="mb-4">
+          <div className="text-xs font-semibold text-slate-600">
+            손해사정 강도{" "}
+            <span className="font-normal text-slate-400">
+              · AI손해사정에만 적용, 선견적·정비공정은 무관
+            </span>
+          </div>
+          <div className="mt-1.5 grid gap-2 sm:grid-cols-3">
+            {([1, 2, 3] as AdjustmentStrictness[]).map((lv) => {
+              const on = strictness === lv;
+              return (
+                <button
+                  key={lv}
+                  type="button"
+                  onClick={() => setStrictness(lv)}
+                  className={`flex flex-col gap-1 rounded-xl border p-3 text-left transition-all duration-150 hover:-translate-y-0.5 active:scale-[0.99] ${
+                    on
+                      ? "border-blue-500 bg-blue-50/40 shadow-[0_0_0_3px_rgba(59,130,246,0.15)]"
+                      : "border-slate-200 bg-white shadow-sm hover:border-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`flex h-3.5 w-3.5 items-center justify-center rounded-full border-2 ${
+                        on
+                          ? "border-blue-600 bg-blue-600"
+                          : "border-slate-300 bg-white"
+                      }`}
+                    >
+                      {on && <span className="h-1 w-1 rounded-full bg-white" />}
+                    </span>
+                    <span className="text-sm font-bold text-slate-900">
+                      {STRICTNESS_LABEL[lv]}
+                    </span>
+                    {lv === currentStrictness && (
+                      <span className="ml-auto text-[10px] font-semibold text-emerald-600">
+                        적용 중
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-slate-600">
+                    {STRICTNESS_DESC[lv]}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+            판단 절차·근거 구분·출력 형식은 같고 &quot;얼마나 확실해야
+            인정하는가&quot;의 문턱만 바뀝니다. 중복·수량 판단은 단계와 무관.
+            실행 이력 태그에 -s1/-s2가 붙고, 3단계는 태그 없음.
+          </p>
+        </div>
         <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
           목록에 없는 모델 ID 직접 입력
           <input
@@ -291,7 +360,7 @@ export function ModelPicker({
           >
             {saving
               ? "적용 중…"
-              : `${target} · ${OUTPUT_DETAIL_LABEL[detail]} 로 적용`}
+              : `${target} · ${OUTPUT_DETAIL_LABEL[detail]} · ${STRICTNESS_LABEL[strictness]} 로 적용`}
           </button>
           <Link
             href={`/admin/pricing?model=${encodeURIComponent(target)}`}

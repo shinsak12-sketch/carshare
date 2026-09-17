@@ -2,6 +2,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { startStructuredJob } from "@/lib/ai-job";
 import { resolveModel } from "@/lib/ai-model";
 import { buildSystemPrompt, taggedPromptVersion } from "@/lib/output-mode";
+import { strictnessBlock, strictnessTag } from "@/lib/adjustment-strictness";
 import {
   ADJUSTMENT_RESPONSE_SCHEMA,
   ADJUSTMENT_SYSTEM_PROMPT,
@@ -145,10 +146,9 @@ async function handleAdjustment(req: NextRequest) {
   const runInput = {
     user,
     tool: "adjustment" as const,
-    promptVersion: taggedPromptVersion(
-      ADJUSTMENT_PROMPT_VERSION_TAG,
-      aiModel.detail,
-    ),
+    promptVersion:
+      taggedPromptVersion(ADJUSTMENT_PROMPT_VERSION_TAG, aiModel.detail) +
+      strictnessTag(aiModel.strictness),
     model: aiModel.id,
     photoCount: imageUrls.length,
     estimateAmount,
@@ -173,6 +173,7 @@ async function handleAdjustment(req: NextRequest) {
         ADJUSTMENT_SYSTEM_PROMPT,
         ADJUSTMENT_RESPONSE_SCHEMA,
         aiModel.detail,
+        [strictnessBlock(aiModel.strictness)],
       ),
       userText: contextLines.join("\n\n"),
       imageUrls,

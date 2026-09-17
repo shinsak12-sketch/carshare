@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/session";
 import { getModelSetting, saveModelSetting } from "@/lib/ai-model";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 import { OUTPUT_DETAIL_LABEL, isOutputDetail } from "@/lib/output-mode";
+import { STRICTNESS_LABEL, isStrictness } from "@/lib/adjustment-strictness";
 
 // AI 모델 변경(관리자). 저장 즉시 이후 실행부터 적용. 진행 중인 백그라운드 작업은 영향 없음.
 export async function POST(req: NextRequest) {
@@ -21,6 +22,7 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as {
     model?: unknown;
     detail?: unknown;
+    strictness?: unknown;
   };
   const before = await getModelSetting();
   const model =
@@ -34,9 +36,12 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   const detail = isOutputDetail(body.detail) ? body.detail : before.detail;
+  const strictness = isStrictness(body.strictness)
+    ? body.strictness
+    : before.strictness;
 
   await saveModelSetting(
-    { model, detail },
+    { model, detail, strictness },
     `${admin.name}(${admin.employeeId})`,
   );
 
@@ -47,9 +52,9 @@ export async function POST(req: NextRequest) {
     actorEmployeeId: admin.employeeId,
     targetType: "AppSetting",
     targetId: "ai-model",
-    detail: `${before.model}(${OUTPUT_DETAIL_LABEL[before.detail]}) → ${model}(${OUTPUT_DETAIL_LABEL[detail]})`,
+    detail: `${before.model}(${OUTPUT_DETAIL_LABEL[before.detail]}, ${STRICTNESS_LABEL[before.strictness]}) → ${model}(${OUTPUT_DETAIL_LABEL[detail]}, ${STRICTNESS_LABEL[strictness]})`,
     ip,
     userAgent,
   });
-  return NextResponse.json({ ok: true, model, detail });
+  return NextResponse.json({ ok: true, model, detail, strictness });
 }
