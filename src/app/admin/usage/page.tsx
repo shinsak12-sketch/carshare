@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getUsageStats } from "@/lib/admin-stats";
 import { TOOL_LABEL, type AiTool } from "@/lib/ai-usage";
-import { krw, money, num, tok } from "@/lib/format-krw";
+import { money, num, tok } from "@/lib/format-krw";
 import { RangeTabs, parseRange } from "@/components/admin/RangeTabs";
 import type { UsageRow } from "@/lib/admin-stats";
 
