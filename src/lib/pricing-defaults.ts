@@ -2,12 +2,13 @@
 // seed와 서버 양쪽에서 쓰므로 prisma·next 의존 없이 순수 상수만.
 export const DEFAULT_MODEL = "gpt-5.6-sol";
 
-// 2026-09-17 실제 청구로 역산: 입력 87.4k + 출력 11.4k(추론 2.8k 포함) 1건 = $0.67
-//   → 입력 $3.75/M, 출력 $30/M 이 정확히 맞음. 캐시 입력은 관례상 입력의 1/10.
+// 2026-09-17 OpenAI 사용량 화면으로 확인: 입력 87.4k는 "cache writes" $0.44(= $5.0/M),
+// 출력 11.4k(추론 포함)는 $0.23(= $20/M). 이 모델은 입력이 캐시 쓰기 단가로 청구되므로
+// 입력 단가 = 캐시 쓰기 단가로 둔다. 캐시 읽기(cached_tokens)는 쓰기의 1/10로 추정 — 검증 전.
 export const DEFAULT_RATE = {
-  inputUsdPerM: 3.75, // 입력 100만 토큰당 USD
-  cachedInputUsdPerM: 0.375, // 캐시된 입력
-  outputUsdPerM: 30, // 출력(추론 토큰 포함)
+  inputUsdPerM: 5.0, // 입력(캐시 쓰기) 100만 토큰당 USD
+  cachedInputUsdPerM: 0.5, // 캐시된 입력(읽기) — 추정
+  outputUsdPerM: 20, // 출력(추론 토큰 포함)
   usdToKrw: 1400,
 };
 
