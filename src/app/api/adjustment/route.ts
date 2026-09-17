@@ -11,7 +11,10 @@ import { isPdfFile, extractEstimateText } from "@/lib/estimate-pdf";
 import { redactPersonalInfo } from "@/lib/pii-redact";
 import { matchReferenceSections } from "@/lib/reference-sections";
 import { parseEstimateTable } from "@/lib/estimate-table";
-import { buildEstimateTree } from "@/lib/estimate-tree";
+import {
+  buildEstimateTree,
+  formatEstimateTableForPrompt,
+} from "@/lib/estimate-tree";
 import {
   attachJob,
   completeRun,
@@ -90,11 +93,16 @@ async function handleAdjustment(req: NextRequest) {
   const rawEstimateText = await extractEstimateText(estimateFile);
   // 스캔본·이미지 PDF 금지 + 청구 규모(사정전 합계) 추출
   let estimateAmount: number | null = null;
+  let estimateTableText: string | null = null;
   try {
     const rows = await parseEstimateTable(
       Buffer.from(await estimateFile.arrayBuffer()),
     );
-    if (rows.length) estimateAmount = estimateAmountOf(buildEstimateTree(rows));
+    if (rows.length) {
+      const tree = buildEstimateTree(rows);
+      estimateAmount = estimateAmountOf(tree);
+      estimateTableText = formatEstimateTableForPrompt(tree);
+    }
   } catch (err) {
     console.warn("[/api/adjustment] estimate table parse failed:", err);
   }
@@ -121,7 +129,10 @@ async function handleAdjustment(req: NextRequest) {
   const contextLines = [
     manufacturer || model ? `차량정보: ${manufacturer} ${model}`.trim() : null,
     memo ? `[담당자 추가 의견]\n${memo}` : null,
-    `[청구 견적서 원문 텍스트]\n${estimateText}`,
+    estimateTableText
+      ? `[청구 견적서 항목표 — line_no는 이 표의 NO를 그대로 쓰십시오]\n${estimateTableText}`
+      : null,
+    `[청구 견적서 원문 텍스트${estimateTableText ? " — 차량정보·합계 참고용, 항목은 위 항목표 기준" : ""}]\n${estimateText}`,
     ...matchedSections.map((s) => `[참고자료: ${s.name}]\n${s.content}`),
     `첨부된 사진은 총 ${imageUrls.length}장이며 첨부 순서대로 1번부터 번호가 매겨져 있습니다. 수리 전 파손 상태 사진과 수리 작업 진행/완료 사진이 섞여 있으니, 먼저 어느 사진이 수리 전 파손 상태인지 구분한 뒤 판단하십시오.`,
   ].filter(Boolean);
