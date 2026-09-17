@@ -11,7 +11,7 @@ export default async function AdminLayout({
   return (
     <>
       <AdminNav name={admin.name} />
-      <main className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-8">
+      <main className="mx-auto flex max-w-[1800px] flex-col gap-6 px-6 py-8 xl:px-10">
         {children}
       </main>
     </>

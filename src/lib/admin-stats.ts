@@ -142,6 +142,7 @@ export async function getUsageStats(range: Range, tool?: AiTool | null) {
 
   const byUser = new Map<string, UsageRow>();
   const byTool = new Map<string, UsageRow>();
+  const byModel = new Map<string, UsageRow>();
   const byDay = new Map<
     string,
     { day: string; runs: number; costKrw: number; costUsd: number }
@@ -188,6 +189,9 @@ export async function getUsageStats(range: Range, tool?: AiTool | null) {
       byTool.set(tKey, emptyRow(tKey, TOOL_LABEL[tKey as AiTool] ?? tKey));
     add(byTool.get(tKey)!, r);
 
+    if (!byModel.has(r.model)) byModel.set(r.model, emptyRow(r.model, r.model));
+    add(byModel.get(r.model)!, r);
+
     const day = kstDayKey(r.createdAt);
     const d = byDay.get(day) ?? { day, runs: 0, costKrw: 0, costUsd: 0 };
     if (r.status === "succeeded") {
@@ -206,6 +210,7 @@ export async function getUsageStats(range: Range, tool?: AiTool | null) {
     total,
     byUser: [...byUser.values()].sort((a, b) => b.costKrw - a.costKrw),
     byTool: [...byTool.values()].sort((a, b) => b.costKrw - a.costKrw),
+    byModel: [...byModel.values()].sort((a, b) => b.costKrw - a.costKrw),
     byDay: [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day)),
   };
 }
@@ -216,6 +221,7 @@ export interface RunFilter {
   userId?: string | null;
   status?: string | null;
   plate?: string | null;
+  model?: string | null;
 }
 
 export async function listRuns(f: RunFilter, take = 200) {
@@ -226,6 +232,7 @@ export async function listRuns(f: RunFilter, take = 200) {
       ...(f.tool ? { tool: f.tool } : {}),
       ...(f.userId ? { userId: f.userId } : {}),
       ...(f.status ? { status: f.status } : {}),
+      ...(f.model ? { model: f.model } : {}),
       ...(f.plate
         ? { plateNo: { contains: f.plate.replace(/\s+/g, "") } }
         : {}),
@@ -245,6 +252,15 @@ export async function listRuns(f: RunFilter, take = 200) {
     ...r,
     dupCount: r.plateNo ? (dup.get(`${r.plateNo}|${r.tool}`) ?? 1) : 1,
   }));
+}
+
+export async function listModelsForFilter() {
+  const rows = await prisma.aiRun.findMany({
+    distinct: ["model"],
+    select: { model: true },
+    orderBy: { model: "asc" },
+  });
+  return rows.map((r) => r.model);
 }
 
 export async function listUsersForFilter() {

@@ -260,6 +260,14 @@ export default async function UsagePage({
         <h2 className="text-sm font-bold text-slate-900">도구별</h2>
         <UsageTable rows={stats.byTool} head="도구" />
       </section>
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-bold text-slate-900">모델별</h2>
+        <p className="text-xs text-slate-500">
+          같은 건을 모델 바꿔 돌렸을 때 건당 비용·토큰 비교용. 판정 분포도 같이
+          보세요.
+        </p>
+        <UsageTable rows={stats.byModel} head="모델" />
+      </section>
     </div>
   );
 }

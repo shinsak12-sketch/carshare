@@ -32,7 +32,7 @@ export function AdminNav({ name }: { name: string }) {
 
   return (
     <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
+      <div className="mx-auto flex max-w-[1800px] items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
         <span className="shrink-0 truncate whitespace-nowrap text-sm font-bold text-slate-900">
           관리자 페이지
         </span>
@@ -53,7 +53,7 @@ export function AdminNav({ name }: { name: string }) {
           </button>
         </div>
       </div>
-      <nav className="no-scrollbar mx-auto flex max-w-5xl gap-1.5 overflow-x-auto px-4 pb-2.5 sm:px-6">
+      <nav className="no-scrollbar mx-auto flex max-w-[1800px] gap-1.5 overflow-x-auto px-4 pb-2.5 sm:px-6">
         {TABS.map((tab) => {
           const active =
             tab.href === "/admin"

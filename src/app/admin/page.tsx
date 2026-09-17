@@ -164,6 +164,7 @@ export default async function AdminDashboardPage() {
               <th className="px-5 py-2 font-semibold">시각</th>
               <th className="px-3 py-2 font-semibold">계정</th>
               <th className="px-3 py-2 font-semibold">도구</th>
+              <th className="px-3 py-2 font-semibold">모델</th>
               <th className="px-3 py-2 font-semibold">차량</th>
               <th className="px-3 py-2 text-right font-semibold">사진</th>
               <th className="px-3 py-2 text-right font-semibold">비용</th>
@@ -174,7 +175,7 @@ export default async function AdminDashboardPage() {
             {s.recent.length === 0 && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={8}
                   className="px-5 py-8 text-center text-xs text-slate-400"
                 >
                   아직 실행 기록이 없습니다.
@@ -191,6 +192,9 @@ export default async function AdminDashboardPage() {
                 </td>
                 <td className="px-3 py-2 text-slate-700">
                   {TOOL_LABEL[r.tool as AiTool] ?? r.tool}
+                </td>
+                <td className="px-3 py-2 font-mono text-[11px] text-slate-600">
+                  {r.model}
                 </td>
                 <td className="px-3 py-2 font-mono text-xs text-slate-600">
                   {r.plateNo ?? "-"}

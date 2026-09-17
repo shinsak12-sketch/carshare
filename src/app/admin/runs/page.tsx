@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { listRuns, listUsersForFilter } from "@/lib/admin-stats";
+import {
+  listModelsForFilter,
+  listRuns,
+  listUsersForFilter,
+} from "@/lib/admin-stats";
 import { TOOL_LABEL, type AiTool } from "@/lib/ai-usage";
 import { krw, money, num, tok, dt } from "@/lib/format-krw";
 import { RangeTabs, parseRange } from "@/components/admin/RangeTabs";
@@ -30,21 +34,25 @@ export default async function RunsPage({
     : "";
   const userId = sp.user ?? "";
   const plate = sp.plate ?? "";
-  const [runs, users] = await Promise.all([
+  const model = sp.model ?? "";
+  const [runs, users, models] = await Promise.all([
     listRuns({
       range,
       tool: tool || null,
       userId: userId || null,
       status: status || null,
       plate: plate || null,
+      model: model || null,
     }),
     listUsersForFilter(),
+    listModelsForFilter(),
   ]);
   const keep = {
     tool: tool || undefined,
     status: status || undefined,
     user: userId || undefined,
     plate: plate || undefined,
+    model: model || undefined,
   };
 
   return (
@@ -90,6 +98,18 @@ export default async function RunsPage({
           ))}
         </select>
         <select
+          name="model"
+          defaultValue={model}
+          className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 font-mono"
+        >
+          <option value="">전체 모델</option>
+          {models.map((id) => (
+            <option key={id} value={id}>
+              {id}
+            </option>
+          ))}
+        </select>
+        <select
           name="status"
           defaultValue={status}
           className="rounded-lg border border-slate-300 px-2 py-1.5"
@@ -112,7 +132,7 @@ export default async function RunsPage({
         >
           조회
         </button>
-        {(tool || status || userId || plate) && (
+        {(tool || status || userId || plate || model) && (
           <Link
             href={`/admin/runs?range=${range}`}
             className="text-slate-500 underline"
@@ -123,12 +143,13 @@ export default async function RunsPage({
       </form>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full min-w-[1100px] text-left text-sm">
+        <table className="w-full min-w-[1240px] text-left text-sm">
           <thead>
             <tr className="border-b border-slate-100 text-xs text-slate-500">
               <th className="px-4 py-3 font-semibold">시각</th>
               <th className="px-3 py-3 font-semibold">계정</th>
               <th className="px-3 py-3 font-semibold">도구</th>
+              <th className="px-3 py-3 font-semibold">모델</th>
               <th className="px-3 py-3 font-semibold">차량 / 접수</th>
               <th className="px-3 py-3 text-right font-semibold">사진</th>
               <th className="px-3 py-3 text-right font-semibold">견적 금액</th>
@@ -145,7 +166,7 @@ export default async function RunsPage({
             {runs.length === 0 && (
               <tr>
                 <td
-                  colSpan={11}
+                  colSpan={12}
                   className="px-4 py-10 text-center text-xs text-slate-400"
                 >
                   조건에 맞는 실행이 없습니다.
@@ -175,6 +196,15 @@ export default async function RunsPage({
                     <div className="text-[10px] text-slate-400">
                       {r.promptVersion}
                     </div>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <Link
+                      href={`/admin/runs?range=${range}&model=${encodeURIComponent(r.model)}`}
+                      className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-700 transition-colors hover:bg-slate-200"
+                      title="이 모델만 보기"
+                    >
+                      {r.model}
+                    </Link>
                   </td>
                   <td className="px-3 py-2.5 font-mono text-xs text-slate-700">
                     <span className="flex items-center gap-1.5">
