@@ -518,6 +518,17 @@ export default function NewAdjustmentPage() {
                 {reportCopied ? "복사됨 ✓" : "결과 전체 복사"}
               </button>
             )}
+            {result && active && (
+              <a
+                href={`/adjustment/report?case=${encodeURIComponent(active.id)}`}
+                target="_blank"
+                rel="noopener"
+                title="인쇄용 보고서를 새 탭에서 열고 브라우저 인쇄에서 PDF로 저장"
+                className="shrink-0 rounded-full border border-slate-300 bg-white px-3.5 py-1.5 text-xs font-bold text-slate-800 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-slate-50 active:scale-95"
+              >
+                🖨 보고서 · PDF
+              </a>
+            )}
             {result && (
               <button
                 type="button"

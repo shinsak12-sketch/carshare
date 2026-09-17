@@ -46,3 +46,38 @@ body {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* 인쇄 보고서 (PrintReport) */
+.print-root {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm 10mm 14mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+  }
+  .print-hidden {
+    display: none !important;
+  }
+  .print-root {
+    max-width: none;
+    padding: 0;
+  }
+  .break-inside-avoid {
+    break-inside: avoid;
+  }
+  .break-before-page {
+    break-before: page;
+  }
+  thead {
+    display: table-header-group;
+  }
+  a[href]::after {
+    content: "";
+  }
+}
