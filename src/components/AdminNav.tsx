@@ -9,6 +9,7 @@ const TABS = [
   { href: "/admin/usage", label: "사용량 통계" },
   { href: "/admin/runs", label: "실행 이력" },
   { href: "/admin/policy", label: "정책·제한" },
+  { href: "/admin/model", label: "AI 모델" },
   { href: "/admin/pricing", label: "단가" },
   { href: "/admin/accounts", label: "계정 관리" },
   { href: "/admin/logs", label: "접속·활동 기록" },

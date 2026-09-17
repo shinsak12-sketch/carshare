@@ -1,19 +1,39 @@
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_MODEL, DEFAULT_RATE } from "@/lib/pricing-defaults";
+import { getModelSetting } from "@/lib/ai-model";
+import { MODEL_CATALOG, defaultRateFor } from "@/lib/model-catalog";
 import { PricingForm } from "./PricingForm";
 import { fmtKst } from "@/lib/kst";
 
 export const dynamic = "force-dynamic";
 
-export default async function PricingPage() {
-  const rates = await prisma.pricingRate.findMany({
-    orderBy: [{ model: "asc" }, { effectiveFrom: "desc" }],
-    take: 50,
-  });
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ model?: string }>;
+}) {
+  const [{ model: query }, setting, rates, used] = await Promise.all([
+    searchParams,
+    getModelSetting(),
+    prisma.pricingRate.findMany({
+      orderBy: [{ model: "asc" }, { effectiveFrom: "desc" }],
+      take: 100,
+    }),
+    prisma.aiRun.findMany({ distinct: ["model"], select: { model: true } }),
+  ]);
+  // 편집 대상 모델: ?model= → 현재 적용 모델. 선택지는 카탈로그 + 단가·이력에 나온 모델
+  const model = query?.trim() || setting.model;
+  const options = [
+    ...new Set([
+      ...MODEL_CATALOG.map((m) => m.id),
+      ...rates.map((r) => r.model),
+      ...used.map((r) => r.model),
+      setting.model,
+      model,
+    ]),
+  ];
   const current =
-    rates.find(
-      (r) => r.model === DEFAULT_MODEL && r.effectiveFrom <= new Date(),
-    ) ?? null;
+    rates.find((r) => r.model === model && r.effectiveFrom <= new Date()) ??
+    null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -27,7 +47,11 @@ export default async function PricingPage() {
       </div>
 
       <PricingForm
-        model={DEFAULT_MODEL}
+        key={model}
+        model={model}
+        options={options}
+        activeModel={setting.model}
+        fromDb={current != null}
         initial={
           current
             ? {
@@ -36,7 +60,7 @@ export default async function PricingPage() {
                 outputUsdPerM: current.outputUsdPerM,
                 usdToKrw: current.usdToKrw,
               }
-            : DEFAULT_RATE
+            : defaultRateFor(model)
         }
       />
 
@@ -67,7 +91,10 @@ export default async function PricingPage() {
               </tr>
             )}
             {rates.map((r) => (
-              <tr key={r.id} className="border-b border-slate-50">
+              <tr
+                key={r.id}
+                className={`border-b border-slate-50 ${r.model === model ? "" : "text-slate-400"}`}
+              >
                 <td className="px-4 py-2.5 tabular-nums text-slate-600">
                   {fmtKst(r.effectiveFrom)}
                 </td>

@@ -1,5 +1,6 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { startStructuredJob } from "@/lib/ai-job";
+import { resolveModel } from "@/lib/ai-model";
 import {
   PROCEDURE_PROMPT_VERSION_TAG,
   PROCEDURE_RESPONSE_SCHEMA,
@@ -73,10 +74,12 @@ async function handleProcedure(req: NextRequest) {
   ].filter(Boolean);
 
   // 백그라운드 작업으로 시작만 하고 작업 ID 반환. 사진(Blob)은 작업이 끝날 때 /api/ai-job 에서 지움.
+  const aiModel = await resolveModel();
   const runInput = {
     user,
     tool: "procedure" as const,
     promptVersion: PROCEDURE_PROMPT_VERSION_TAG,
+    model: aiModel.id,
     photoCount: imageUrls.length,
     plateNo: normalizePlate(
       form.get("plateNo") ? String(form.get("plateNo")) : null,
@@ -100,6 +103,7 @@ async function handleProcedure(req: NextRequest) {
       schemaName: "procedure_result",
       schema: PROCEDURE_RESPONSE_SCHEMA as unknown as Record<string, unknown>,
       effort: "medium",
+      model: aiModel,
     });
   } catch (err) {
     await failRun(run.id, err instanceof Error ? err.message : String(err));

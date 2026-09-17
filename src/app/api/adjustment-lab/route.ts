@@ -1,5 +1,6 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { startStructuredJob } from "@/lib/ai-job";
+import { resolveModel } from "@/lib/ai-model";
 import {
   ADJUSTMENT_RESPONSE_SCHEMA,
   ADJUSTMENT_SYSTEM_PROMPT,
@@ -139,10 +140,12 @@ async function handleAdjustment(req: NextRequest) {
   ].filter(Boolean);
 
   // 실행 기록(사용량 통계·이력용). 시작 시 queued, 완료 시 /api/ai-job이 토큰·비용을 확정.
+  const aiModel = await resolveModel();
   const runInput = {
     user,
     tool: "adjustment" as const,
     promptVersion: ADJUSTMENT_PROMPT_VERSION_TAG,
+    model: aiModel.id,
     photoCount: imageUrls.length,
     estimateAmount,
     plateNo,
@@ -168,6 +171,7 @@ async function handleAdjustment(req: NextRequest) {
       schemaName: "adjustment_result",
       schema: ADJUSTMENT_RESPONSE_SCHEMA as unknown as Record<string, unknown>,
       effort: "medium",
+      model: aiModel,
     });
   } catch (err) {
     await failRun(run.id, err instanceof Error ? err.message : String(err));

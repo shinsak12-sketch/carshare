@@ -3,7 +3,7 @@ import OpenAI from "openai";
 let client: OpenAI | null = null;
 
 // 개발 중엔 OpenAI 크레딧을 안 쓰려고 Groq(무료 티어, OpenAI 호환 API)로
-// 테스트하고, 나중에 OPENAI_API_KEY만 넣으면 자동으로 GPT-5.6 Sol로 돌아감.
+// 테스트하고, 나중에 OPENAI_API_KEY만 넣으면 관리자가 고른 OpenAI 모델로 돌아감.
 // 우선순위: GROQ_API_KEY가 있으면 Groq, 없으면 OPENAI_API_KEY로 OpenAI.
 export function getOpenAI() {
   if (!client) {
@@ -27,27 +27,7 @@ export function getOpenAI() {
   return client;
 }
 
-export function getModel() {
-  if (process.env.AI_MODEL) return process.env.AI_MODEL;
-  // gpt-5.6-sol: 현재 OpenAI 최상위 비전 모델. 사진의 미세한 손상(예: 램프
-  // 렌즈 크랙)을 놓치는 문제는 프롬프트로 강제할 수 있는 한계를 넘어선
-  // 시각 인식 자체의 문제라 판단해 모델을 올림. 필요하면 AI_MODEL 환경변수로
-  // 언제든 다른 모델로 덮어쓸 수 있음.
-  return process.env.GROQ_API_KEY
-    ? "qwen/qwen3-vl-32b-instruct"
-    : "gpt-5.6-sol";
-}
-
-// gpt-5.6-sol 같은 추론형 모델은 reasoning.effort 기본값(medium)만으로도
-// Vercel 서버리스 함수 제한시간(맥스 60초 근처)을 넘겨 타임아웃(504)이 나서
-// 낮춰서 씀. Groq(qwen3-vl)는 이 파라미터 자체를 모르는 다른 모델이라
-// 붙이면 오류가 나므로, OpenAI를 쓸 때만 반환하고 아니면 undefined.
-export function getReasoningEffort(
-  effort: "none" | "low" | "medium",
-): "none" | "low" | "medium" | undefined {
-  if (process.env.GROQ_API_KEY) return undefined;
-  return effort;
-}
+// 모델 선택과 reasoning.effort 부착 여부는 ai-model.ts(관리자 설정)와 ai-job.ts가 결정한다.
 
 type ChatParams =
   OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming;

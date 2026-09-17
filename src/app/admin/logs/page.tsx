@@ -20,6 +20,7 @@ const actionLabel: Record<string, string> = {
   PROCEDURE_CHECKED: "정비공정 실행",
   PRICING_UPDATED: "단가 변경",
   POLICY_UPDATED: "정책 변경",
+  MODEL_CHANGED: "AI 모델 변경",
 };
 
 const actionTone: Record<string, string> = {
@@ -39,6 +40,7 @@ const actionTone: Record<string, string> = {
   PROCEDURE_CHECKED: "bg-slate-100 text-slate-700",
   PRICING_UPDATED: "bg-blue-100 text-blue-900",
   POLICY_UPDATED: "bg-blue-100 text-blue-900",
+  MODEL_CHANGED: "bg-violet-100 text-violet-900",
 };
 
 export default async function LogsPage() {

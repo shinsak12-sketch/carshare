@@ -1,5 +1,6 @@
 import type OpenAI from "openai";
-import { getModel, getOpenAI, getReasoningEffort } from "./openai";
+import { getOpenAI } from "./openai";
+import type { ResolvedModel } from "./ai-model";
 import type { TokenUsage } from "./pricing-defaults";
 
 // AI 판단을 OpenAI 백그라운드 작업으로 던지고 작업 ID만 돌려준다.
@@ -14,6 +15,7 @@ export interface StructuredJobInput {
   schemaName: string;
   schema: Record<string, unknown>;
   effort: "low" | "medium";
+  model: ResolvedModel; // 관리자 설정에서 resolveModel()로 얻은 값
 }
 
 export type JobStart =
@@ -73,12 +75,14 @@ export async function startStructuredJob(
   input: StructuredJobInput,
 ): Promise<JobStart> {
   const openai = getOpenAI();
-  const effort = getReasoningEffort(input.effort);
+  // 추론형 모델만 reasoning.effort를 보냄(비추론형·Groq 모델은 파라미터를 모르면 400).
+  // 추론 강도는 절대 낮추지 않음(담당자 지시).
+  const effort = input.model.reasoning ? input.effort : undefined;
 
   // Groq(개발용)은 백그라운드 모드가 없어 동기 호출로 바로 결과 반환
   if (process.env.GROQ_API_KEY) {
     const completion = await openai.chat.completions.create({
-      model: getModel(),
+      model: input.model.id,
       messages: [
         { role: "system", content: input.system },
         {
@@ -109,7 +113,7 @@ export async function startStructuredJob(
   try {
     const resp = await openai.responses.create(
       {
-        model: getModel(),
+        model: input.model.id,
         instructions: input.system,
         input: [
           {

@@ -1,5 +1,6 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { startStructuredJob } from "@/lib/ai-job";
+import { resolveModel } from "@/lib/ai-model";
 import {
   ADJUSTMENT_RESPONSE_SCHEMA,
   ADJUSTMENT_SYSTEM_PROMPT,
@@ -137,10 +138,12 @@ async function handleAdjustment(req: NextRequest) {
     `첨부된 사진은 총 ${imageUrls.length}장이며 첨부 순서대로 1번부터 번호가 매겨져 있습니다. 수리 전 파손 상태 사진과 수리 작업 진행/완료 사진이 섞여 있으니, 먼저 어느 사진이 수리 전 파손 상태인지 구분한 뒤 판단하십시오.`,
   ].filter(Boolean);
 
+  const aiModel = await resolveModel();
   const runInput = {
     user,
     tool: "adjustment" as const,
     promptVersion: ADJUSTMENT_PROMPT_VERSION_TAG,
+    model: aiModel.id,
     photoCount: imageUrls.length,
     estimateAmount,
     plateNo,
@@ -166,6 +169,7 @@ async function handleAdjustment(req: NextRequest) {
       schemaName: "adjustment_result",
       schema: ADJUSTMENT_RESPONSE_SCHEMA as unknown as Record<string, unknown>,
       effort: "medium",
+      model: aiModel,
     });
   } catch (err) {
     await failRun(run.id, err instanceof Error ? err.message : String(err));

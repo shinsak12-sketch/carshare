@@ -1,5 +1,6 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { startStructuredJob } from "@/lib/ai-job";
+import { resolveModel } from "@/lib/ai-model";
 import {
   ASSESSMENT_RESPONSE_SCHEMA,
   SYSTEM_PROMPT,
@@ -167,10 +168,12 @@ async function runAssess(
     `첨부된 사진은 총 ${imageUrls.length}장이며 첨부 순서대로 1번부터 번호가 매겨져 있습니다.`,
   ].filter(Boolean);
 
+  const aiModel = await resolveModel();
   const runInput = {
     user,
     tool: "assess" as const,
     promptVersion: PROMPT_VERSION_TAG,
+    model: aiModel.id,
     photoCount: imageUrls.length,
     estimateAmount,
     plateNo,
@@ -195,6 +198,7 @@ async function runAssess(
       schemaName: "assessment_result",
       schema: ASSESSMENT_RESPONSE_SCHEMA as unknown as Record<string, unknown>,
       effort: "medium",
+      model: aiModel,
     });
   } catch (err) {
     await failRun(run.id, err instanceof Error ? err.message : String(err));

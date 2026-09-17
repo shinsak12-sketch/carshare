@@ -2,12 +2,12 @@ import "server-only";
 import { prisma } from "./prisma";
 import {
   DEFAULT_MODEL,
-  DEFAULT_RATE,
   computeCost,
   type RateLike,
   type TokenUsage,
 } from "./pricing-defaults";
 import type { EstimateTree } from "./estimate-tree";
+import { defaultRateFor } from "./model-catalog";
 
 // AI 실행 기록(AiRun). 각 도구 API가 시작 시 queued로 만들고, /api/ai-job이 완료를
 // 확인할 때 usage를 넣어 확정한다. 결과 본문은 저장하지 않고 판정 집계 숫자만.
@@ -27,7 +27,7 @@ export const ZERO_USAGE: TokenUsage = {
   reasoningTokens: 0,
 };
 
-// 모델의 현재 단가(effectiveFrom이 지금 이전인 것 중 최신). 없으면 초기 예측치.
+// 모델의 현재 단가(effectiveFrom이 지금 이전인 것 중 최신). 없으면 카탈로그 예측치.
 export async function getActiveRate(
   model: string,
 ): Promise<RateLike & { id: string | null }> {
@@ -43,7 +43,7 @@ export async function getActiveRate(
       outputUsdPerM: row.outputUsdPerM,
       usdToKrw: row.usdToKrw,
     };
-  return { id: null, ...DEFAULT_RATE };
+  return { id: null, ...defaultRateFor(model) };
 }
 
 export interface RunStart {

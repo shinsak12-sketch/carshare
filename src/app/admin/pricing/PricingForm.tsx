@@ -6,9 +6,15 @@ import type { RateLike } from "@/lib/pricing-defaults";
 
 export function PricingForm({
   model,
+  options,
+  activeModel,
+  fromDb,
   initial,
 }: {
   model: string;
+  options: string[];
+  activeModel: string;
+  fromDb: boolean;
   initial: RateLike;
 }) {
   const router = useRouter();
@@ -93,11 +99,37 @@ export function PricingForm({
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="mb-3 flex items-center gap-2">
-        <span className="rounded-md bg-slate-900 px-2 py-0.5 font-mono text-xs text-white">
-          {model}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <select
+          value={model}
+          onChange={(e) =>
+            router.push(
+              `/admin/pricing?model=${encodeURIComponent(e.target.value)}`,
+            )
+          }
+          className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono text-xs text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+        >
+          {options.map((id) => (
+            <option key={id} value={id}>
+              {id}
+              {id === activeModel ? " (적용 중)" : ""}
+            </option>
+          ))}
+        </select>
+        {model === activeModel ? (
+          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-900">
+            현재 실행에 쓰는 모델
+          </span>
+        ) : (
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+            대기 모델 · 단가만 미리 등록
+          </span>
+        )}
+        <span className="text-xs text-slate-500">
+          {fromDb
+            ? "관리자 저장 단가"
+            : "저장된 단가 없음 — 카탈로그 예측치 표시 중"}
         </span>
-        <span className="text-xs text-slate-500">현재 적용 단가</span>
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {field("inputUsdPerM", "입력 $/100만 토큰", "0.01")}
