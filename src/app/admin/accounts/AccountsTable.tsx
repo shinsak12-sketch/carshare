@@ -1,5 +1,7 @@
 "use client";
 
+import { fmtKst } from "@/lib/kst";
+
 import { useState } from "react";
 
 type Role = "EMPLOYEE" | "ADMIN";
@@ -107,7 +109,7 @@ export function AccountsTable({
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-slate-400">
-                  신청일 {new Date(u.createdAt).toLocaleString("ko-KR")}
+                  신청일 {fmtKst(u.createdAt)}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -181,7 +183,11 @@ export function AccountsTable({
                     </span>
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-400">
-                    {new Date(u.createdAt).toLocaleDateString("ko-KR")}
+                    {fmtKst(u.createdAt, {
+                      year: "numeric",
+                      month: "2-digit",
+                      day: "2-digit",
+                    })}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap items-center gap-1.5">

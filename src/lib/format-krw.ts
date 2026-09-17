@@ -10,6 +10,7 @@ export const tok = (n: number) =>
       : String(n);
 export const dt = (d: Date) =>
   d.toLocaleString("ko-KR", {
+    timeZone: "Asia/Seoul",
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",

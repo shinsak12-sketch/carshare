@@ -166,6 +166,7 @@ export async function checkPolicy(input: PolicyInput): Promise<PolicyResult> {
         const last = prev[0];
         const who = last.user?.name ?? last.employeeId;
         const when = last.createdAt.toLocaleString("ko-KR", {
+          timeZone: "Asia/Seoul",
           month: "numeric",
           day: "numeric",
           hour: "2-digit",

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { fmtKst } from "@/lib/kst";
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +75,7 @@ export default async function LogsPage() {
                 className="border-b border-slate-50 last:border-0 align-top"
               >
                 <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
-                  {log.createdAt.toLocaleString("ko-KR")}
+                  {fmtKst(log.createdAt)}
                 </td>
                 <td className="px-4 py-3">
                   <span

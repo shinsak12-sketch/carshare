@@ -1,6 +1,7 @@
 import { getPolicy } from "@/lib/usage-policy";
 import { prisma } from "@/lib/prisma";
 import { PolicyForm } from "./PolicyForm";
+import { fmtKst } from "@/lib/kst";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +19,7 @@ export default async function PolicyPage() {
           실행 이력에 &quot;차단&quot;으로 남습니다. 빈 칸은 제한 없음.
           {row && (
             <span className="ml-2 text-xs text-slate-400">
-              마지막 변경 {row.updatedAt.toLocaleString("ko-KR")} ·{" "}
-              {row.updatedBy ?? "-"}
+              마지막 변경 {fmtKst(row.updatedAt)} · {row.updatedBy ?? "-"}
             </span>
           )}
         </p>

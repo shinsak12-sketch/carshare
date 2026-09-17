@@ -77,7 +77,7 @@ export function buildReportText(
     caseInfo.year ? ` ${caseInfo.year}년식` : ""
   } | 손상부위: ${derivedDamagedParts(result, caseInfo.damagedPart)}${
     caseInfo.createdAt
-      ? ` | 진단일시: ${caseInfo.createdAt.toLocaleString("ko-KR")}`
+      ? ` | 진단일시: ${caseInfo.createdAt.toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })}`
       : ""
   }`;
 

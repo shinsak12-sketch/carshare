@@ -1,15 +1,13 @@
 import { prisma } from "./prisma";
 import { AuditAction } from "./audit-log";
 import { TOOL_LABEL, type AiTool } from "./ai-usage";
+import { kstDayKey, kstDayStart, kstMonthStart } from "./kst";
 
 // 관리자 화면용 집계. 모두 AiRun 기준(결과 본문 없음, 토큰·비용·건수만).
 
-export function monthStart(d = new Date()) {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
-}
-export function dayStart(d = new Date()) {
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-}
+// 날짜 경계는 한국시간 기준(서버는 UTC)
+export const monthStart = kstMonthStart;
+export const dayStart = kstDayStart;
 
 export async function getDashboardStats() {
   const now = new Date();
@@ -179,7 +177,7 @@ export async function getUsageStats(range: Range, tool?: AiTool | null) {
       byTool.set(tKey, emptyRow(tKey, TOOL_LABEL[tKey as AiTool] ?? tKey));
     add(byTool.get(tKey)!, r);
 
-    const day = r.createdAt.toISOString().slice(0, 10);
+    const day = kstDayKey(r.createdAt);
     const d = byDay.get(day) ?? { day, runs: 0, costKrw: 0 };
     if (r.status === "succeeded") {
       d.runs += 1;

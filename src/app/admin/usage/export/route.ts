@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { listRuns, type Range } from "@/lib/admin-stats";
 import { TOOL_LABEL, type AiTool } from "@/lib/ai-usage";
+import { fmtKst } from "@/lib/kst";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
   ];
   const lines = runs.map((r) =>
     [
-      r.createdAt.toISOString(),
+      fmtKst(r.createdAt),
       r.employeeId,
       r.user?.name ?? "",
       TOOL_LABEL[r.tool as AiTool] ?? r.tool,
