@@ -33,7 +33,7 @@ export async function getDashboardStats() {
     }),
     prisma.aiRun.aggregate({
       where: { createdAt: { gte: month }, status: "succeeded" },
-      _sum: { costKrw: true },
+      _sum: { costKrw: true, costUsd: true },
       _count: { _all: true },
     }),
     prisma.aiRun.count({
@@ -66,14 +66,17 @@ export async function getDashboardStats() {
   ]);
 
   const monthCost = monthAgg._sum.costKrw ?? 0;
+  const monthCostUsd = monthAgg._sum.costUsd ?? 0;
   const monthRuns = monthAgg._count._all;
   return {
     pendingCount,
     activeCount,
     loginFail24h,
     monthCost,
+    monthCostUsd,
     monthRuns,
     avgCost: monthRuns ? Math.round(monthCost / monthRuns) : 0,
+    avgCostUsd: monthRuns ? monthCostUsd / monthRuns : 0,
     todayCount,
     blockedMonth,
     failedMonth,
@@ -103,7 +106,9 @@ export interface UsageRow {
   outputTokens: number;
   reasoningTokens: number;
   costKrw: number;
+  costUsd: number;
   maxCostKrw: number;
+  maxCostUsd: number;
   verdicts: Record<string, number>;
 }
 
@@ -120,7 +125,9 @@ function emptyRow(key: string, label: string, sub?: string): UsageRow {
     outputTokens: 0,
     reasoningTokens: 0,
     costKrw: 0,
+    costUsd: 0,
     maxCostKrw: 0,
+    maxCostUsd: 0,
     verdicts: {},
   };
 }
@@ -137,7 +144,7 @@ export async function getUsageStats(range: Range, tool?: AiTool | null) {
   const byTool = new Map<string, UsageRow>();
   const byDay = new Map<
     string,
-    { day: string; runs: number; costKrw: number }
+    { day: string; runs: number; costKrw: number; costUsd: number }
   >();
 
   const add = (row: UsageRow, r: (typeof runs)[number]) => {
@@ -152,7 +159,11 @@ export async function getUsageStats(range: Range, tool?: AiTool | null) {
     row.outputTokens += r.outputTokens;
     row.reasoningTokens += r.reasoningTokens;
     row.costKrw += r.costKrw ?? 0;
-    row.maxCostKrw = Math.max(row.maxCostKrw, r.costKrw ?? 0);
+    row.costUsd += r.costUsd ?? 0;
+    if ((r.costKrw ?? 0) > row.maxCostKrw) {
+      row.maxCostKrw = r.costKrw ?? 0;
+      row.maxCostUsd = r.costUsd ?? 0;
+    }
     const vc = (r.verdictCounts ?? null) as Record<string, number> | null;
     if (vc)
       for (const [k, v] of Object.entries(vc))
@@ -178,10 +189,11 @@ export async function getUsageStats(range: Range, tool?: AiTool | null) {
     add(byTool.get(tKey)!, r);
 
     const day = kstDayKey(r.createdAt);
-    const d = byDay.get(day) ?? { day, runs: 0, costKrw: 0 };
+    const d = byDay.get(day) ?? { day, runs: 0, costKrw: 0, costUsd: 0 };
     if (r.status === "succeeded") {
       d.runs += 1;
       d.costKrw += r.costKrw ?? 0;
+      d.costUsd += r.costUsd ?? 0;
     }
     byDay.set(day, d);
   }

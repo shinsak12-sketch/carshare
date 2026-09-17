@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getDashboardStats } from "@/lib/admin-stats";
 import { getAnomalies } from "@/lib/usage-policy";
 import { TOOL_LABEL, type AiTool } from "@/lib/ai-usage";
-import { krw, num, dt } from "@/lib/format-krw";
+import { krw, money, num, dt } from "@/lib/format-krw";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export default async function AdminDashboardPage() {
   const tiles = [
     {
       label: "이번 달 AI 비용",
-      value: krw(s.monthCost),
+      value: money(s.monthCost, s.monthCostUsd),
       href: "/admin/usage",
       highlight: false,
     },
@@ -28,7 +28,7 @@ export default async function AdminDashboardPage() {
     },
     {
       label: "건당 평균 비용",
-      value: krw(s.avgCost),
+      value: money(s.avgCost, s.avgCostUsd),
       href: "/admin/usage",
       highlight: false,
     },
@@ -114,7 +114,7 @@ export default async function AdminDashboardPage() {
       {anomalies.policy.monthlyBudgetKrw != null && (
         <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-xs text-slate-600 shadow-sm">
           이번 달 예산 {krw(anomalies.policy.monthlyBudgetKrw)} 중{" "}
-          {krw(anomalies.monthSpent)} 사용 (
+          {money(anomalies.monthSpent, s.monthCostUsd)} 사용 (
           {Math.round(
             (anomalies.monthSpent /
               Math.max(1, anomalies.policy.monthlyBudgetKrw)) *
@@ -199,7 +199,7 @@ export default async function AdminDashboardPage() {
                   {r.photoCount}
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums text-slate-800">
-                  {krw(r.costKrw)}
+                  {money(r.costKrw, r.costUsd)}
                 </td>
                 <td className="px-5 py-2">
                   <StatusBadge status={r.status} />

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { listRuns, listUsersForFilter } from "@/lib/admin-stats";
 import { TOOL_LABEL, type AiTool } from "@/lib/ai-usage";
-import { krw, num, tok, dt } from "@/lib/format-krw";
+import { krw, money, num, tok, dt } from "@/lib/format-krw";
 import { RangeTabs, parseRange } from "@/components/admin/RangeTabs";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 
@@ -207,7 +207,7 @@ export default async function RunsPage({
                       : `${tok(r.inputTokens)} / ${tok(r.outputTokens)}`}
                   </td>
                   <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-slate-900">
-                    {r.status === "blocked" ? "-" : krw(r.costKrw)}
+                    {r.status === "blocked" ? "-" : money(r.costKrw, r.costUsd)}
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums text-slate-500">
                     {r.durationMs ? `${Math.round(r.durationMs / 1000)}s` : "-"}

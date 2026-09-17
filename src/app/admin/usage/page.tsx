@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getUsageStats } from "@/lib/admin-stats";
 import { TOOL_LABEL, type AiTool } from "@/lib/ai-usage";
-import { krw, num, tok } from "@/lib/format-krw";
+import { krw, money, num, tok } from "@/lib/format-krw";
 import { RangeTabs, parseRange } from "@/components/admin/RangeTabs";
 import type { UsageRow } from "@/lib/admin-stats";
 
@@ -109,13 +109,15 @@ function UsageTable({ rows, head }: { rows: UsageRow[]; head: string }) {
                 </span>
               </td>
               <td className="px-3 py-2.5 text-right font-semibold tabular-nums text-slate-900">
-                {krw(r.costKrw)}
+                {money(r.costKrw, r.costUsd)}
               </td>
               <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">
-                {r.runs ? krw(r.costKrw / r.runs) : "-"}
+                {r.runs
+                  ? money(Math.round(r.costKrw / r.runs), r.costUsd / r.runs)
+                  : "-"}
               </td>
               <td className="px-3 py-2.5 text-right tabular-nums text-slate-600">
-                {krw(r.maxCostKrw)}
+                {money(r.maxCostKrw, r.maxCostUsd)}
               </td>
               <td className="px-4 py-2.5">
                 <VerdictBar v={r.verdicts} />
@@ -186,12 +188,18 @@ export default async function UsagePage({
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
-          { label: "비용 합계", value: krw(stats.total.costKrw) },
+          {
+            label: "비용 합계",
+            value: money(stats.total.costKrw, stats.total.costUsd),
+          },
           { label: "실행 건수", value: num(stats.total.runs) },
           {
             label: "건당 평균",
             value: stats.total.runs
-              ? krw(stats.total.costKrw / stats.total.runs)
+              ? money(
+                  Math.round(stats.total.costKrw / stats.total.runs),
+                  stats.total.costUsd / stats.total.runs,
+                )
               : "-",
           },
           {
@@ -224,7 +232,7 @@ export default async function UsagePage({
               <div
                 key={d.day}
                 className="flex min-w-[28px] flex-1 flex-col items-center gap-1"
-                title={`${d.day} · ${d.runs}건 · ${krw(d.costKrw)}`}
+                title={`${d.day} · ${d.runs}건 · ${money(d.costKrw, d.costUsd)}`}
               >
                 <span className="text-[10px] tabular-nums text-slate-500">
                   {d.runs}
