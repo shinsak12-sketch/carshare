@@ -46,7 +46,7 @@ async function main() {
       data: {
         model: DEFAULT_MODEL,
         updatedBy: "seed",
-        note: "초기 예측 단가 — 실제 청구 단가로 수정할 것",
+        note: "초기 단가(2026-09 실제 청구 1건으로 역산). 청구서와 다르면 수정",
         ...DEFAULT_RATE,
       },
     });

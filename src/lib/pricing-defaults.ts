@@ -2,10 +2,12 @@
 // seed와 서버 양쪽에서 쓰므로 prisma·next 의존 없이 순수 상수만.
 export const DEFAULT_MODEL = "gpt-5.6-sol";
 
+// 2026-09-17 실제 청구로 역산: 입력 87.4k + 출력 11.4k(추론 2.8k 포함) 1건 = $0.67
+//   → 입력 $3.75/M, 출력 $30/M 이 정확히 맞음. 캐시 입력은 관례상 입력의 1/10.
 export const DEFAULT_RATE = {
-  inputUsdPerM: 1.25, // 입력 100만 토큰당 USD
-  cachedInputUsdPerM: 0.125, // 캐시된 입력
-  outputUsdPerM: 10, // 출력(추론 토큰 포함)
+  inputUsdPerM: 3.75, // 입력 100만 토큰당 USD
+  cachedInputUsdPerM: 0.375, // 캐시된 입력
+  outputUsdPerM: 30, // 출력(추론 토큰 포함)
   usdToKrw: 1400,
 };
 
