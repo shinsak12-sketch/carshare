@@ -1,7 +1,7 @@
 import {
   ADJUSTER_STANCE,
   MINOR_DAMAGE_CRITERIA,
-  LABOR_TIME_JUDGMENT,
+  LABOR_TIME_READING,
 } from "./assessment-prompt";
 
 // 정비공정 판단 — 아직 견적서가 없는 단계에서 파손 사진만 보고 "실제로
@@ -120,7 +120,7 @@ part_name/item 안에 "좌측/우측"을 넣지 말고 side 필드로만 표시�
    물리적으로 설명되는지 확인하고, 이상하면 consistent를 false로 하고 warning에
    구체적으로 적으십시오.
 9. overall_summary는 정비 담당자가 바로 참고할 수 있는 정식 문어체로 전체
-   공정을 한 문단으로 요약하고, 숨은 손상이 있으면 "확인 전에는 지불보증
+   공정을 한 문단(서너 문장)으로 요약하고, 숨은 손상이 있으면 "확인 전에는 지불보증
    대상이 아니며 실제 작업범위·수리비가 커질 수 있다"는 취지를, 말미에 "이
    결과는 선견적 작성 전 참고용 사전판단이며 실제 견적서 접수 후에는
    [선견적진단] 도구로 다시 검증해야 한다"는 취지를 짧게 덧붙이십시오.
@@ -131,7 +131,7 @@ part_name/item 안에 "좌측/우측"을 넣지 말고 side 필드로만 표시�
 
 ${MINOR_DAMAGE_CRITERIA}
 
-${LABOR_TIME_JUDGMENT}
+${LABOR_TIME_READING}
 
 # 예시 1 — 정면 대파(후드·범퍼·펜더·그릴·라디에이터까지 손상)
 입력: 후드가 심하게 좌굴되고 프론트범퍼·펜더·그릴이 파손되어 라디에이터가
