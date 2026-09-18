@@ -39,9 +39,8 @@ export interface AdjustmentItem {
   verdict: AdjustmentVerdict;
   reasoning: string;
   adjustment_note: string;
-  // 애매한 교환 건(협의필요)에서만 채움 — 교환안 vs 수리안 비용 비교.
-  // 금액은 청구서에 인쇄된 값과 그 단가로 환산한 추정치만(AI 자체 산정 금지).
-  cost_comparison: CostComparison | null;
+  // adj4.1부터 출력하지 않음(금액 비교가 정확하지 않아 제거). 예전 결과 표시용으로만 남김.
+  cost_comparison?: CostComparison | null;
 }
 
 export interface CostComparison {

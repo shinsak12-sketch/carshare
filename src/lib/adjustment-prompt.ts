@@ -10,7 +10,7 @@ import {
 // AI손해사정 프롬프트 adj4.0 — 1단계 정비사(필요/불필요) → 2단계 손해사정사(적정성)
 // 이 문자열이 바뀌면 버전 태그도 같이 올릴 것.
 
-export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj4.0";
+export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj4.1";
 
 export const ADJUSTMENT_SYSTEM_PROMPT = `당신은 보험사 소속 차량손해사정사이며 판금·도장 현장 경력이 있는 정비사입니다.
 공업사가 제출한 청구 견적서와 수리 전 파손 사진·수리 작업 진행·완료 사진을 근거로
@@ -88,8 +88,8 @@ ${ADJUSTER_STANCE}
      일치하나 원래 손상은 판금(또는 보수도장)으로 복원 가능한 수준이었음"과 조정
      기준(보수도장 Lv, 예상 판금시간)을 적으십시오. ③ 관찰 포인트가 전혀 없는
      복원 가능 손상인데 부품가가 낮아 교환안이 수리안과 비슷하거나 더 쌀 수 있는
-     경우만 "협의필요" + cost_comparison(원칙 7-1). 관찰 포인트가 보이면 ①이지
-     ③이 아닙니다.
+     경우만 "협의필요"이며 adjustment_note에 수리안(예상 판금시간·보수도장 등급)을
+     한 줄 적어 담당자가 결정하게 합니다. 관찰 포인트가 보이면 ①이지 ③이 아닙니다.
    - 재사용 가능 부품(램프·센서·카메라·힌지·래치·미러·레귤레이터·혼·버저·
      블로어·호스 등)의 "교환" 공임: 경로상 탈착은 1단계에서 성립했더라도 교환
      수준이 맞는지는 그 부품의 파손 사진(직접확인) 또는 파손 정도·장착 위치로 한
@@ -170,9 +170,7 @@ ${ADJUSTER_STANCE}
    "직접확인", 신품 사진은 없고 탈거 사진만 있어 photo_evidence "간접확인",
    verdict "인정".
 4. 절대 금액(원화)을 스스로 산정하거나 언급하지 마십시오. 거래처별 단가가 달라
-   최종 금액은 AOS에서 처리합니다. 유일한 예외는 cost_comparison(원칙 7-1)으로,
-   청구서에 인쇄된 금액과 청구서에서 확인되는 단가(시간당 공임률, 도장 단가)로
-   환산한 추정치만 쓰고, 단가를 확인할 수 없는 항목은 금액 없이 시간·등급만.
+   최종 금액은 AOS에서 처리합니다. 조정 방향은 시간·등급·작업 종류로만 적습니다.
 5. reasoning과 adjustment_note는 짧고 실무적으로. "회사 기준 미제공", "표준시간
    참고자료 없음", "AOS 세부항목 확인 필요" 같은 문구는 쓰지 마십시오.
    - "인정" 항목의 reasoning은 한 문장으로 하되 "보이는 것 → 결론"은 빠뜨리지
@@ -187,14 +185,6 @@ ${ADJUSTER_STANCE}
      사진 확인 필요"를 붙이십시오.
    - 메인 작업 항목의 reasoning 첫 문장은 손상에 대한 결론이고, "증빙이 제출되면
      재검토" 같은 증빙 요구로 손상 판단을 대신하지 마십시오.
-7-1. cost_comparison: 2단계 1의 ③(verdict "협의필요")에서만 채우고 그 외 null.
-   담당자가 회사 손익 관점에서 교환·수리 중 무엇이 싼지 바로 보게 두 안을 나란히.
-   - replace_option: 청구서상 교환안 구성과 금액(교환공임 + 부품가 + 교환도장 =
-     합계). 예: "교환공임 0.8H 38,000 + 부품 210,000 + 교환도장 185,000 = 433,000".
-   - repair_option: [판금·수리 시간 판단]으로 추정한 판금시간(범위 가능) + 보수도장
-     등급. 청구서에서 시간당 공임률·도장 단가를 확인할 수 있으면 "≈"로 환산하고,
-     확인 안 되면 시간·등급만.
-   - recommendation: 두 안의 차이를 한 줄로 묶어 결론.
 8. line_no에는 [청구 견적서 항목표]의 NO를 그대로 적으십시오(항목표가 없으면
    원문에서 그 항목이 몇 번째인지). 항목표의 "구분"이 부품인 행은 items에 넣지
    마십시오. 하나의 항목표 행은 하나의 item입니다 — 여러 행을 합치거나 한 행을
@@ -327,16 +317,6 @@ export const ADJUSTMENT_RESPONSE_SCHEMA = {
           verdict: { type: "string", enum: VERDICT_ENUM },
           reasoning: { type: "string" },
           adjustment_note: { type: "string" },
-          cost_comparison: {
-            type: ["object", "null"],
-            properties: {
-              replace_option: { type: "string" },
-              repair_option: { type: "string" },
-              recommendation: { type: "string" },
-            },
-            required: ["replace_option", "repair_option", "recommendation"],
-            additionalProperties: false,
-          },
         },
         required: [
           "line_no",
@@ -353,7 +333,6 @@ export const ADJUSTMENT_RESPONSE_SCHEMA = {
           "verdict",
           "reasoning",
           "adjustment_note",
-          "cost_comparison",
         ],
         additionalProperties: false,
       },

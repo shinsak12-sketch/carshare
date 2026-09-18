@@ -32,7 +32,6 @@ damage_type·시간 판단은 상세 모드와 완전히 같게 수행하고, �
 - photo_refs: 상세 모드와 같은 개수로 근거 사진을 모두 적습니다. 줄이지 마십시오.
 - adjustment_note / note / required_action / recommended_check: 조정·조치
   결론만 한 구절(예: "교환공임·교환도장 불인정, 보수도장 Lv1").
-- cost_comparison: 금액 식과 결론 한 구절만.
 - concerns.reasoning, other_findings.description, suspected_hidden_damage.reasoning,
   step detail: 한 문장 이내.
 - overall_opinion: 공업사 발신 어투와 번호 형식은 그대로 두고 항목당 한 문장.
