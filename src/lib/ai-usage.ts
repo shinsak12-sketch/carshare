@@ -96,6 +96,13 @@ export async function recordBlockedRun(input: RunStart, reason: string) {
   });
 }
 
+export async function getRunByJob(jobId: string) {
+  return prisma.aiRun.findUnique({
+    where: { jobId },
+    select: { id: true, status: true },
+  });
+}
+
 export async function attachJob(runId: string, jobId: string) {
   await prisma.aiRun.update({ where: { id: runId }, data: { jobId } });
 }

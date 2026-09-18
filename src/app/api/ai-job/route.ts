@@ -2,7 +2,7 @@ import { after, NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { ackJob, getJobStatus } from "@/lib/ai-job";
 import { deleteBlobs, sweepStaleBlobs } from "@/lib/blob-cleanup";
-import { completeRunByJob, failRunByJob } from "@/lib/ai-usage";
+import { completeRunByJob, failRunByJob, getRunByJob } from "@/lib/ai-usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -42,6 +42,18 @@ export async function POST(req: NextRequest) {
 
   try {
     const status = await getJobStatus(id);
+    // 저장본이 없는데 기록상 성공한 작업 = 다른 탭이 결과를 받아 저장하고 ack로 지운 것.
+    // 실패로 기록하지 말고, 이 탭에는 새로고침해서 저장된 결과를 보라고 알린다.
+    if (status.status === "failed" && status.notFound) {
+      const run = await getRunByJob(id).catch(() => null);
+      if (run?.status === "succeeded")
+        return NextResponse.json({
+          status: "failed",
+          code: "already_collected",
+          error:
+            "이 작업의 결과는 이미 다른 탭에서 받아 저장됐습니다. 페이지를 새로고침하면 결과가 보입니다.",
+        });
+    }
     if (status.status === "completed" || status.status === "failed") {
       // 사용량 기록 확정(토큰·비용). 결과 본문은 저장하지 않고 판정 집계만.
       try {

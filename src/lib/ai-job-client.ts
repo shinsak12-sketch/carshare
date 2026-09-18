@@ -6,10 +6,21 @@ export type JobStartResponse<T> = { jobId: string } | { result: T };
 // 서버가 "이 작업은 끝났고 실패"라고 확정한 경우. 이어받기 정보를 지워도 되는 유일한 실패.
 // 그 외(네트워크·일시 오류)는 jobId를 남겨 두면 새로고침으로 이어받을 수 있다.
 export class JobFailedError extends Error {
-  constructor(message: string) {
+  code?: string; // "already_collected" = 다른 탭이 이미 결과를 받아 저장함
+  constructor(message: string, code?: string) {
     super(message);
     this.name = "JobFailedError";
+    this.code = code;
   }
+}
+
+// 결과를 브라우저에 저장한 뒤에만 호출 — 그제야 서버가 OpenAI 저장본을 지운다
+export function ackAiJob(jobId: string) {
+  void fetch("/api/ai-job", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: jobId, ack: true }),
+  }).catch(() => undefined);
 }
 
 function fmtElapsed(ms: number): string {
@@ -23,8 +34,13 @@ export async function runAiJob<T>(
   onProgress: (text: string) => void,
   onJobId?: (jobId: string) => void,
   label = "AI 판단 중",
+  // 결과를 받으면 먼저 저장(호출자 책임)하고, 저장이 예외 없이 끝난 뒤에만 OpenAI 저장본 삭제를 요청
+  onResult?: (result: T) => void,
 ): Promise<T> {
-  if ("result" in start) return start.result;
+  if ("result" in start) {
+    onResult?.(start.result);
+    return start.result;
+  }
   const jobId = start.jobId;
   onJobId?.(jobId);
   const started = Date.now();
@@ -36,7 +52,7 @@ export async function runAiJob<T>(
     );
     await new Promise((r) => setTimeout(r, interval));
     interval = Math.min(interval + 500, 6000);
-    let data: { status?: string; result?: T; error?: string };
+    let data: { status?: string; result?: T; error?: string; code?: string };
     try {
       const res = await fetch("/api/ai-job", {
         method: "POST",
@@ -60,16 +76,15 @@ export async function runAiJob<T>(
       continue;
     }
     if (data.status === "completed" && data.result !== undefined) {
-      // 결과를 받았으니 OpenAI 저장본 삭제 요청(실패해도 무시 — 서버 쪽 보관 최소화용)
-      void fetch("/api/ai-job", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: jobId, ack: true }),
-      }).catch(() => undefined);
+      onResult?.(data.result); // 여기서 예외가 나면 ack 없이 던져져 결과는 OpenAI에 남는다
+      ackAiJob(jobId);
       return data.result;
     }
     if (data.status === "failed")
-      throw new JobFailedError(data.error ?? "AI 판단에 실패했습니다.");
+      throw new JobFailedError(
+        data.error ?? "AI 판단에 실패했습니다.",
+        data.code,
+      );
     if (Date.now() - started > 25 * 60 * 1000)
       throw new Error(
         "AI 판단이 너무 오래 걸립니다. 페이지를 새로고침하면 이어받습니다.",

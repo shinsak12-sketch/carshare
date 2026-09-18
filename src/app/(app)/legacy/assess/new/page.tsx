@@ -160,9 +160,17 @@ export default function NewAssessmentPage() {
           setLoadingStep,
           undefined,
           "AI 진단 중(이어받기)",
+          (r) => storeResult(caseId, r),
         )
-          .then((r) => storeResult(caseId, r))
           .catch((err) => {
+            // 다른 탭이 이미 받아 저장한 건 — 이 탭은 저장된 결과를 다시 읽기만
+            if (
+              err instanceof JobFailedError &&
+              err.code === "already_collected"
+            ) {
+              void loadAssessCases().then(setCases);
+              return;
+            }
             setError(
               err instanceof Error
                 ? err.message
@@ -291,8 +299,9 @@ export default function NewAssessmentPage() {
         setLoadingStep,
         (jobId) => markJob(caseId, jobId, imageUrls),
         "AI 진단 중",
+        (r) => storeResult(caseId, r),
       );
-      storeResult(caseId, r);
+      void r;
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.",

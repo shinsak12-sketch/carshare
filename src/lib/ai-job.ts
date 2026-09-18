@@ -173,7 +173,7 @@ export async function ackJob(jobId: string): Promise<void> {
 export type JobStatus =
   | { status: "queued" | "in_progress" }
   | { status: "completed"; result: unknown; usage: TokenUsage }
-  | { status: "failed"; error: string; usage: TokenUsage };
+  | { status: "failed"; error: string; usage: TokenUsage; notFound?: boolean };
 
 export async function getJobStatus(jobId: string): Promise<JobStatus> {
   const openai = getOpenAI();
@@ -193,6 +193,7 @@ export async function getJobStatus(jobId: string): Promise<JobStatus> {
         error:
           "작업 결과를 더 이상 가져올 수 없습니다(이미 회수됐거나 만료). 다른 탭에서 받았는지 확인하고, 없으면 다시 실행해주세요.",
         usage: { ...ZERO },
+        notFound: true,
       };
     throw new Error(describe(err));
   }
