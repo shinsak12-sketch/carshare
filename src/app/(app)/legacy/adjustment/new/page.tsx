@@ -5,7 +5,7 @@ import { ImageLightbox } from "@/components/ImageLightbox";
 import { PhotoGrid } from "@/components/PhotoGrid";
 import { DiagnosticsPanel } from "@/components/DiagnosticsPanel";
 import { uploadPhotos } from "@/lib/upload-photos";
-import { postToolForm, runAiJob } from "@/lib/ai-job-client";
+import { JobFailedError, postToolForm, runAiJob } from "@/lib/ai-job-client";
 import type { AdjustmentResult } from "@/lib/adjustment-types";
 import { buildAdjustmentReportText } from "@/lib/format-adjustment-report";
 import { buildAdjustmentDiagnostics } from "@/lib/adjustment-review-items";
@@ -166,6 +166,8 @@ export default function NewAdjustmentPage() {
                 ? err.message
                 : "알 수 없는 오류가 발생했습니다.",
             );
+            // 확정 실패만 이어받기 정보를 지움. 일시 오류면 남겨 둬서 새로고침으로 다시 이어받게
+            if (!(err instanceof JobFailedError)) return;
             setCases((prev) => {
               const next = prev.map((x) =>
                 x.id === caseId ? { ...x, jobId: null, jobImageUrls: [] } : x,

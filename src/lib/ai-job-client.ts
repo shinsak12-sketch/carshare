@@ -3,6 +3,15 @@
 
 export type JobStartResponse<T> = { jobId: string } | { result: T };
 
+// 서버가 "이 작업은 끝났고 실패"라고 확정한 경우. 이어받기 정보를 지워도 되는 유일한 실패.
+// 그 외(네트워크·일시 오류)는 jobId를 남겨 두면 새로고침으로 이어받을 수 있다.
+export class JobFailedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "JobFailedError";
+  }
+}
+
 function fmtElapsed(ms: number): string {
   const s = Math.round(ms / 1000);
   return s < 60 ? `${s}초` : `${Math.floor(s / 60)}분 ${s % 60}초`;
@@ -20,6 +29,7 @@ export async function runAiJob<T>(
   onJobId?.(jobId);
   const started = Date.now();
   let interval = 2500;
+  let consecutiveErrors = 0;
   for (;;) {
     onProgress(
       `${label}… (${fmtElapsed(Date.now() - started)} 경과, 사진이 많으면 수 분 소요)`,
@@ -36,17 +46,34 @@ export async function runAiJob<T>(
       data = await res.json();
       if (!res.ok)
         throw new Error(data.error ?? `상태 조회 실패 (${res.status})`);
+      consecutiveErrors = 0;
     } catch (err) {
-      // 네트워크 일시 오류는 다음 폴링에서 다시 시도
-      if (Date.now() - started > 20 * 60 * 1000) throw err;
+      // 일시 오류는 몇 번 더 시도하되, 계속 실패하면 멈추고 알린다(새로고침하면 이어받음).
+      // 예전엔 20분 동안 조용히 돌아서 "진행 중"에 갇혔음.
+      consecutiveErrors += 1;
+      if (consecutiveErrors >= 6 || Date.now() - started > 20 * 60 * 1000)
+        throw err instanceof Error
+          ? new Error(
+              `${err.message} — 상태 조회가 계속 실패합니다. 페이지를 새로고침하면 이어받습니다.`,
+            )
+          : err;
       continue;
     }
-    if (data.status === "completed" && data.result !== undefined)
+    if (data.status === "completed" && data.result !== undefined) {
+      // 결과를 받았으니 OpenAI 저장본 삭제 요청(실패해도 무시 — 서버 쪽 보관 최소화용)
+      void fetch("/api/ai-job", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: jobId, ack: true }),
+      }).catch(() => undefined);
       return data.result;
+    }
     if (data.status === "failed")
-      throw new Error(data.error ?? "AI 판단에 실패했습니다.");
+      throw new JobFailedError(data.error ?? "AI 판단에 실패했습니다.");
     if (Date.now() - started > 25 * 60 * 1000)
-      throw new Error("AI 판단이 너무 오래 걸립니다. 다시 시도해주세요.");
+      throw new Error(
+        "AI 판단이 너무 오래 걸립니다. 페이지를 새로고침하면 이어받습니다.",
+      );
   }
 }
 

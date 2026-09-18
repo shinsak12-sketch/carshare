@@ -155,6 +155,21 @@ export async function startStructuredJob(
   }
 }
 
+const ZERO: TokenUsage = {
+  inputTokens: 0,
+  cachedInputTokens: 0,
+  outputTokens: 0,
+  reasoningTokens: 0,
+};
+
+// 브라우저가 결과를 저장한 뒤 호출 — 그때 OpenAI 저장본(사진·견적서 텍스트 포함)을 지운다
+export async function ackJob(jobId: string): Promise<void> {
+  const openai = getOpenAI();
+  await openai.responses
+    .delete(jobId)
+    .catch((e) => console.warn("[ai-job] delete failed:", e));
+}
+
 export type JobStatus =
   | { status: "queued" | "in_progress" }
   | { status: "completed"; result: unknown; usage: TokenUsage }
@@ -171,16 +186,22 @@ export async function getJobStatus(jobId: string): Promise<JobStatus> {
     );
   } catch (err) {
     console.error("[ai-job] retrieve failed:", err);
+    // 이미 회수(삭제)됐거나 만료된 작업 — 계속 물어봐야 소용없으니 확정 실패로 돌려 폴링을 끝낸다
+    if ((err as { status?: number })?.status === 404)
+      return {
+        status: "failed",
+        error:
+          "작업 결과를 더 이상 가져올 수 없습니다(이미 회수됐거나 만료). 다른 탭에서 받았는지 확인하고, 없으면 다시 실행해주세요.",
+        usage: { ...ZERO },
+      };
     throw new Error(describe(err));
   }
   if (resp.status === "queued" || resp.status === "in_progress")
     return { status: resp.status };
   if (resp.status === "completed") {
     const raw = resp.output_text;
-    // 결과를 받았으니 OpenAI 서버의 저장본은 지움(사진·견적서 보관 최소화). 실패해도 결과엔 영향 없음
-    void openai.responses
-      .delete(jobId)
-      .catch((e) => console.warn("[ai-job] delete failed:", e));
+    // OpenAI 저장본 삭제는 브라우저가 결과를 저장했다고 알린 뒤(ackJob)에 한다.
+    // 여기서 바로 지우면 이 응답이 브라우저에 못 닿았을 때 결과가 영영 유실된다(서버에 결과를 안 남기므로).
     const usage = usageOf(resp.usage);
     if (!raw)
       return { status: "failed", error: "AI 응답이 비어 있습니다.", usage };

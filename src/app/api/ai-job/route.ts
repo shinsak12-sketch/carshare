@@ -1,6 +1,6 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
-import { getJobStatus } from "@/lib/ai-job";
+import { ackJob, getJobStatus } from "@/lib/ai-job";
 import { deleteBlobs, sweepStaleBlobs } from "@/lib/blob-cleanup";
 import { completeRunByJob, failRunByJob } from "@/lib/ai-usage";
 
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
       { status: 401 },
     );
 
-  let body: { id?: string; imageUrls?: string[] };
+  let body: { id?: string; imageUrls?: string[]; ack?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -32,6 +32,12 @@ export async function POST(req: NextRequest) {
       { error: "잘못된 작업 ID입니다." },
       { status: 400 },
     );
+  }
+
+  // 브라우저가 결과를 저장했다는 확인 → 이제 OpenAI 저장본을 지움
+  if (body.ack === true) {
+    await ackJob(id);
+    return NextResponse.json({ ok: true });
   }
 
   try {
