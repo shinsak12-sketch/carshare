@@ -9,6 +9,7 @@ import type {
 import { isEstimateTree, type EstimateTree } from "@/lib/estimate-tree";
 import { judgmentKey } from "@/components/EstimateTree";
 import { fmtKst } from "@/lib/kst";
+import type { RepairPlan } from "@/lib/adjustment-types";
 
 // 손해사정·선견적 공용 인쇄 보고서. 결과는 브라우저 캐시(IndexedDB)에서 읽어 오고
 // 서버에는 아무것도 보내지 않는다. 브라우저 인쇄 대화상자에서 "PDF로 저장".
@@ -22,6 +23,7 @@ export interface PrintReportProps {
   diagnostics: AdjustmentDiagnostics;
   estimateTree?: EstimateTree | null;
   opinion?: string | null; // 선견적 회신문(편집 반영)
+  plan?: RepairPlan | null; // 손해사정 1단계 수리 계획
   lists?: { label: string; items: string[] }[]; // 선견적 부가 목록
   photos: File[];
   createdAt: number;
@@ -195,6 +197,65 @@ export function PrintReport(p: PrintReportProps) {
           </div>
           <div className="text-amber-900">{consistency.message}</div>
         </div>
+      )}
+
+      {/* 수리 계획(손해사정 1단계) */}
+      {p.plan && (
+        <section className="mt-4 break-inside-avoid">
+          <h2 className="mb-1 text-[12px] font-black">
+            1단계 수리 계획{" "}
+            <span className="font-semibold text-slate-400">
+              {p.plan.vehicle_structure}
+            </span>
+          </h2>
+          <p className="mb-1.5">{p.plan.damage_summary}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-[9.5px] font-bold text-slate-500">
+                메인 작업
+              </div>
+              <ul className="list-disc pl-4">
+                {p.plan.main_works.map((w, i) => (
+                  <li key={i}>
+                    <b>{w.part_name}</b> {w.work}
+                    {w.judgment_basis === "추론" ? " (추론)" : ""} —{" "}
+                    {w.reasoning}
+                  </li>
+                ))}
+              </ul>
+              {p.plan.rejected.length > 0 && (
+                <>
+                  <div className="mt-1.5 text-[9.5px] font-bold text-red-600">
+                    계획 밖 청구(불인정)
+                  </div>
+                  <ul className="list-disc pl-4">
+                    {p.plan.rejected.map((r, i) => (
+                      <li key={i}>
+                        <span className="font-mono text-slate-400">
+                          {r.line_no}
+                        </span>{" "}
+                        {r.item_name} — {r.reasoning}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+            <div>
+              <div className="text-[9.5px] font-bold text-slate-500">
+                접근·분해 경로
+              </div>
+              <ul className="list-disc pl-4">
+                {p.plan.access_path.map((a, i) => (
+                  <li key={i}>
+                    {a.item}{" "}
+                    <span className="text-slate-500">← {a.for_work}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </section>
       )}
 
       {/* 회신문(선견적) */}

@@ -55,6 +55,12 @@ export const WIRE_KEYS: Record<string, string> = {
   recommended_check: "check",
   process_stages: "stages",
   overall_summary: "summary",
+  repair_plan: "plan",
+  vehicle_structure: "structure",
+  damage_summary: "damage",
+  main_works: "works",
+  access_path: "access",
+  for_work: "for",
 };
 
 const INVERSE: Record<string, string> = {};

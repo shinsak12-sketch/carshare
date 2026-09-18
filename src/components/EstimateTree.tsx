@@ -234,6 +234,14 @@ function Row({
             : displayName(line)
         }
       >
+        {line.userDefined && (
+          <span
+            title="AOS 표준 항목이 아닌 공업사 직접 입력(사용자공임·사용자부품)"
+            className="mr-1 rounded border border-rose-300 bg-rose-50 px-1 py-px text-[9px] font-bold text-rose-700"
+          >
+            사용자
+          </span>
+        )}
         {displayName(line)}
         {line.qty != null && line.qty !== 1 && (
           <span className="text-slate-400"> ×{line.qty}</span>

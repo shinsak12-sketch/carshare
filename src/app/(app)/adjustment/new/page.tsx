@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { PhotoGrid } from "@/components/PhotoGrid";
 import { DiagnosticsTree } from "@/components/DiagnosticsTree";
+import { RepairPlanPanel } from "@/components/RepairPlanPanel";
 import { EstimateTreeView, judgmentKey } from "@/components/EstimateTree";
 import { isEstimateTree, type EstimateTree } from "@/lib/estimate-tree";
 import { uploadPhotos } from "@/lib/upload-photos";
@@ -672,94 +673,103 @@ export default function NewAdjustmentPage() {
             (견적서 표를 못 읽은 건만 아래에 트리로 출력) */}
         <div className="flex flex-col gap-4 xl:min-h-0 xl:overflow-y-auto xl:pr-1">
           {(imagePreviews.length > 0 || estimatePreviewUrl) && (
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
-              {imagePreviews.length > 0 && (
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setPhotosOpen((v) => !v)}
-                    className="absolute right-0 top-0 z-10 rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] font-bold text-slate-600 transition-colors hover:bg-slate-50"
-                  >
-                    {photosOpen
-                      ? "사진 접기 ▲"
-                      : `사진 펼치기 ▾ (${imagePreviews.length}장)`}
-                  </button>
-                  {photosOpen ? (
-                    <PhotoGrid
-                      previews={imagePreviews}
-                      label="수리작업 사진"
-                      highlighted={highlightedPhotos}
-                      accent="purple"
-                      onOpen={(i) => {
-                        setLightboxSet(null);
-                        setLightboxIndex(i);
-                      }}
-                      columns={20}
-                    />
-                  ) : (
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                      수리작업 사진 ({imagePreviews.length}) — 접힘
-                    </p>
-                  )}
+            <>
+              {result?.repair_plan && (
+                <div className="mb-4">
+                  <RepairPlanPanel plan={result.repair_plan} />
                 </div>
               )}
-
-              {estimatePreviewUrl && (
-                <div
-                  className={
-                    imagePreviews.length > 0
-                      ? "mt-4 border-t border-slate-100 pt-4"
-                      : ""
-                  }
-                >
-                  <div className="flex flex-wrap items-center gap-2">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
+                {imagePreviews.length > 0 && (
+                  <div className="relative">
                     <button
                       type="button"
-                      onClick={() => setShowEstimate((v) => !v)}
-                      className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                      onClick={() => setPhotosOpen((v) => !v)}
+                      className="absolute right-0 top-0 z-10 rounded-full border border-slate-300 bg-white px-3 py-1 text-[11px] font-bold text-slate-600 transition-colors hover:bg-slate-50"
                     >
-                      {showEstimate ? "견적서 숨기기 ▲" : "청구 견적서 보기 ▾"}
+                      {photosOpen
+                        ? "사진 접기 ▲"
+                        : `사진 펼치기 ▾ (${imagePreviews.length}장)`}
                     </button>
-                    {isEstimateTree(active?.estimateTree) && (
-                      <button
-                        type="button"
-                        onClick={() => setShowPdf((v) => !v)}
-                        className="rounded-full border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:bg-slate-50"
-                      >
-                        {showPdf ? "트리로 보기" : "원본 PDF 보기"}
-                      </button>
-                    )}
-                    {active?.estimateTreeStatus === "parsing" && (
-                      <span className="flex items-center gap-1.5 text-[11px] font-medium text-fuchsia-700">
-                        <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-fuchsia-300 border-t-fuchsia-600" />
-                        견적서 트리 구조화 중…
-                      </span>
+                    {photosOpen ? (
+                      <PhotoGrid
+                        previews={imagePreviews}
+                        label="수리작업 사진"
+                        highlighted={highlightedPhotos}
+                        accent="purple"
+                        onOpen={(i) => {
+                          setLightboxSet(null);
+                          setLightboxIndex(i);
+                        }}
+                        columns={20}
+                      />
+                    ) : (
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                        수리작업 사진 ({imagePreviews.length}) — 접힘
+                      </p>
                     )}
                   </div>
-                  {showEstimate &&
-                  isEstimateTree(active?.estimateTree) &&
-                  !showPdf ? (
-                    <div className="mt-3 rounded-xl border border-slate-200">
-                      <EstimateTreeView
-                        tree={active.estimateTree as EstimateTree}
-                        judgments={result ? judgmentMap : null}
-                        consistency={diagnostics?.consistency ?? null}
-                        onHoverPhotos={setHighlightedPhotos}
-                        onOpenPhoto={openEvidencePhoto}
-                      />
+                )}
+
+                {estimatePreviewUrl && (
+                  <div
+                    className={
+                      imagePreviews.length > 0
+                        ? "mt-4 border-t border-slate-100 pt-4"
+                        : ""
+                    }
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowEstimate((v) => !v)}
+                        className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-50"
+                      >
+                        {showEstimate
+                          ? "견적서 숨기기 ▲"
+                          : "청구 견적서 보기 ▾"}
+                      </button>
+                      {isEstimateTree(active?.estimateTree) && (
+                        <button
+                          type="button"
+                          onClick={() => setShowPdf((v) => !v)}
+                          className="rounded-full border border-dashed border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-500 transition-colors hover:bg-slate-50"
+                        >
+                          {showPdf ? "트리로 보기" : "원본 PDF 보기"}
+                        </button>
+                      )}
+                      {active?.estimateTreeStatus === "parsing" && (
+                        <span className="flex items-center gap-1.5 text-[11px] font-medium text-fuchsia-700">
+                          <span className="h-2.5 w-2.5 animate-spin rounded-full border-2 border-fuchsia-300 border-t-fuchsia-600" />
+                          견적서 트리 구조화 중…
+                        </span>
+                      )}
                     </div>
-                  ) : (
-                    showEstimate && (
-                      <iframe
-                        src={`${estimatePreviewUrl}#zoom=75`}
-                        title="청구 견적서"
-                        className="mt-3 h-[75vh] w-full rounded-lg border border-slate-200"
-                      />
-                    )
-                  )}
-                </div>
-              )}
-            </div>
+                    {showEstimate &&
+                    isEstimateTree(active?.estimateTree) &&
+                    !showPdf ? (
+                      <div className="mt-3 rounded-xl border border-slate-200">
+                        <EstimateTreeView
+                          tree={active.estimateTree as EstimateTree}
+                          judgments={result ? judgmentMap : null}
+                          consistency={diagnostics?.consistency ?? null}
+                          onHoverPhotos={setHighlightedPhotos}
+                          onOpenPhoto={openEvidencePhoto}
+                        />
+                      </div>
+                    ) : (
+                      showEstimate && (
+                        <iframe
+                          src={`${estimatePreviewUrl}#zoom=75`}
+                          title="청구 견적서"
+                          className="mt-3 h-[75vh] w-full rounded-lg border border-slate-200"
+                        />
+                      )
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           {!result && imagePreviews.length === 0 && !estimatePreviewUrl && (

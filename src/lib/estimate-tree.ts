@@ -12,6 +12,8 @@ export interface EstimateLine {
   hours: number | null;
   qty: number | null;
   partCode: string;
+  // 순번에 U가 붙은 행 = AOS 표준 항목이 아닌 공업사 직접 입력(사용자공임·사용자부품)
+  userDefined?: boolean;
   before: { part: number | null; labor: number | null };
   after: { part: number | null; labor: number | null };
 }
@@ -41,6 +43,7 @@ export function buildEstimateTree(rows: EstimateRow[]): EstimateTree {
       hours: kind === "부품" ? null : r.hq,
       qty: kind === "부품" ? r.hq : null,
       partCode: r.partCode,
+      userDefined: /^U/i.test(r.no),
       before: r.before,
       after: r.after,
     };
@@ -75,10 +78,12 @@ export function formatEstimateTableForPrompt(tree: EstimateTree): string {
         : r.hours != null
           ? `${r.hours}H`
           : "-";
-    return `${no} | ${r.kind} | ${r.action || "-"} | ${r.name} | ${hq} | 공임 ${won(r.before.labor)} | 부품·재료 ${won(r.before.part)}`;
+    const kind = r.userDefined ? `사용자${r.kind}` : r.kind;
+    return `${no} | ${kind} | ${r.action || "-"} | ${r.name} | ${hq} | 공임 ${won(r.before.labor)} | 부품·재료 ${won(r.before.part)}`;
   });
   return [
     "NO | 구분 | 작업 | 항목명 | 시간/수량 | 청구 공임 | 청구 부품·재료",
+    "(구분이 사용자공임·사용자부품이면 AOS 표준 항목이 아닌 공업사 직접 입력 값)",
     ...lines,
   ].join("\n");
 }

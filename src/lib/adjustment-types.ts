@@ -50,8 +50,25 @@ export interface CostComparison {
   recommendation: string;
 }
 
+// 1단계(정비사) 결과 — 수리 계획. adj4.0부터. 예전 결과에는 없음.
+export interface RepairPlan {
+  vehicle_structure: string; // 예: "캡오버 트럭(봉고3)"
+  damage_summary: string;
+  main_works: {
+    part_name: string;
+    work: string; // 교환/판금/절단 접합/도장 등 청구된 대로
+    judgment_basis: JudgmentBasis;
+    reasoning: string;
+  }[];
+  // 메인 작업을 하기 위한 접근·분해 경로(파손 여부와 무관)
+  access_path: { item: string; for_work: string; reasoning: string }[];
+  // 어느 경로에도 없는 청구 항목 → items에서 불인정
+  rejected: { line_no: number; item_name: string; reasoning: string }[];
+}
+
 export interface AdjustmentResult {
   estimate_provided: boolean;
+  repair_plan?: RepairPlan;
   items: AdjustmentItem[];
   physical_consistency: PhysicalConsistency;
 }

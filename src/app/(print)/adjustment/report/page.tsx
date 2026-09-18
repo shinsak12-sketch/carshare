@@ -52,6 +52,7 @@ function Inner() {
       ]}
       memo={c.memo}
       diagnostics={buildAdjustmentDiagnostics(c.result)}
+      plan={c.result.repair_plan ?? null}
       estimateTree={c.estimateTree}
       photos={photos}
       createdAt={c.createdAt}
