@@ -62,6 +62,7 @@ function Inner() {
       ]}
       memo={c.memo}
       diagnostics={buildAssessmentDiagnostics(r)}
+      plan={r.repair_plan ?? null}
       estimateTree={c.estimateTree}
       opinion={opinion ? opinion + tail : null}
       lists={[

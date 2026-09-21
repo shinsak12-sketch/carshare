@@ -84,6 +84,8 @@ export interface PhysicalConsistency {
 
 export interface AssessmentResult {
   estimate_provided: boolean;
+  // v5.0부터: 1단계(정비사) 수리 계획. 예전 결과에는 없음
+  repair_plan?: import("./adjustment-types").RepairPlan;
   overall_repair_scope_review: OverallRepairScopeReview;
   parts: PartAssessment[];
   claimed_but_not_visible: string[];

@@ -1,5 +1,6 @@
 import {
   ADJUSTER_STANCE,
+  REPAIR_PLAN_SCHEMA,
   MINOR_DAMAGE_CRITERIA,
   LABOR_TIME_JUDGMENT,
   ANCILLARY_WORK_JUDGMENT,
@@ -233,62 +234,6 @@ const DAMAGE_TYPE_ENUM = [
   "비대상(교환예외)",
   "손상없음",
 ] as const;
-
-const REPAIR_PLAN_SCHEMA = {
-  type: "object",
-  properties: {
-    vehicle_structure: { type: "string" },
-    damage_summary: { type: "string" },
-    main_works: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          part_name: { type: "string" },
-          work: { type: "string" },
-          judgment_basis: { type: "string", enum: BASIS_ENUM },
-          reasoning: { type: "string" },
-        },
-        required: ["part_name", "work", "judgment_basis", "reasoning"],
-        additionalProperties: false,
-      },
-    },
-    access_path: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          item: { type: "string" },
-          for_work: { type: "string" },
-          reasoning: { type: "string" },
-        },
-        required: ["item", "for_work", "reasoning"],
-        additionalProperties: false,
-      },
-    },
-    rejected: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          line_no: { type: "integer" },
-          item_name: { type: "string" },
-          reasoning: { type: "string" },
-        },
-        required: ["line_no", "item_name", "reasoning"],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: [
-    "vehicle_structure",
-    "damage_summary",
-    "main_works",
-    "access_path",
-    "rejected",
-  ],
-  additionalProperties: false,
-} as const;
 
 export const ADJUSTMENT_RESPONSE_SCHEMA = {
   type: "object",

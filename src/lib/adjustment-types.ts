@@ -62,7 +62,11 @@ export interface RepairPlan {
   // 메인 작업을 하기 위한 접근·분해 경로(파손 여부와 무관)
   access_path: { item: string; for_work: string; reasoning: string }[];
   // 어느 경로에도 없는 청구 항목 → items에서 불인정
-  rejected: { line_no: number; item_name: string; reasoning: string }[];
+  rejected: {
+    line_no: number | null;
+    item_name: string;
+    reasoning: string;
+  }[];
 }
 
 export interface AdjustmentResult {
