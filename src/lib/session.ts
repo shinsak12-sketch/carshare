@@ -9,13 +9,19 @@ const SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12시간 — 사내 도구라 근
 
 export async function createSession(
   userId: string,
-  meta: { ip: string | null; userAgent: string | null }
+  meta: { ip: string | null; userAgent: string | null },
 ) {
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
 
   await prisma.session.create({
-    data: { id: token, userId, expiresAt, ip: meta.ip, userAgent: meta.userAgent },
+    data: {
+      id: token,
+      userId,
+      expiresAt,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    },
   });
 
   const cookieStore = await cookies();

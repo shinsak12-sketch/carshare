@@ -57,6 +57,7 @@ export function partVerdictLabel(part: PartAssessment): VerdictLabel {
   // "조사필요"(추가 확인 필요)로 구분. 둘 다 아니면 일반 "협의필요".
   const lt = part.labor_time_check;
   if (
+    lt &&
     lt.claimed_h !== null &&
     (lt.general_assessment === "과다 의심" || lt.reference_verdict === "과다")
   ) {
@@ -162,7 +163,7 @@ export function buildReviewItems(result: AssessmentResult): ReviewItem[] {
       photoRefs: [],
     });
   } else {
-    result.overall_repair_scope_review.concerns.forEach((c, i) => {
+    (result.overall_repair_scope_review.concerns ?? []).forEach((c, i) => {
       // 관련 부위를 찾아서 그 부위의 실제 판정/유형을 그대로 물려받게 함 —
       // "전체범위"라는 두루뭉술한 라벨 대신 실제로 뭐가 문제인지 배지로 바로 보이게.
       const matched = result.parts.find(

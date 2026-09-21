@@ -1,7 +1,9 @@
 export function isPdfFile(file: File): boolean {
   // 모바일 브라우저/파일 앱에 따라 PDF의 file.type이 빈 문자열이나
   // "application/octet-stream"으로 잘못 잡히는 경우가 있어, 확장자도 같이 확인함.
-  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+  return (
+    file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+  );
 }
 
 export async function extractEstimateText(file: File): Promise<string> {

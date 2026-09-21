@@ -92,7 +92,7 @@ export function buildReportText(
   if (result.overall_repair_scope_review.appropriate) {
     lines.push("전체 청구 범위는 손상 정도에 비해 적정한 것으로 판단됩니다.");
   } else {
-    for (const c of result.overall_repair_scope_review.concerns) {
+    for (const c of result.overall_repair_scope_review.concerns ?? []) {
       lines.push(`- ${c.item}: ${c.issue} — ${c.reasoning}`);
     }
   }
@@ -115,13 +115,11 @@ export function buildReportText(
         : `→ 판정: ${part.damage_type} · ${part.verdict}${basis}`;
     lines.push(verdictLine);
 
-    if (part.labor_time_check.claimed_h !== null) {
-      const ref =
-        part.labor_time_check.reference_h !== null
-          ? ` (참고 ${part.labor_time_check.reference_h}H)`
-          : "";
+    const lt = part.labor_time_check;
+    if (lt && lt.claimed_h !== null) {
+      const ref = lt.reference_h !== null ? ` (참고 ${lt.reference_h}H)` : "";
       lines.push(
-        `  작업시간: 청구 ${part.labor_time_check.claimed_h}H${ref}${part.labor_time_check.note ? ` — ${part.labor_time_check.note}` : ""}`,
+        `  작업시간: 청구 ${lt.claimed_h}H${ref}${lt.note ? ` — ${lt.note}` : ""}`,
       );
     }
     if (part.ancillary_work_check.length > 0) {

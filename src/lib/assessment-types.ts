@@ -38,13 +38,14 @@ export interface PartAssessment {
   evidence_confidence: Confidence;
   // 필요성 판단 근거: 직접확인 / 추론(사진에 안 보이는 부위를 충격 경로로 추론). 예전 결과엔 없음
   judgment_basis?: "직접확인" | "추론";
+  // v5.1부터 판금·복원수리 항목만 채우고 나머지는 null
   labor_time_check: {
     claimed_h: number | null;
     reference_h: number | null; // 회사 참고자료 기준 (없으면 null)
     reference_verdict: ReferenceVerdict; // 회사 기준 대비 판정
     general_assessment: GeneralAssessment; // 정비 지식으로 내리는 직접 판단 (항상 채움)
     note: string;
-  };
+  } | null;
   ancillary_work_check: AncillaryWorkCheck[];
   verdict: PartVerdict;
   required_action: string;
@@ -61,7 +62,8 @@ export interface RepairScopeConcern {
 
 export interface OverallRepairScopeReview {
   appropriate: boolean;
-  concerns: RepairScopeConcern[];
+  // v5.1부터 출력하지 않음(parts 판정 요약이라 중복). 예전 결과 표시용
+  concerns?: RepairScopeConcern[];
 }
 
 export type OtherFindingVerdict =

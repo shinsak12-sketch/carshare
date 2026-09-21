@@ -38,7 +38,10 @@ export function redactPersonalInfo(text: string): string {
   // 과잉 삭제가 안전하다는 원칙으로 접근.
   for (const label of LABEL_PATTERNS) {
     const re = new RegExp(`(${label}\\s*[:：]?\\s*)([^\\n]*)`, "gi");
-    result = result.replace(re, (_match, prefix: string) => `${prefix}${REDACTED}`);
+    result = result.replace(
+      re,
+      (_match, prefix: string) => `${prefix}${REDACTED}`,
+    );
   }
 
   // 라벨 없이 본문에 그대로 섞여 나오는 형식들도 패턴으로 한 번 더 제거.

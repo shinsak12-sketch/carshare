@@ -63,7 +63,7 @@ function partView(
 ): DiagItemView {
   const extras: DiagItemView["extras"] = [];
   const lt = part.labor_time_check;
-  if (lt.claimed_h !== null) {
+  if (lt && lt.claimed_h !== null) {
     const ref = lt.reference_h !== null ? ` (참고 ${lt.reference_h}H)` : "";
     const tone =
       lt.general_assessment === "적정"
@@ -86,7 +86,7 @@ function partView(
     lineNo: lineNo ?? null,
     itemName: part.part_name,
     claimedAction: part.claimed_action,
-    claimedHours: lt.claimed_h,
+    claimedHours: lt?.claimed_h ?? null,
     verdict: partVerdictLabel(part),
     followsParent: false,
     reasoning: part.reasoning,
@@ -125,7 +125,7 @@ export function buildAssessmentDiagnostics(
   // 1단계 수리범위 지적 → 해당 부위 메인 행의 부가 검토로. 부위를 못 찾으면 별도 브랜치.
   const concerns = result.overall_repair_scope_review.appropriate
     ? []
-    : result.overall_repair_scope_review.concerns;
+    : (result.overall_repair_scope_review.concerns ?? []);
   const concernUsed = new Set<number>();
 
   // concern은 정확 일치 → 정규화 일치 순으로, 역할(메인/도장/부수) 무관하게 해당 행에 붙임.
@@ -157,7 +157,7 @@ export function buildAssessmentDiagnostics(
     const groupParts = result.parts.filter(
       (p) => (p.group || p.part_name) === key,
     );
-    part.ancillary_work_check.forEach((a, j) => {
+    (part.ancillary_work_check ?? []).forEach((a, j) => {
       const dup = groupParts.some(
         (p) =>
           p !== part && sameWork(a.item, `${p.part_name} ${p.claimed_action}`),

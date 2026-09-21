@@ -29,13 +29,58 @@ export const DIAGRAM_ZONES: DiagramZone[] = [
   { id: "headlamp_L", label: "헤드램프(좌)", x: 65, y: 46, w: 42, h: 24 },
   { id: "headlamp_R", label: "헤드램프(우)", x: 193, y: 46, w: 42, h: 24 },
   { id: "grille", label: "라디에이터그릴", x: 107, y: 46, w: 86, h: 24 },
-  { id: "radiator", label: "라디에이터/코어서포트", x: 107, y: 74, w: 86, h: 32 },
-  { id: "fender_front_L", label: "프론트펜더(좌)", x: 65, y: 74, w: 42, h: 110 },
-  { id: "fender_front_R", label: "프론트펜더(우)", x: 193, y: 74, w: 42, h: 110 },
+  {
+    id: "radiator",
+    label: "라디에이터/코어서포트",
+    x: 107,
+    y: 74,
+    w: 86,
+    h: 32,
+  },
+  {
+    id: "fender_front_L",
+    label: "프론트펜더(좌)",
+    x: 65,
+    y: 74,
+    w: 42,
+    h: 110,
+  },
+  {
+    id: "fender_front_R",
+    label: "프론트펜더(우)",
+    x: 193,
+    y: 74,
+    w: 42,
+    h: 110,
+  },
   { id: "hood", label: "후드", x: 107, y: 106, w: 86, h: 78 },
-  { id: "side_member_L", label: "사이드멤버(좌)", x: 124, y: 106, w: 8, h: 110, dashed: true },
-  { id: "side_member_R", label: "사이드멤버(우)", x: 168, y: 106, w: 8, h: 110, dashed: true },
-  { id: "engine_bay", label: "엔진룸(엔진·변속기)", x: 136, y: 118, w: 28, h: 70, dashed: true },
+  {
+    id: "side_member_L",
+    label: "사이드멤버(좌)",
+    x: 124,
+    y: 106,
+    w: 8,
+    h: 110,
+    dashed: true,
+  },
+  {
+    id: "side_member_R",
+    label: "사이드멤버(우)",
+    x: 168,
+    y: 106,
+    w: 8,
+    h: 110,
+    dashed: true,
+  },
+  {
+    id: "engine_bay",
+    label: "엔진룸(엔진·변속기)",
+    x: 136,
+    y: 118,
+    w: 28,
+    h: 70,
+    dashed: true,
+  },
   { id: "door_front_L", label: "프론트도어(좌)", x: 65, y: 184, w: 42, h: 95 },
   { id: "door_front_R", label: "프론트도어(우)", x: 193, y: 184, w: 42, h: 95 },
   { id: "roof", label: "루프", x: 107, y: 184, w: 86, h: 190 },
@@ -44,8 +89,22 @@ export const DIAGRAM_ZONES: DiagramZone[] = [
   { id: "fender_rear_L", label: "리어펜더(좌)", x: 65, y: 374, w: 42, h: 108 },
   { id: "fender_rear_R", label: "리어펜더(우)", x: 193, y: 374, w: 42, h: 108 },
   { id: "trunk", label: "트렁크", x: 107, y: 374, w: 86, h: 132 },
-  { id: "taillamp_L", label: "리어콤비네이션램프(좌)", x: 65, y: 482, w: 42, h: 24 },
-  { id: "taillamp_R", label: "리어콤비네이션램프(우)", x: 193, y: 482, w: 42, h: 24 },
+  {
+    id: "taillamp_L",
+    label: "리어콤비네이션램프(좌)",
+    x: 65,
+    y: 482,
+    w: 42,
+    h: 24,
+  },
+  {
+    id: "taillamp_R",
+    label: "리어콤비네이션램프(우)",
+    x: 193,
+    y: 482,
+    w: 42,
+    h: 24,
+  },
   { id: "bumper_rear", label: "리어범퍼", x: 65, y: 508, w: 170, h: 22 },
 ];
 
@@ -68,7 +127,10 @@ function sideToLR(side: string): "L" | "R" | "both" {
   return "both"; // "중앙" | "양쪽" | 그 외 예상치 못한 값
 }
 
-function classifyFrontRear(text: string, fallback: "front" | "rear" | "both"): "front" | "rear" | "both" {
+function classifyFrontRear(
+  text: string,
+  fallback: "front" | "rear" | "both",
+): "front" | "rear" | "both" {
   const f = hasAny(text, FRONT_WORDS);
   const r = hasAny(text, REAR_WORDS);
   if (f && !r) return "front";
@@ -89,24 +151,40 @@ export function matchDiagramZones(text: string, sideField: string): string[] {
   const side = sideToLR(sideField);
   const ids = new Set<string>();
 
-  if (t.includes("범퍼") || t.includes("크래시박스") || t.includes("범퍼스테이") || t.includes("언더커버")) {
+  if (
+    t.includes("범퍼") ||
+    t.includes("크래시박스") ||
+    t.includes("범퍼스테이") ||
+    t.includes("언더커버")
+  ) {
     const fr = classifyFrontRear(t, "both");
     if (fr !== "rear") ids.add("bumper_front");
     if (fr !== "front") ids.add("bumper_rear");
   }
-  if (t.includes("헤드램프") || t.includes("전조등") || t.includes("헤드라이트")) {
+  if (
+    t.includes("헤드램프") ||
+    t.includes("전조등") ||
+    t.includes("헤드라이트")
+  ) {
     sided("headlamp", side).forEach((id) => ids.add(id));
   }
   if (t.includes("그릴")) ids.add("grille");
   if (t.includes("라디에이터")) ids.add("radiator");
-  if (t.includes("펜더") || t.includes("쿼터패널") || t.includes("휠하우스") || t.includes("머드가드")) {
+  if (
+    t.includes("펜더") ||
+    t.includes("쿼터패널") ||
+    t.includes("휠하우스") ||
+    t.includes("머드가드")
+  ) {
     const fr = classifyFrontRear(t, "front");
     const base = fr === "rear" ? "fender_rear" : "fender_front";
     sided(base, side).forEach((id) => ids.add(id));
   }
   if (t.includes("후드") || t.includes("보닛")) ids.add("hood");
-  if (t.includes("사이드멤버")) sided("side_member", side).forEach((id) => ids.add(id));
-  if (t.includes("엔진") || t.includes("변속기") || t.includes("미션")) ids.add("engine_bay");
+  if (t.includes("사이드멤버"))
+    sided("side_member", side).forEach((id) => ids.add(id));
+  if (t.includes("엔진") || t.includes("변속기") || t.includes("미션"))
+    ids.add("engine_bay");
   if (t.includes("도어")) {
     const fr = classifyFrontRear(t, "front");
     const base = fr === "rear" ? "door_rear" : "door_front";
@@ -114,7 +192,11 @@ export function matchDiagramZones(text: string, sideField: string): string[] {
   }
   if (t.includes("루프") || t.includes("지붕")) ids.add("roof");
   if (t.includes("트렁크") || t.includes("테일게이트")) ids.add("trunk");
-  if (t.includes("콤비네이션램프") || t.includes("테일램프") || t.includes("후미등")) {
+  if (
+    t.includes("콤비네이션램프") ||
+    t.includes("테일램프") ||
+    t.includes("후미등")
+  ) {
     sided("taillamp", side).forEach((id) => ids.add(id));
   }
 
