@@ -34,6 +34,12 @@ const APPS: AppTile[] = [
     icon: "🔍",
     gradient: "from-emerald-500 to-emerald-700",
   },
+  {
+    href: "/sketch",
+    label: "약도그림판",
+    icon: "🗺️",
+    gradient: "from-slate-600 to-slate-800",
+  },
   // 구버전(좌우 분할 디자인)은 /legacy/... 로 옮겨 관리자 설정에서만 접근
 ];
 
