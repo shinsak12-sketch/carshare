@@ -295,14 +295,15 @@ const R={
   tree:(o)=>`<circle r="13" fill="#4ade80" stroke="#15803d" stroke-width="2"/><circle cx="-4" cy="-3" r="5" fill="#86efac"/><circle r="2.5" fill="#78350f"/>`,
   view:(o)=>`<rect x="${-o.w/2}" y="${-o.h/2}" width="${o.w}" height="${o.h}" rx="6" fill="rgba(15,23,42,.18)" stroke="#475569" stroke-width="1.5" stroke-dasharray="5 4"/><text y="4" text-anchor="middle" font-size="10" font-weight="800" fill="#334155">시야 차단</text>`,
   car:(o)=>{ const c=carColor(o),k=o.p.kind||'car',op=o.p.opacity??1,w=o.w,h=o.h,label=carLabel(o); let s='';
-    if(k==='bike'){ s=`<rect x="${-w/2}" y="-2" width="${w}" height="4" rx="2" fill="${c}"/><circle cx="${-w/2+5}" cy="0" r="5" fill="none" stroke="#111827" stroke-width="2.5"/><circle cx="${w/2-5}" cy="0" r="5" fill="none" stroke="#111827" stroke-width="2.5"/><circle r="4" fill="#111827"/>`; }
+    if(k==='bike'){ s=`<rect x="${-w/2}" y="-2" width="${w}" height="4" rx="2" fill="${c}"/><circle cx="${-w/2+5}" cy="0" r="5" fill="none" stroke="#111827" stroke-width="2.5"/><circle cx="${w/2-5}" cy="0" r="5" fill="none" stroke="#111827" stroke-width="2.5"/><circle r="4" fill="#111827"/><polygon points="${w/2+1},-6 ${w/2+9},0 ${w/2+1},6" fill="#fff" stroke="${c}" stroke-width="1.5" stroke-linejoin="round"/>`; }
     else { const cab=k==='truck'||k==='bus';
       s=`<rect x="${-w/2}" y="${-h/2}" width="${w}" height="${h}" rx="${k==='bus'?4:6}" fill="${c}" stroke="rgba(0,0,0,.35)" stroke-width="1.5"/>`;
       if(k==='truck') s+=`<rect x="${-w/2+2}" y="${-h/2+2}" width="${w*0.66}" height="${h-4}" rx="2" fill="#e5e7eb"/><rect x="${w/2-w*0.3}" y="${-h/2+3}" width="${w*0.12}" height="${h-6}" rx="2" fill="#0f172a" opacity=".7"/>`;
       else if(k==='bus'){ for(let i=0;i<6;i++) s+=`<rect x="${-w/2+8+i*14}" y="${-h/2+3}" width="9" height="${h-6}" rx="1.5" fill="#0f172a" opacity=".55"/>`; }
       else s+=`<rect x="${w*0.08}" y="${-h/2+3}" width="${w*0.16}" height="${h-6}" rx="2" fill="#0f172a" opacity=".65"/><rect x="${-w*0.36}" y="${-h/2+3}" width="${w*0.1}" height="${h-6}" rx="2" fill="#0f172a" opacity=".5"/>`;
       s+=`<rect x="${w/2-3}" y="${-h/2+2}" width="2.5" height="5" fill="#fef08a"/><rect x="${w/2-3}" y="${h/2-7}" width="2.5" height="5" fill="#fef08a"/>`;
-      if(!cab) s+=`<polygon points="${w/2+1},-4 ${w/2+6},0 ${w/2+1},4" fill="${c}"/>`;
+      // 앞머리 표시: 차폭만큼 큰 흰 삼각형(진행 방향이 한눈에 보이게)
+      s+=`<polygon points="${w/2+1},${-h*0.42} ${w/2+h*0.55},0 ${w/2+1},${h*0.42}" fill="#fff" stroke="${c}" stroke-width="1.5" stroke-linejoin="round"/>`;
     }
     if(k==='bike') s+=`<text y="-9" text-anchor="middle" font-size="9" font-weight="900" fill="${c}" stroke="#fff" stroke-width="2.5" paint-order="stroke">${esc(label)}</text>`;
     else s+=`<text x="${-w*0.14}" y="${h*0.16}" text-anchor="middle" font-size="${Math.min(14,h*0.45)}" font-weight="900" fill="#fff" stroke="rgba(0,0,0,.55)" stroke-width="2" paint-order="stroke">${esc(label)}</text>`;
