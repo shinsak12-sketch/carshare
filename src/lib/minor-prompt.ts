@@ -2,7 +2,7 @@ import { MINOR_DAMAGE_CRITERIA } from "./assessment-prompt";
 
 // 경미손상판독기 프롬프트. 공통 블록은 [손상 판독과 수리·교환 판단]만 쓰고,
 // 보험개발원 경미손상 수리기준 원문 요지를 고정으로 붙인다(회신문 인용 정확도).
-export const MINOR_PROMPT_VERSION_TAG = "m1.0";
+export const MINOR_PROMPT_VERSION_TAG = "m1.1";
 
 const KIDI_REFERENCE = `# 근거 자료 — 경미손상 수리기준 (회신문에 인용할 때 이 문구를 쓰십시오)
 근거: 자동차보험 표준약관 제21조 제4항 및 별표 2. 보험개발원 자동차기술연구소
@@ -90,10 +90,20 @@ export const MINOR_SYSTEM_PROMPT = `당신은 판금·도장 현장 경력이 �
    상대 호칭은 쓰지 않고 "해당 부위는 ~로 확인됩니다" 식으로 씁니다. 금액·청구·
    과실 언급 금지.
 
-# 출력 문장 규칙
-- key_evidence는 판정을 가른 근거 두 문장 이내. observations의 what은 한 구절.
-- exchange_conditions의 note는 한 구절. additional_photos는 필요할 때만.
-- 부품 이름은 담당자가 지정한 이름을 그대로 쓰고, 좌/우는 차량 기준입니다.
+# 출력 문장 규칙 — 회신문 외에는 전부 짧게
+- part_name은 담당자가 지정한 이름 그대로 쓰고 좌/우는 side에만 넣습니다(이름에 "(좌)" 같은
+  괄호를 붙이지 마십시오). 지정이 "트렁크/백도어"이면 사진으로 세단 트렁크리드인지
+  SUV·해치백 백도어인지 판별해 part_name에 "트렁크리드" 또는 "백도어"를 씁니다.
+- key_evidence: 한 문장 40자 이내. "핵심 관찰 → 결론" 꼴. 예) "소재까지 닿은 마찰손상,
+  찢어짐·천공 없음 → 복원 가능한 3유형". 관찰 목록을 되풀이하지 마십시오.
+- observations.what은 10자 안팎 구절(예: "선형 긁힘·도장 박리"), location도 구절.
+- exchange_conditions.condition은 조건 이름만 짧게(예: "노후 부식", "절단·관통",
+  "몰딩 프레스부 손상", "헤밍부 이탈", "수리범위 확대", "임팩트 바 손상"), note는 15자
+  이내 근거 구절(예: "부식 흔적 없음", "이면 미촬영"). 서술형 문장 금지.
+- repair_method: 한 문장. 공정은 "→"로 잇습니다(예: "탈착 → 퍼티·샌딩 → 서페이서·베이스
+  → 클리어"). 적정하다는 평가 문구는 붙이지 않습니다.
+- additional_photos: 항목마다 15자 이내(예: "좌측 체결부 이면").
+- report_text만 정식 문어체 4~6문장으로 씁니다.
 
 ${MINOR_DAMAGE_CRITERIA}
 

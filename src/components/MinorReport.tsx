@@ -2,23 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { fmtKst } from "@/lib/kst";
+import { CLASS_HEX, DamageLayerDiagram } from "@/components/MinorVisuals";
 import { minorPartHeading } from "@/lib/format-minor-report";
-import {
-  MINOR_CLASS_LABEL,
-  type MinorClass,
-  type MinorResult,
-} from "@/lib/minor-types";
+import { MINOR_CLASS_LABEL, type MinorResult } from "@/lib/minor-types";
 
 // 경미손상판독 인쇄 보고서(A4). 결과는 브라우저 캐시에서 읽고 서버에는 보내지 않는다.
 
-const CLASS_COLOR: Record<MinorClass, string> = {
-  "1유형": "#0284c7",
-  "2유형": "#2563eb",
-  "3유형": "#d97706",
-  기타손상: "#dc2626",
-  손상없음: "#059669",
-  판독불가: "#64748b",
-};
 const STATUS_COLOR: Record<string, string> = {
   해당: "#dc2626",
   "해당 없음": "#94a3b8",
@@ -157,7 +146,7 @@ export function MinorReport(p: {
                 <td className="py-1 pr-2">
                   <span
                     className="inline-block rounded-full px-1.5 py-px text-[9px] font-bold text-white"
-                    style={{ background: CLASS_COLOR[part.classification] }}
+                    style={{ background: CLASS_HEX[part.classification] }}
                   >
                     {MINOR_CLASS_LABEL[part.classification]}
                   </span>
@@ -197,7 +186,7 @@ export function MinorReport(p: {
               </span>
               <span
                 className="rounded-full px-2 py-px text-[9px] font-bold text-white"
-                style={{ background: CLASS_COLOR[part.classification] }}
+                style={{ background: CLASS_HEX[part.classification] }}
               >
                 {MINOR_CLASS_LABEL[part.classification]}
               </span>
@@ -205,11 +194,14 @@ export function MinorReport(p: {
                 근거 확신 {part.evidence_confidence}
               </span>
             </div>
-            {part.photo_refs.length > 0 && (
-              <span className="font-mono text-[9px] text-slate-500">
-                사진 {part.photo_refs.join(", ")}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {part.photo_refs.length > 0 && (
+                <span className="font-mono text-[9px] text-slate-500">
+                  사진 {part.photo_refs.join(", ")}
+                </span>
+              )}
+              <DamageLayerDiagram cls={part.classification} compact />
+            </div>
           </div>
 
           <div className="mt-2 grid grid-cols-2 gap-3">

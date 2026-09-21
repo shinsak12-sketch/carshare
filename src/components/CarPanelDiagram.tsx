@@ -9,12 +9,10 @@ import type {
 
 // 경미손상판독기 입력용 평면 도해도(위에서 본 차량, 앞이 위). 기준 적용대상 9개 외장부품만
 // 클릭 가능하고 여러 부위를 동시에 고를 수 있다. 좌/우는 차량 기준(앞을 위로 두면 화면 왼쪽이 좌).
-// 뒷면 중앙은 차 형태에 따라 트렁크리드(세단)·백도어(SUV·해치백) 중 하나를 골라 쓴다.
-
-type TrunkKind = "트렁크리드" | "백도어";
+// 뒷면 중앙은 "트렁크/백도어" 하나로 두고 세단·SUV 구분은 모델이 사진으로 한다.
 
 interface Region {
-  part: MinorPartName | "뒷면";
+  part: MinorPartName;
   side: MinorSide;
   x: number;
   y: number;
@@ -123,7 +121,15 @@ const REGIONS: Region[] = [
     label: "리어펜더",
     vertical: true,
   },
-  { part: "뒷면", side: "중앙", x: CX, y: 462, w: CW, h: 106, label: "" },
+  {
+    part: "트렁크/백도어",
+    side: "중앙",
+    x: CX,
+    y: 462,
+    w: CW,
+    h: 106,
+    label: "트렁크/백도어",
+  },
   {
     part: "뒤범퍼",
     side: "중앙",
@@ -152,17 +158,11 @@ export function CarPanelDiagram({
   onChange: (next: MinorPartInput[]) => void;
   disabled?: boolean;
 }) {
-  const [trunkKind, setTrunkKind] = useState<TrunkKind>(() =>
-    value.some((p) => p.part_name === "백도어") ? "백도어" : "트렁크리드",
-  );
   const [hover, setHover] = useState<string | null>(null);
   const selected = new Set(value.map(partKey));
 
   function resolve(r: Region): MinorPartInput {
-    return {
-      part_name: r.part === "뒷면" ? trunkKind : r.part,
-      side: r.side,
-    };
+    return { part_name: r.part, side: r.side };
   }
 
   function toggle(r: Region) {
@@ -173,40 +173,12 @@ export function CarPanelDiagram({
     else onChange([...value, p]);
   }
 
-  function switchTrunk(kind: TrunkKind) {
-    setTrunkKind(kind);
-    // 이미 뒷면을 골라 둔 상태면 이름만 바꿔 유지
-    const other: TrunkKind = kind === "백도어" ? "트렁크리드" : "백도어";
-    if (value.some((p) => p.part_name === other))
-      onChange(
-        value.map((p) =>
-          p.part_name === other ? { ...p, part_name: kind } : p,
-        ),
-      );
-  }
-
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
           판독 부위 선택 (클릭, 복수 가능)
         </p>
-        <div className="flex items-center gap-1 rounded-full bg-slate-100 p-0.5 text-[11px] font-bold shadow-[inset_0_1px_2px_rgba(15,23,42,0.08)]">
-          {(["트렁크리드", "백도어"] as TrunkKind[]).map((k) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => switchTrunk(k)}
-              className={`rounded-full px-2.5 py-1 transition-all ${
-                trunkKind === k
-                  ? "bg-white text-emerald-700 shadow-sm"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {k === "트렁크리드" ? "세단 · 트렁크리드" : "SUV · 백도어"}
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,260px)_1fr]">
@@ -294,7 +266,7 @@ export function CarPanelDiagram({
               const k = partKey(p);
               const on = selected.has(k);
               const hov = hover === k;
-              const label = r.part === "뒷면" ? trunkKind : r.label;
+              const label = r.label;
               const cx = r.x + r.w / 2;
               const cy = r.y + r.h / 2;
               return (
@@ -391,7 +363,7 @@ export function CarPanelDiagram({
             <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50/60 px-4 py-6 text-center text-xs text-slate-400">
               도해도에서 판독할 외판 부위를 눌러주세요.
               <br />
-              범퍼·후드·펜더·도어·트렁크리드/백도어 9종
+              범퍼·후드·펜더·도어·트렁크/백도어
             </div>
           ) : (
             <ol className="flex flex-col gap-1.5">

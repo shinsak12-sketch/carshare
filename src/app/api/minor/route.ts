@@ -7,7 +7,11 @@ import {
   MINOR_RESPONSE_SCHEMA,
   MINOR_SYSTEM_PROMPT,
 } from "@/lib/minor-prompt";
-import { MINOR_PARTS, type MinorPartInput } from "@/lib/minor-types";
+import {
+  MINOR_PART_ALIASES,
+  MINOR_PARTS,
+  type MinorPartInput,
+} from "@/lib/minor-types";
 import { getCurrentUser } from "@/lib/session";
 import { sweepStaleBlobs } from "@/lib/blob-cleanup";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
@@ -71,7 +75,7 @@ async function handle(req: NextRequest) {
     ? parts.filter(
         (p) =>
           p &&
-          (MINOR_PARTS as readonly string[]).includes(p.part_name) &&
+          [...MINOR_PARTS, ...MINOR_PART_ALIASES].includes(p.part_name) &&
           ["좌", "우", "중앙"].includes(p.side),
       )
     : [];

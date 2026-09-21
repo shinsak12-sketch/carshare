@@ -2,6 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CarPanelDiagram } from "@/components/CarPanelDiagram";
+import {
+  CLASS_HEX,
+  ConditionSummary,
+  DamageLayerDiagram,
+  TypeStepper,
+} from "@/components/MinorVisuals";
 import { ImageLightbox } from "@/components/ImageLightbox";
 import { PhotoGrid } from "@/components/PhotoGrid";
 import { uploadPhotos } from "@/lib/upload-photos";
@@ -112,7 +118,15 @@ export default function NewMinorPage() {
   }, [activeId]);
 
   // 결과를 원래 건에 저장(분석 도중 다른 탭으로 옮겼어도 원래 건에). 새로고침 후 이어받을 때도 씀
-  function storeResult(caseId: string, r: MinorResult) {
+  function storeResult(caseId: string, raw: MinorResult) {
+    // 모델이 이름에 "(좌)"를 붙여 보내는 경우가 있어 side와 겹치지 않게 떼어냄
+    const r: MinorResult = {
+      ...raw,
+      parts: raw.parts.map((p) => ({
+        ...p,
+        part_name: p.part_name.replace(/\s*[(（](좌|우|중앙)[)）]\s*$/, ""),
+      })),
+    };
     setCases((prev) => {
       const next = prev.map((c) =>
         c.id === caseId
@@ -659,14 +673,28 @@ export default function NewMinorPage() {
                       </button>
                     </div>
 
-                    {/* 판정 근거 */}
-                    <div className="rounded-xl bg-slate-50 px-4 py-3 shadow-[inset_0_1px_2px_rgba(15,23,42,0.05)]">
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                        판정 근거
-                      </p>
-                      <p className="mt-1 text-sm font-semibold leading-relaxed text-slate-800">
-                        {p.key_evidence}
-                      </p>
+                    {/* 손상 깊이 단면 + 유형 단계 + 판정 근거 */}
+                    <div className="grid grid-cols-1 gap-3 rounded-2xl bg-slate-50 p-3 shadow-[inset_0_1px_2px_rgba(15,23,42,0.05)] sm:grid-cols-[220px_minmax(0,1fr)] sm:items-center">
+                      <div className="rounded-xl bg-white p-2 shadow-sm">
+                        <p className="mb-1 text-center text-[9px] font-bold uppercase tracking-wide text-slate-400">
+                          손상 깊이
+                        </p>
+                        <DamageLayerDiagram cls={p.classification} />
+                      </div>
+                      <div className="flex flex-col gap-2.5">
+                        <TypeStepper cls={p.classification} />
+                        <div
+                          className="rounded-xl border-l-4 bg-white px-3.5 py-2.5 shadow-sm"
+                          style={{ borderColor: CLASS_HEX[p.classification] }}
+                        >
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                            판정 근거
+                          </p>
+                          <p className="mt-0.5 text-[15px] font-black leading-snug text-slate-900">
+                            {p.key_evidence}
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -722,9 +750,14 @@ export default function NewMinorPage() {
 
                       {/* 교환 조건 */}
                       <div>
-                        <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
-                          교환 조건 대조
-                        </p>
+                        <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                            교환 조건 대조
+                          </p>
+                          <ConditionSummary
+                            conditions={p.exchange_conditions}
+                          />
+                        </div>
                         {p.exchange_conditions.length === 0 ? (
                           <p className="text-xs text-slate-400">대조 없음</p>
                         ) : (

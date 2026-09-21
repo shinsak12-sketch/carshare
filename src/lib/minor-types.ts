@@ -3,7 +3,8 @@
 
 export type MinorSide = "좌" | "우" | "중앙";
 
-// 기준 적용대상 9개 부품(범퍼 '16.7.1, 외장 7부품 '19.5.1 책임개시 계약부터)
+// 기준 적용대상 9개 부품(범퍼 '16.7.1, 외장 7부품 '19.5.1 책임개시 계약부터). 트렁크리드·백도어는
+// 도해도에서 하나로 고르고 모델이 사진으로 어느 쪽인지 판별해 결과 part_name에 적는다.
 export const MINOR_PARTS = [
   "앞범퍼",
   "뒤범퍼",
@@ -12,9 +13,10 @@ export const MINOR_PARTS = [
   "프런트도어",
   "리어도어",
   "리어펜더",
-  "트렁크리드",
-  "백도어",
+  "트렁크/백도어",
 ] as const;
+// 예전 저장 건·모델 출력 호환(결과의 part_name은 판별된 실제 이름)
+export const MINOR_PART_ALIASES = ["트렁크리드", "백도어"] as const;
 export type MinorPartName = (typeof MINOR_PARTS)[number];
 
 export interface MinorPartInput {
