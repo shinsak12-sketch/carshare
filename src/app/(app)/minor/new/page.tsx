@@ -48,6 +48,8 @@ const CONF_STYLE: Record<string, string> = {
   낮음: "text-red-700 bg-red-50 border-red-200",
 };
 
+const fileKey = (f: File) => `${f.name}|${f.size}|${f.lastModified}`;
+
 export default function NewMinorPage() {
   const [cases, setCases] = useState<StoredMinorCase[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -234,12 +236,30 @@ export default function NewMinorPage() {
     void deleteMinorCase(id);
   }
 
+  // 사진은 고를 때마다 덧붙임(같은 파일은 한 번만). 빼는 건 그리드의 X 버튼
   function handleImagesChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files ? Array.from(e.target.files) : [];
-    setPhotos(files);
-    updateActive({ photoCount: files.length });
+    const picked = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = "";
+    if (!picked.length) return;
+    const seen = new Set(photos.map(fileKey));
+    const added = picked.filter((f) => {
+      const k = fileKey(f);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    applyPhotos([...photos, ...added]);
+  }
+
+  function handleRemovePhoto(index: number) {
+    applyPhotos(photos.filter((_, i) => i !== index));
+  }
+
+  function applyPhotos(next: File[]) {
+    setPhotos(next);
+    updateActive({ photoCount: next.length });
     if (activeId)
-      void saveMinorFiles(activeId, { estimate: null, photos: files });
+      void saveMinorFiles(activeId, { estimate: null, photos: next });
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -545,6 +565,7 @@ export default function NewMinorPage() {
             <div className={`${card} p-4`}>
               <PhotoGrid
                 previews={imagePreviews}
+                onRemove={loading ? undefined : handleRemovePhoto}
                 label="외판 사진"
                 highlighted={highlightedPhotos}
                 accent="emerald"

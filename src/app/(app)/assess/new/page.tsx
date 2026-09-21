@@ -25,6 +25,8 @@ import {
   type StoredCase,
 } from "@/lib/assessment-v2-store";
 
+const fileKey = (f: File) => `${f.name}|${f.size}|${f.lastModified}`;
+
 export default function NewAssessPage() {
   // 건별 탭 — 엑셀 시트처럼. 결과·사진·선견적은 IndexedDB에 캐시돼 새로고침해도 유지.
   // 손해사정(새 디자인)과 같은 화면 구조. 프롬프트·API·결과 타입만 선견적 것.
@@ -273,12 +275,30 @@ export default function NewAssessPage() {
     void deleteCase(id);
   }
 
+  // 사진은 고를 때마다 덧붙임(같은 파일은 한 번만). 빼는 건 그리드의 X 버튼
   function handleImagesChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files ? Array.from(e.target.files) : [];
-    setPhotos(files);
-    updateActive({ photoCount: files.length });
+    const picked = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = "";
+    if (!picked.length) return;
+    const seen = new Set(photos.map(fileKey));
+    const added = picked.filter((f) => {
+      const k = fileKey(f);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    applyPhotos([...photos, ...added]);
+  }
+
+  function handleRemovePhoto(index: number) {
+    applyPhotos(photos.filter((_, i) => i !== index));
+  }
+
+  function applyPhotos(next: File[]) {
+    setPhotos(next);
+    updateActive({ photoCount: next.length });
     if (activeId)
-      void saveFiles(activeId, { estimate: estimateFile, photos: files });
+      void saveFiles(activeId, { estimate: estimateFile, photos: next });
   }
 
   async function handleEstimateChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -726,6 +746,7 @@ export default function NewAssessPage() {
                     {photosOpen ? (
                       <PhotoGrid
                         previews={imagePreviews}
+                        onRemove={loading ? undefined : handleRemovePhoto}
                         label="파손 사진"
                         highlighted={highlightedPhotos}
                         accent="blue"

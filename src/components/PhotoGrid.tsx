@@ -36,6 +36,7 @@ export function PhotoGrid({
   highlighted,
   accent,
   onOpen,
+  onRemove,
   columns = 9,
 }: {
   previews: { url: string }[];
@@ -43,6 +44,8 @@ export function PhotoGrid({
   highlighted: number[]; // 1부터
   accent: PhotoAccent;
   onOpen: (index: number) => void;
+  // 잘못 넣은 사진 빼기(X). 없으면 버튼 숨김(분석 중 등)
+  onRemove?: (index: number) => void;
   // xl 이상에서 한 줄에 몇 장. 기본 9(800px 컬럼용), 전체 폭 화면은 20 등으로 늘림. 그 아래 폭은 9 고정
   columns?: number;
 }) {
@@ -134,6 +137,21 @@ export function PhotoGrid({
               >
                 {i + 1}
               </span>
+              {onRemove && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHover(null);
+                    onRemove(i);
+                  }}
+                  title="이 사진 빼기"
+                  aria-label={`사진 ${i + 1} 빼기`}
+                  className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-slate-900/75 text-[11px] font-black leading-none text-white shadow-sm transition-all hover:scale-110 hover:bg-red-600 active:scale-95"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           );
         })}

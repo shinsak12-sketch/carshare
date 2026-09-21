@@ -33,6 +33,8 @@ const Car3DDiagram = dynamic(
   },
 );
 
+const fileKey = (f: File) => `${f.name}|${f.size}|${f.lastModified}`;
+
 export default function NewProcedurePage() {
   // 건별 탭 — 손해사정·선견적과 같은 구조. 결과·사진은 IndexedDB에 캐시돼 새로고침해도 유지.
   const [cases, setCases] = useState<StoredProcedureCase[]>([]);
@@ -233,12 +235,30 @@ export default function NewProcedurePage() {
     void deleteProcedureCase(id);
   }
 
+  // 사진은 고를 때마다 덧붙임(같은 파일은 한 번만). 빼는 건 그리드의 X 버튼
   function handleImagesChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files ? Array.from(e.target.files) : [];
-    setPhotos(files);
-    updateActive({ photoCount: files.length });
+    const picked = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = "";
+    if (!picked.length) return;
+    const seen = new Set(photos.map(fileKey));
+    const added = picked.filter((f) => {
+      const k = fileKey(f);
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+    applyPhotos([...photos, ...added]);
+  }
+
+  function handleRemovePhoto(index: number) {
+    applyPhotos(photos.filter((_, i) => i !== index));
+  }
+
+  function applyPhotos(next: File[]) {
+    setPhotos(next);
+    updateActive({ photoCount: next.length });
     if (activeId)
-      void saveProcedureFiles(activeId, { estimate: null, photos: files });
+      void saveProcedureFiles(activeId, { estimate: null, photos: next });
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -505,6 +525,7 @@ export default function NewProcedurePage() {
             <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_1px_0_rgba(255,255,255,0.6)_inset,0_10px_30px_-16px_rgba(15,23,42,0.25)]">
               <PhotoGrid
                 previews={imagePreviews}
+                onRemove={loading ? undefined : handleRemovePhoto}
                 label="파손 사진"
                 highlighted={highlightedPhotos}
                 accent="orange"
