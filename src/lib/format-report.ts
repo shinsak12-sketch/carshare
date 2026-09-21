@@ -122,7 +122,7 @@ export function buildReportText(
         `  작업시간: 청구 ${lt.claimed_h}H${ref}${lt.note ? ` — ${lt.note}` : ""}`,
       );
     }
-    if (part.ancillary_work_check && part.ancillary_work_check.length > 0) {
+    if (part.ancillary_work_check.length > 0) {
       lines.push("  부수작업:");
       for (const a of part.ancillary_work_check) {
         lines.push(`  · ${a.item}: ${a.note}`);
@@ -145,7 +145,7 @@ export function buildReportText(
     lines.push("");
   }
 
-  if (result.other_findings && result.other_findings.length > 0) {
+  if (result.other_findings.length > 0) {
     lines.push("[기타 항목 검토]");
     for (const f of result.other_findings) {
       lines.push(

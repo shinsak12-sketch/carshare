@@ -213,7 +213,7 @@ export function buildReviewItems(result: AssessmentResult): ReviewItem[] {
     });
   }
 
-  (result.other_findings ?? []).forEach((f, i) => {
+  result.other_findings.forEach((f, i) => {
     items.push({
       id: `finding-${i}`,
       kind: "finding",

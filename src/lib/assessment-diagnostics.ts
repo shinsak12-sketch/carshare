@@ -90,7 +90,7 @@ function partView(
     verdict: partVerdictLabel(part),
     followsParent: false,
     reasoning: part.reasoning,
-    note: part.verdict === "협의대상" ? (part.required_action ?? "") : "",
+    note: part.verdict === "협의대상" ? part.required_action : "",
     evidenceLabel:
       part.evidence_confidence === "낮음" ? "사진 판독 신뢰도 낮음" : null,
     basis: part.judgment_basis,
@@ -257,7 +257,7 @@ export function buildAssessmentDiagnostics(
     );
   }
 
-  (result.other_findings ?? []).forEach((f, i) =>
+  result.other_findings.forEach((f, i) =>
     push(
       "기타 항목",
       makeDiagnostic(`finding-${i}`, {

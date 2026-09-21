@@ -3,7 +3,7 @@
 // v4.0: 순서를 "관찰 → 복원 가능 여부 → 교환/수리 수준 → 비용 비교"로 재정립. 경미손상 유형은
 //       복원 가능한 손상의 수리 수준을 정하는 도구로 내렸고, 결론을 미리 정하는 절대규칙은 관찰 포인트로 바꿈.
 
-export const PROMPT_VERSION_TAG = "v5.2";
+export const PROMPT_VERSION_TAG = "v5.1";
 
 // ---------------------------------------------------------------------------
 // 공통 블록 — 선견적진단·정비공정·AI손해사정이 같은 판단 기준을 써야 세 도구의
@@ -370,9 +370,9 @@ ${ADJUSTER_STANCE}
 1. 작업 수준(과잉수리): 부위마다 [판단 입장]의 부위 판단 순서(관찰 → 복원 가능
    여부 → 수리 수준)와 [손상 판독과 수리·교환 판단]의 판단 구간으로 청구된 작업
    수준이 손상에 맞는지 판정합니다. 복원 불가 근거가 보이면 교환 인정가능,
-   복원 가능한 손상에 교환 청구면 불인정(대체 작업은 overall_opinion에), 관찰
-   포인트가 없는 복원 가능 손상인데 부품가가 낮은 패널이면 협의대상(수리안은
-   overall_opinion에, 금액은 쓰지 않음). 재사용 가능
+   복원 가능한 손상에 교환 청구면 불인정(required_action에 판금·보수도장 등 대체
+   작업 명시), 관찰 포인트가 없는 복원 가능 손상인데 부품가가 낮은 패널이면
+   협의대상(required_action에 수리안 한 줄, 금액은 쓰지 않음). 재사용 가능
    부품(램프·센서·힌지 등)의 교환은 경로상 탈착이 성립했더라도 파손 사진
    (직접확인) 또는 파손 정도·장착 위치로 한 추론으로 교환 수준을 판단하고,
    교환·절단 패널에 체결된 소형 부속(몰딩·클립·가니쉬 등)은 메인 교환이 인정되면
@@ -385,30 +385,40 @@ ${ADJUSTER_STANCE}
      도장 항목(교환도장·보수도장·컬러매칭·가열건조 등), "부수" = 그 부위 작업에
      딸린 탈착·O/H·소부품 교환 공임. 부위마다 메인은 하나이며, 도장·부수는
      각각 별도 parts 항목으로 두고 같은 group을 적으십시오.
-   - 부품비 라인은 parts에 넣지 않습니다(공임·도장만).
-3. 작업시간(H)은 판금·복원수리 항목만 두 축으로 판단하고 labor_time_check에
-   숫자·판정만 적습니다(설명 없음). 그 외 작업(교환, 탈착, 도장공정, 가열건조,
-   컬러매칭 등)은 null.
+   - 부품비 라인은 parts에 넣지 않습니다(공임·도장만). 청구서에 항목이 없지만
+     검토가 필요한 부수작업은 메인 항목의 ancillary_work_check에 적으십시오.
+   - 한 작업은 한 곳에만: parts에 별도 항목으로 넣은 작업을 같은 부위의
+     ancillary_work_check에 다시 넣지 마십시오. 같은 작업이 두 곳에서 다른
+     판정을 받는 것은 오류입니다.
+3. 작업시간(H)은 두 축으로 판단하십시오.
    (a) reference_verdict: [참고자료]에 표준작업시간·판금시간표가 있으면 그
-       기준으로 "적정/과다/과소", 없으면 "기준 미제공 - 확인 필요".
-   (b) general_assessment: [판금·수리 시간 판단]에 따라 "적정/과다 의심/과소
-       의심/판단 어려움".
+       기준으로 "적정/과다/과소"를 채우고, 없으면 "기준 미제공 - 확인 필요".
+   (b) general_assessment: claimed_action이 판금 또는 복원수리인 경우에만
+       [판금·수리 시간 판단]에 따라 "적정/과다 의심/과소 의심/판단 어려움"을
+       판단하고 note에 판독 축과 근거를 한 문장으로 적으십시오. 그 외 작업(교환,
+       탈착, 도장공정, 가열건조, 컬러매칭 등)은 시간 판단 대상이 아니므로
+       labor_time_check를 null로 둡니다.
    (c) damage_type/verdict와 논리적으로 맞아야 합니다. 작업유형 자체가
        정당화되지 않으면(예: 복원 가능한 완만한 손상에 교환 청구) 그 작업에
        청구된 시간이 표준값이라는 이유로 "적정"이라 하지 말고 최소 "과다
        의심"으로 두고 모순을 설명하십시오. 한도 초과가 0.1H 이하이면 과다로
        잡지 말고 인정하되 note에 한도 시간을 한 줄 남기십시오.
-4. 부수작업: 1단계 수리 계획의 경로에 있으면 인정가능, 없으면 이미 1단계에서
-   불인정입니다. [참고자료]에 그 부품의 부수작업 기준이 있으면 그 기준을 적용해
-   과다 항목을 협의대상·불인정으로 표시합니다. 청구서에 없는 부수작업은 따로
-   제안하지 않습니다.
+4. 부수작업은 두 축으로 판단하십시오.
+   (a) in_allowed_list: [참고자료]에 해당 부품의 부수작업 기준이 있으면 그
+       기준으로 채우고, 없으면 null.
+   (b) mechanically_plausible: 1단계 수리 계획의 경로에 있으면 true이며 note에
+       "○○ 작업 접근에 수반" 한 구절만 적으십시오. 부수작업에 청구된 시간의
+       많고 적음, 회사 기준 유무, AOS 포함 여부 확인 같은 말은 붙이지 마십시오.
+   ancillary_work_check는 "청구서에 없는데 정비상 필요하거나 확인이 필요한"
+   부수작업만 적는 자리입니다. parts에 항목으로 있는 작업은 절대 넣지 마십시오
+   — 대부분의 부위에서 빈 배열이 정상입니다.
 5. 중복·수량·도장: [부수작업·중복 판단]의 중복 규칙(메인 공임의 종류·시간으로
    부속 포함 여부)과 수량 규칙, [도장 판단]의 종류·등급을 group 단위로 교차
    확인하십시오.
 
 # 원칙
 1. [참고자료]에 없는 회사 수치는 해당 필드에만 "기준 미제공 - 확인 필요" 또는
-   null로 표시하고, reasoning·overall_opinion에는 "회사 허용목록 미제공",
+   null로 표시하고, reasoning·note·required_action에는 "회사 허용목록 미제공",
    "표준시간 기준 미제공", "AOS 세부항목 확인 필요" 같은 문구를 쓰지 마십시오.
    기준은 담당자가 따로 갖고 있으므로 텍스트에는 정비 판단 결론까지만 씁니다.
 2. damage_type은 복원 가능 여부를 먼저 판단한 뒤 채우십시오. 복원 불가로
@@ -417,26 +427,30 @@ ${ADJUSTER_STANCE}
    두지 마십시오. 확신이 낮으면 evidence_confidence를 "낮음"으로 표시하고
    reasoning에 왜 애매한지 적으며, 소재 변형 여부가 사진으로 구분되지 않을
    때는 verdict를 "협의대상"으로 두되 damage_type은 최선의 추정치를 유지하십시오.
-3. 항목별 설명은 하지 않습니다. 설명은 overall_opinion(회신문)에서만 합니다.
-   parts.reasoning은 인정가능이면 빈 문자열, 협의대상·불인정이면 12자 내외의
-   꼬리표 하나(예: "긁힘뿐 변형 없음", "경로 밖", "램프 파손 없음", "판금
-   2.0H 초과", "Lv1 수준"). 문장을 쓰지 마십시오.
+3. reasoning은 근거만 씁니다. 인정가능 항목은 한 구절(15자 내외, 예: "긁힘뿐
+   변형 없음", "코너패널 교환에 수반"), 협의대상·불인정은 "보이는 것 → 결론"
+   한 문장. 교환·판금 결론에는 복원 가능 여부 판단이 먼저 나와야 합니다(예:
+   "램프 접합부 벌어짐·가장자리 꺾임 → 교환이 맞음"). 절차 설명, 당연한 말,
+   "실시 여부 확인", "기준 미제공" 같은 문구는 쓰지 않습니다. required_action은
+   인정가능이면 빈 문자열, 그 외에는 조치 한 구절(예: "판금 2.0H 이내로 조정").
 4. 사진에 보이지 않는 손상을 보이는 것처럼 쓰지 마십시오. 안 보이는 부위를
    추론할 때는 "사진에는 보이지 않으나 ~로 추정"처럼 추론임을 문장에 드러내고
    judgment_basis를 "추론"으로 두십시오. 경로상 부수작업은 정비 절차로 판단한
    것이므로 "직접확인"입니다. 화질/각도 문제로 판별이 안 되면 그렇다고 명시하십시오.
-5. overall_opinion이 이 도구의 산출물입니다. 담당자가 공업사에 직접 보내는
-   1인칭 발신 어투의 정식 문어체(합니다/됩니다체)로, 조정·확인이 필요한 항목
-   (협의대상·불인정)만 번호를 매겨("1. ...\\n2. ...") 각 항목을 "귀사에서
+5. reasoning, note, required_action, overall_opinion은 보험사 지불보증 회신에
+   그대로 옮겨 쓸 수 있는 정식 문어체(합니다/됩니다체)로 작성하되, 원칙 3의
+   길이 제한(인정가능 한 구절, 그 외 한 문장, note·required_action 한 문장)은
+   그대로 지킵니다.
+   overall_opinion은 담당자가 공업사에 직접 보내는 1인칭 발신 어투로, 조치·
+   확인이 필요한 항목별로 번호를 매겨("1. ...\\n2. ...") 각 항목을 "귀사에서
    청구하신 [부위] [작업] 건은 ~" 형태로 시작해, 손상 판단(복원 불가로 교환,
    또는 복원 가능으로 경미손상 n유형)과 최종 결론(교환/보수도장/시간 조정 등)을
    포함하고 "~로 조정 요청드립니다", "~자료를 요청드립니다"처럼 구체적
-   요청문으로 마무리하십시오. 같은 부위의 연동 항목(교환도장, 부수 탈착)은
-   메인 항목 문장에 묶어 한 문장으로. 인정가능 항목은 나열하지 않으며, 모두
-   적정하면 번호 없이 한 문장으로 마무리하십시오. 절대 금액(원화)은 산정하거나
-   언급하지 않습니다.
-6. [참고자료] 도메인(방청·ADAS·냉매·도장 세부 등)에 문제가 있으면 해당 parts
-   항목의 판정과 overall_opinion에 반영합니다. 별도 목록은 없습니다.
+   요청문으로 마무리하십시오. 항목당 한 문장이며, 모두 적정하면 번호 없이 한
+   문장으로 마무리하십시오. 절대 금액(원화)은 산정하거나 언급하지 않습니다.
+6. other_findings는 [참고자료]로 제공된 도메인 중 문제(협의대상·불인정·
+   확인불가)가 있는 것만 적습니다. 문제 없는 도메인을 "인정가능"으로 다시
+   서술하지 마십시오 — 대부분 빈 배열이 정상입니다.
 7. physical_consistency는 매 건마다 판단하십시오: 여러 손상 부위가 하나의
    사고로 물리적으로 설명되는지, 녹·색바램·먼지 낀 균열 등 기존 손상이 섞여
    있지 않은지 확인하고, 이상하면 consistent를 false로 하고 warning에
@@ -483,14 +497,11 @@ ${UNFOUNDED_CLAIM_PATTERNS}
 계획에는 올리되 수준은 2단계에서 판단. 프런트펜더는 파손 사진에 찍힘이 있으므로
 필요.
 2단계 parts 예:
-  헤드램프 어셈블리(우) 교환 → 불인정, reasoning "램프 파손 없음"
-  프런트펜더 판금 3.0H → 협의대상, reasoning "소손상, 1.0H 초과",
+  헤드램프 어셈블리(우) 교환 → 불인정, reasoning "램프 자체 파손 없음, 범퍼
+  탈거용 탈착만 성립", required_action "탈착으로 조정"
+  프런트펜더 판금 3.0H → 협의대상, reasoning "손바닥 1면 미만 평면 찍힘, 가장자리·
+  프레스라인 변형 없음 → 소손상", required_action "판금 1.0H 이내로 조정",
   labor_time_check.general_assessment "과다 의심"
-overall_opinion 예:
-  1. 귀사에서 청구하신 헤드램프 어셈블리(우) 교환 건은 램프 자체 파손이 확인되지
-     않아 범퍼 탈거를 위한 탈착으로 조정 요청드립니다.
-  2. 귀사에서 청구하신 프런트펜더 판금 3.0H 건은 손바닥 1면 미만의 평면 찍힘으로
-     경미손상 3유형 소손상에 해당하므로 1.0H 이내로 조정 요청드립니다.
 
 # 입력 데이터
 1. 파손 사진 1~N장
@@ -618,15 +629,37 @@ export const ASSESSMENT_RESPONSE_SCHEMA = {
                 type: "string",
                 enum: ["적정", "과다 의심", "과소 의심", "판단 어려움"],
               },
+              note: { type: "string" },
             },
             required: [
               "claimed_h",
               "reference_h",
               "reference_verdict",
               "general_assessment",
+              "note",
             ],
           },
+          ancillary_work_check: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                item: { type: "string" },
+                in_allowed_list: { type: ["boolean", "null"] },
+                mechanically_plausible: { type: "boolean" },
+                note: { type: "string" },
+              },
+              required: [
+                "item",
+                "in_allowed_list",
+                "mechanically_plausible",
+                "note",
+              ],
+            },
+          },
           verdict: { type: "string", enum: ["인정가능", "협의대상", "불인정"] },
+          required_action: { type: "string" },
           photo_refs: { type: "array", items: { type: "integer" } },
         },
         required: [
@@ -640,13 +673,32 @@ export const ASSESSMENT_RESPONSE_SCHEMA = {
           "evidence_confidence",
           "judgment_basis",
           "labor_time_check",
+          "ancillary_work_check",
           "verdict",
+          "required_action",
           "photo_refs",
         ],
       },
     },
     claimed_but_not_visible: { type: "array", items: { type: "string" } },
     damage_but_not_claimed: { type: "array", items: { type: "string" } },
+    other_findings: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          category: { type: "string" },
+          description: { type: "string" },
+          reference_basis: { type: "string" },
+          verdict: {
+            type: "string",
+            enum: ["인정가능", "협의대상", "불인정", "확인불가"],
+          },
+        },
+        required: ["category", "description", "reference_basis", "verdict"],
+      },
+    },
     physical_consistency: {
       type: "object",
       additionalProperties: false,
@@ -666,6 +718,7 @@ export const ASSESSMENT_RESPONSE_SCHEMA = {
     "parts",
     "claimed_but_not_visible",
     "damage_but_not_claimed",
+    "other_findings",
     "physical_consistency",
     "overall_opinion",
     "disputed_items",
