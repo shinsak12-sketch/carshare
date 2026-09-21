@@ -118,6 +118,33 @@ export function MinorReport(p: {
         )}
       </div>
 
+      {/* 사진 */}
+      {photoNos.length > 0 && (
+        <section className="mt-4">
+          <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">
+            사진 ({photoNos.length}장)
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {photoNos.map((n) => (
+              <figure
+                key={n}
+                className="break-inside-avoid overflow-hidden rounded-lg border border-slate-200"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={urls[n - 1]}
+                  alt={`사진 ${n}`}
+                  className="aspect-[4/3] w-full object-cover"
+                />
+                <figcaption className="px-1.5 py-0.5 font-mono text-[9px] text-slate-500">
+                  {n}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* 요약표 */}
       <table className="mt-3 w-full border-collapse text-[10.5px]">
         <thead>
@@ -276,33 +303,6 @@ export function MinorReport(p: {
           </div>
         </section>
       ))}
-
-      {/* 사진 */}
-      {photoNos.length > 0 && (
-        <section className="mt-4">
-          <div className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-500">
-            사진 ({photoNos.length}장)
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {photoNos.map((n) => (
-              <figure
-                key={n}
-                className="break-inside-avoid overflow-hidden rounded-lg border border-slate-200"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={urls[n - 1]}
-                  alt={`사진 ${n}`}
-                  className="aspect-[4/3] w-full object-cover"
-                />
-                <figcaption className="px-1.5 py-0.5 font-mono text-[9px] text-slate-500">
-                  {n}
-                </figcaption>
-              </figure>
-            ))}
-          </div>
-        </section>
-      )}
 
       <footer className="mt-5 border-t border-slate-200 pt-2 text-[9px] leading-relaxed text-slate-500">
         근거: 자동차보험 표준약관 제21조 제4항 및 별표 2, 보험개발원

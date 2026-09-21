@@ -612,7 +612,7 @@ export default function NewMinorPage() {
           )}
 
           {result && result.vehicle_note && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-[inset_0_1px_2px_rgba(217,119,6,0.1)]">
+            <div className="shrink-0 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-[inset_0_1px_2px_rgba(217,119,6,0.1)]">
               <span className="mr-1.5 font-bold">차량·사진 메모</span>
               {result.vehicle_note}
             </div>
@@ -624,7 +624,7 @@ export default function NewMinorPage() {
               return (
                 <section
                   key={`${p.part_name}-${p.side}-${i}`}
-                  className={`${card} overflow-hidden`}
+                  className={`${card} shrink-0 overflow-hidden`}
                   onMouseEnter={() => setHighlightedPhotos(p.photo_refs)}
                   onMouseLeave={() => setHighlightedPhotos([])}
                 >
@@ -836,7 +836,7 @@ export default function NewMinorPage() {
             })}
 
           {result && (
-            <p className="px-1 pb-2 text-[11px] text-slate-400">
+            <p className="shrink-0 px-1 pb-2 text-[11px] text-slate-400">
               근거: 자동차보험 표준약관 제21조 제4항·별표 2, 보험개발원
               자동차기술연구소 경미손상 수리기준. AI 보조 의견이며 최종 판단은
               담당자가 합니다.
