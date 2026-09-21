@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 // 스크롤 컨테이너나 틀 고정 헤더에 잘리지 않음. 확대 레이어는 마우스 이벤트를
 // 안 받아서 커서 위치는 원본 칸 기준(옆 칸으로 옮기면 그 칸이 바로 확대).
 
-export type PhotoAccent = "purple" | "blue" | "orange";
+export type PhotoAccent = "purple" | "blue" | "orange" | "emerald";
 
 const ACCENT: Record<PhotoAccent, { ring: string; badge: string }> = {
   purple: {
@@ -21,6 +21,10 @@ const ACCENT: Record<PhotoAccent, { ring: string; badge: string }> = {
   orange: {
     ring: "border-orange-500 ring-4 ring-orange-400/60 shadow-[0_0_0_2px_white,0_8px_20px_-6px_rgba(234,88,12,0.7)]",
     badge: "bg-orange-600 text-white",
+  },
+  emerald: {
+    ring: "border-emerald-500 ring-4 ring-emerald-400/60 shadow-[0_0_0_2px_white,0_8px_20px_-6px_rgba(5,150,105,0.7)]",
+    badge: "bg-emerald-600 text-white",
   },
 };
 

@@ -28,6 +28,12 @@ const APPS: AppTile[] = [
     icon: "⚖️",
     gradient: "from-purple-500 to-purple-700",
   },
+  {
+    href: "/minor/new",
+    label: "경미손상판독",
+    icon: "🔍",
+    gradient: "from-emerald-500 to-emerald-700",
+  },
   // 구버전(좌우 분할 디자인)은 /legacy/... 로 옮겨 관리자 설정에서만 접근
 ];
 

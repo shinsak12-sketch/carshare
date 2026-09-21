@@ -150,6 +150,13 @@ export function PolicyForm({ initial }: { initial: UsagePolicy }) {
               setP({ ...p, toolEnabled: { ...p.toolEnabled, procedure: v } })
             }
           />
+          <Toggle
+            label="경미손상판독"
+            on={p.toolEnabled.minor ?? true}
+            onChange={(v) =>
+              setP({ ...p, toolEnabled: { ...p.toolEnabled, minor: v } })
+            }
+          />
         </div>
       </Section>
 

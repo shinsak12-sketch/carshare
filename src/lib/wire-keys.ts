@@ -61,6 +61,16 @@ export const WIRE_KEYS: Record<string, string> = {
   main_works: "works",
   access_path: "access",
   for_work: "for",
+  // 경미손상판독
+  vehicle_note: "note_v",
+  observations: "obs",
+  classification: "cls",
+  key_evidence: "evidence",
+  exchange_conditions: "conditions",
+  repair_method: "method",
+  additional_photos: "more_photos",
+  report_text: "report",
+  location: "loc",
 };
 
 const INVERSE: Record<string, string> = {};

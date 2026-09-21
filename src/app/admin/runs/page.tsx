@@ -27,7 +27,7 @@ export default async function RunsPage({
   const sp = await searchParams;
   const range = parseRange(sp.range);
   const tool = (
-    ["assess", "adjustment", "procedure"].includes(sp.tool ?? "") ? sp.tool : ""
+    ["assess", "adjustment", "procedure", "minor"].includes(sp.tool ?? "") ? sp.tool : ""
   ) as AiTool | "";
   const status = STATUSES.some(([k]) => k === (sp.status ?? ""))
     ? (sp.status ?? "")
@@ -91,7 +91,7 @@ export default async function RunsPage({
           className="rounded-lg border border-slate-300 px-2 py-1.5"
         >
           <option value="">전체 도구</option>
-          {(["assess", "adjustment", "procedure"] as AiTool[]).map((t) => (
+          {(["assess", "adjustment", "procedure", "minor"] as AiTool[]).map((t) => (
             <option key={t} value={t}>
               {TOOL_LABEL[t]}
             </option>

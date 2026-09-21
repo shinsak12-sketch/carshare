@@ -58,7 +58,7 @@ export async function checkPolicy(input: PolicyInput): Promise<PolicyResult> {
     message: `${message} ${p.blockMessage}`.trim(),
   });
 
-  if (!p.toolEnabled[input.tool])
+  if (p.toolEnabled[input.tool] === false)
     return block(
       "tool_disabled",
       `${label} 도구는 현재 사용이 중지돼 있습니다.`,
@@ -71,7 +71,10 @@ export async function checkPolicy(input: PolicyInput): Promise<PolicyResult> {
     );
 
   // 견적 금액 — 견적서가 있을 때만(estimateAmount null이면 선견적 사진 단독)
-  if (input.tool !== "procedure" && input.estimateAmount != null) {
+  if (
+    (input.tool === "assess" || input.tool === "adjustment") &&
+    input.estimateAmount != null
+  ) {
     const min = p.minEstimate[input.tool];
     const max = p.maxEstimate[input.tool];
     if (min != null && input.estimateAmount < min)
