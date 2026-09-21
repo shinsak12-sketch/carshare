@@ -76,7 +76,7 @@ function Inner() {
         },
         {
           label: "기타 검토(참고자료 기준)",
-          items: r.other_findings.map(
+          items: (r.other_findings ?? []).map(
             (f) => `${f.category}: ${f.description} [${f.verdict}]`,
           ),
         },

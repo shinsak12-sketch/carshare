@@ -43,12 +43,13 @@ export interface PartAssessment {
     claimed_h: number | null;
     reference_h: number | null; // 회사 참고자료 기준 (없으면 null)
     reference_verdict: ReferenceVerdict; // 회사 기준 대비 판정
-    general_assessment: GeneralAssessment; // 정비 지식으로 내리는 직접 판단 (항상 채움)
-    note: string;
+    general_assessment: GeneralAssessment; // 정비 지식으로 내리는 직접 판단
+    note?: string; // v5.2부터 없음
   } | null;
-  ancillary_work_check: AncillaryWorkCheck[];
+  ancillary_work_check?: AncillaryWorkCheck[]; // v5.2부터 없음(예전 결과 표시용)
   verdict: PartVerdict;
-  required_action: string;
+  // v5.2부터 없음 — 조치는 overall_opinion에. reasoning은 12자 꼬리표(인정가능은 빈 문자열)
+  required_action?: string;
   // 판단 근거가 된 파손 사진 번호(1부터). 화면에서 해당 사진 강조에 씀.
   photo_refs?: number[];
 }
@@ -92,7 +93,7 @@ export interface AssessmentResult {
   parts: PartAssessment[];
   claimed_but_not_visible: string[];
   damage_but_not_claimed: string[];
-  other_findings: OtherFinding[];
+  other_findings?: OtherFinding[]; // v5.2부터 없음
   physical_consistency: PhysicalConsistency;
   overall_opinion: string;
   disputed_items: string[];

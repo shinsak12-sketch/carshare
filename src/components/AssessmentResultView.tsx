@@ -221,23 +221,24 @@ export function AssessmentResultView({
                     </div>
                   )}
 
-                {part.ancillary_work_check.length > 0 && (
-                  <div className="mt-2 flex flex-col gap-1.5 border-t border-slate-200 pt-2.5">
-                    {part.ancillary_work_check.map((a, j) => (
-                      <div key={j} className="flex items-start gap-2">
-                        <span
-                          className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${a.mechanically_plausible ? "bg-emerald-500" : "bg-amber-500"}`}
-                        />
-                        <p className="text-xs font-medium text-slate-600">
-                          <span className="font-bold text-slate-700">
-                            {a.item}
-                          </span>{" "}
-                          — {a.note}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {part.ancillary_work_check &&
+                  part.ancillary_work_check.length > 0 && (
+                    <div className="mt-2 flex flex-col gap-1.5 border-t border-slate-200 pt-2.5">
+                      {part.ancillary_work_check.map((a, j) => (
+                        <div key={j} className="flex items-start gap-2">
+                          <span
+                            className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${a.mechanically_plausible ? "bg-emerald-500" : "bg-amber-500"}`}
+                          />
+                          <p className="text-xs font-medium text-slate-600">
+                            <span className="font-bold text-slate-700">
+                              {a.item}
+                            </span>{" "}
+                            — {a.note}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
               </div>
             ))}
           </div>
@@ -270,7 +271,7 @@ export function AssessmentResultView({
           </div>
         )}
 
-        {result.other_findings.length > 0 && (
+        {result.other_findings && result.other_findings.length > 0 && (
           <div className="flex flex-col gap-2">
             <p className="text-sm font-bold text-slate-900">기타 항목 검토</p>
             <ul className="flex flex-col gap-2">
