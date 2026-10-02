@@ -1,0 +1,209 @@
+import { after, NextRequest, NextResponse } from "next/server";
+import { startStructuredJob } from "@/lib/ai-job";
+import { resolveModel } from "@/lib/ai-model";
+import { buildSystemPrompt, taggedPromptVersion } from "@/lib/output-mode";
+import { strictnessBlock, strictnessTag } from "@/lib/adjustment-strictness";
+import {
+  ADJUSTMENT2_RESPONSE_SCHEMA,
+  ADJUSTMENT2_SYSTEM_PROMPT,
+} from "@/lib/adjustment2-prompt";
+import { getCurrentUser } from "@/lib/session";
+import { sweepStaleBlobs } from "@/lib/blob-cleanup";
+import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
+import { isPdfFile, extractEstimateText } from "@/lib/estimate-pdf";
+import { parseEstimateTable } from "@/lib/estimate-table";
+import {
+  buildEstimateTree,
+  formatEstimateTableForPrompt,
+} from "@/lib/estimate-tree";
+import { redactPersonalInfo } from "@/lib/pii-redact";
+import { matchReferenceSections } from "@/lib/reference-sections";
+import {
+  attachJob,
+  completeRun,
+  createRun,
+  estimateAmountOf,
+  extractClaimNo,
+  extractPlateNo,
+  failRun,
+  normalizePlate,
+} from "@/lib/ai-usage";
+import { ADJUSTMENT2_PROMPT_VERSION_TAG } from "@/lib/adjustment2-prompt";
+import { enforcePolicy } from "@/lib/usage-policy";
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
+export async function POST(req: NextRequest) {
+  try {
+    return await handleAdjustment(req);
+  } catch (err) {
+    console.error("[/api/adjustment2] failed:", err);
+    const message =
+      err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+async function handleAdjustment(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json(
+      { error: "로그인이 필요합니다." },
+      { status: 401 },
+    );
+  }
+
+  const form = await req.formData();
+  const manufacturer = form.get("manufacturer")
+    ? String(form.get("manufacturer"))
+    : "";
+  const model = form.get("model") ? String(form.get("model")) : "";
+  const memo = form.get("memo") ? String(form.get("memo")) : "";
+
+  // 사진은 브라우저에서 Vercel Blob으로 직접 업로드되고, 이 라우트에는
+  // 그 결과 URL 목록만 텍스트로 전달됨(우리 서버 요청 바디 제한과 무관).
+  const imageUrlsRaw = form.get("imageUrls")
+    ? String(form.get("imageUrls"))
+    : "[]";
+  let imageUrls: string[];
+  try {
+    imageUrls = JSON.parse(imageUrlsRaw);
+  } catch {
+    imageUrls = [];
+  }
+  if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
+    return NextResponse.json(
+      { error: "수리작업 사진을 1장 이상 첨부해주세요." },
+      { status: 400 },
+    );
+  }
+
+  const estimateFile = form.get("estimate");
+  if (!(estimateFile instanceof File) || estimateFile.size === 0) {
+    return NextResponse.json(
+      { error: "청구 견적서(PDF)를 첨부해주세요." },
+      { status: 400 },
+    );
+  }
+  if (!isPdfFile(estimateFile)) {
+    return NextResponse.json(
+      { error: "청구 견적서는 PDF 파일만 첨부 가능합니다." },
+      { status: 400 },
+    );
+  }
+
+  const rawEstimateText = await extractEstimateText(estimateFile);
+  // 좌표 기반으로 읽은 항목표를 같이 넘김 — 화면의 견적서 표와 line_no가 1:1로 맞게.
+  // 표를 못 읽는 양식(스캔본·이미지 PDF)은 사용 금지 — 판정을 행에 붙일 수 없고 금액 정책도 못 봄.
+  let estimateTableText: string | null = null;
+  let estimateAmount: number | null = null;
+  try {
+    const rows = await parseEstimateTable(
+      Buffer.from(await estimateFile.arrayBuffer()),
+    );
+    if (rows.length) {
+      const tree = buildEstimateTree(rows);
+      estimateTableText = formatEstimateTableForPrompt(tree);
+      estimateAmount = estimateAmountOf(tree);
+    }
+  } catch (err) {
+    console.warn("[/api/adjustment2] estimate table parse failed:", err);
+  }
+  if (!estimateTableText) {
+    return NextResponse.json(
+      {
+        error:
+          "견적서 항목 표를 읽을 수 없습니다. 스캔본·이미지 PDF는 사용할 수 없으니 AOS에서 내려받은 텍스트 PDF 견적서를 첨부해주세요.",
+      },
+      { status: 400 },
+    );
+  }
+  const plateNo =
+    normalizePlate(form.get("plateNo") ? String(form.get("plateNo")) : null) ??
+    extractPlateNo(rawEstimateText);
+  const claimNo = extractClaimNo(rawEstimateText);
+
+  // 개인정보(고객명·연락처·주소 등)를 지운 뒤에만 AI 프롬프트에 사용하고,
+  // 이 텍스트 자체도 저장하지 않음(사진과 동일한 정책).
+  const estimateText = redactPersonalInfo(rawEstimateText);
+
+  const matchedSections = matchReferenceSections(estimateText);
+
+  const contextLines = [
+    manufacturer || model ? `차량정보: ${manufacturer} ${model}`.trim() : null,
+    memo ? `[담당자 추가 의견]\n${memo}` : null,
+    estimateTableText
+      ? `[청구 견적서 항목표 — line_no는 이 표의 NO를 그대로 쓰십시오]\n${estimateTableText}`
+      : null,
+    `[청구 견적서 원문 텍스트${estimateTableText ? " — 차량정보·합계 참고용, 항목은 위 항목표 기준" : ""}]\n${estimateText}`,
+    ...matchedSections.map((s) => `[참고자료: ${s.name}]\n${s.content}`),
+    `첨부된 사진은 총 ${imageUrls.length}장이며 첨부 순서대로 1번부터 번호가 매겨져 있습니다. 수리 전 파손 상태 사진과 수리 작업 진행/완료 사진이 섞여 있으니, 먼저 어느 사진이 수리 전 파손 상태인지 구분한 뒤 판단하십시오.`,
+  ].filter(Boolean);
+
+  // 실행 기록(사용량 통계·이력용). 시작 시 queued, 완료 시 /api/ai-job이 토큰·비용을 확정.
+  const aiModel = await resolveModel();
+  const runInput = {
+    user,
+    tool: "adjustment2" as const,
+    promptVersion:
+      taggedPromptVersion(ADJUSTMENT2_PROMPT_VERSION_TAG, aiModel.detail) +
+      strictnessTag(aiModel.strictness),
+    model: aiModel.id,
+    photoCount: imageUrls.length,
+    estimateAmount,
+    plateNo,
+    claimNo,
+  };
+  // 사용 정책(도구 on/off·사진 수·계정 한도·예산·견적 금액·같은 차량 재실행). 걸리면 여기서 끝
+  const denied = await enforcePolicy({
+    ...runInput,
+    role: user.role,
+    confirmDuplicate: form.get("confirmDuplicate") === "1",
+  });
+  if (denied) return denied;
+
+  const run = await createRun(runInput);
+
+  // 백그라운드 작업으로 시작만 하고 작업 ID 반환. 사진(Blob)은 작업이 끝날 때 /api/ai-job 에서 지움.
+  let started;
+  try {
+    started = await startStructuredJob({
+      system: buildSystemPrompt(
+        ADJUSTMENT2_SYSTEM_PROMPT,
+        ADJUSTMENT2_RESPONSE_SCHEMA,
+        aiModel.detail,
+        [strictnessBlock(aiModel.strictness)],
+      ),
+      userText: contextLines.join("\n\n"),
+      imageUrls,
+      schemaName: "adjustment_result",
+      schema: ADJUSTMENT2_RESPONSE_SCHEMA as unknown as Record<string, unknown>,
+      effort: "medium",
+      model: aiModel,
+    });
+  } catch (err) {
+    await failRun(run.id, err instanceof Error ? err.message : String(err));
+    throw err;
+  }
+  if ("jobId" in started) await attachJob(run.id, started.jobId);
+  else await completeRun(run.id, started.usage, started.result);
+
+  const { ip, userAgent } = getRequestMeta(req);
+  void logAudit({
+    action: AuditAction.ADJUSTMENT_CHECKED,
+    actorUserId: user.id,
+    actorEmployeeId: user.employeeId,
+    detail: `[v2] ${`${manufacturer} ${model}`.trim() || "차량정보 미입력"}`,
+    ip,
+    userAgent,
+  });
+
+  after(async () => {
+    await sweepStaleBlobs("/api/adjustment2");
+  });
+
+  return NextResponse.json(
+    "jobId" in started ? started : { result: started.result },
+  );
+}

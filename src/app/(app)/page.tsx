@@ -35,6 +35,12 @@ const APPS: AppTile[] = [
     gradient: "from-emerald-500 to-emerald-700",
   },
   {
+    href: "/adjustment2/new",
+    label: "손해사정 v2(실험)",
+    icon: "🧪",
+    gradient: "from-fuchsia-500 to-purple-700",
+  },
+  {
     href: "/sketch",
     label: "약도그림판",
     icon: "🗺️",

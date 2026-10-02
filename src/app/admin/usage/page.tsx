@@ -7,7 +7,14 @@ import type { UsageRow } from "@/lib/admin-stats";
 
 export const dynamic = "force-dynamic";
 
-const TOOLS: (AiTool | "")[] = ["", "assess", "adjustment", "procedure", "minor"];
+const TOOLS: (AiTool | "")[] = [
+  "",
+  "assess",
+  "adjustment",
+  "adjustment2",
+  "procedure",
+  "minor",
+];
 const VERDICT_ORDER = [
   "인정",
   "협의필요",

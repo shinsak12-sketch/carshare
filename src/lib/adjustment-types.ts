@@ -41,6 +41,9 @@ export interface AdjustmentItem {
   adjustment_note: string;
   // adj4.1부터 출력하지 않음(금액 비교가 정확하지 않아 제거). 예전 결과 표시용으로만 남김.
   cost_comparison?: CostComparison | null;
+  // v2(adj5.0)만: 근거 관찰 ID·확신도
+  evidence_ids?: number[];
+  confidence?: "높음" | "중간" | "낮음";
 }
 
 export interface CostComparison {

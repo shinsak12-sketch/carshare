@@ -12,13 +12,19 @@ import { defaultRateFor } from "./model-catalog";
 // AI 실행 기록(AiRun). 각 도구 API가 시작 시 queued로 만들고, /api/ai-job이 완료를
 // 확인할 때 usage를 넣어 확정한다. 결과 본문은 저장하지 않고 판정 집계 숫자만.
 
-export type AiTool = "assess" | "adjustment" | "procedure" | "minor";
+export type AiTool =
+  | "assess"
+  | "adjustment"
+  | "adjustment2"
+  | "procedure"
+  | "minor";
 
 export const TOOL_LABEL: Record<AiTool, string> = {
   assess: "선견적진단",
   adjustment: "AI손해사정",
   procedure: "정비공정",
   minor: "경미손상판독",
+  adjustment2: "AI손해사정 v2(실험)",
 };
 
 export const ZERO_USAGE: TokenUsage = {

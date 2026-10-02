@@ -156,7 +156,32 @@ function toView(item: AdjustmentItem): DiagItemView {
       ? (item.damage_type ?? undefined)
       : undefined,
     costComparison: item.cost_comparison ?? null,
-    extras: [],
+    extras: [
+      ...(item.confidence
+        ? [
+            {
+              tone: (item.confidence === "낮음"
+                ? "warn"
+                : item.confidence === "높음"
+                  ? "ok"
+                  : "info") as "ok" | "warn" | "info",
+              label: "확신",
+              text: item.confidence,
+            },
+          ]
+        : []),
+      ...(item.evidence_ids
+        ? [
+            {
+              tone: "info" as const,
+              label: "관찰",
+              text: item.evidence_ids.length
+                ? item.evidence_ids.map((n) => `#${n}`).join(", ")
+                : "관찰 없음(추론·구조 판단)",
+            },
+          ]
+        : []),
+    ],
   };
 }
 

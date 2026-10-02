@@ -157,6 +157,13 @@ export function PolicyForm({ initial }: { initial: UsagePolicy }) {
               setP({ ...p, toolEnabled: { ...p.toolEnabled, minor: v } })
             }
           />
+          <Toggle
+            label="AI손해사정 v2(실험)"
+            on={p.toolEnabled.adjustment2 ?? true}
+            onChange={(v) =>
+              setP({ ...p, toolEnabled: { ...p.toolEnabled, adjustment2: v } })
+            }
+          />
         </div>
       </Section>
 

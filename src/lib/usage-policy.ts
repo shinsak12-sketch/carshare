@@ -73,11 +73,15 @@ export async function checkPolicy(input: PolicyInput): Promise<PolicyResult> {
 
   // 견적 금액 — 견적서가 있을 때만(estimateAmount null이면 선견적 사진 단독)
   if (
-    (input.tool === "assess" || input.tool === "adjustment") &&
+    (input.tool === "assess" ||
+      input.tool === "adjustment" ||
+      input.tool === "adjustment2") &&
     input.estimateAmount != null
   ) {
-    const min = p.minEstimate[input.tool];
-    const max = p.maxEstimate[input.tool];
+    // v2(실험)는 손해사정 금액 기준을 그대로 씀
+    const key = input.tool === "assess" ? "assess" : "adjustment";
+    const min = p.minEstimate[key];
+    const max = p.maxEstimate[key];
     if (min != null && input.estimateAmount < min)
       return block(
         "estimate_below_min",

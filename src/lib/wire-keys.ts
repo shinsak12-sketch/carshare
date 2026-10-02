@@ -71,6 +71,14 @@ export const WIRE_KEYS: Record<string, string> = {
   additional_photos: "more_photos",
   report_text: "report",
   location: "loc",
+  // 손해사정 v2
+  photo_index: "pidx",
+  photo_no: "pno",
+  damage_kind: "dkind",
+  severity: "sev",
+  evidence_ids: "eids",
+  confidence: "cfd",
+  self_check: "selfchk",
 };
 
 const INVERSE: Record<string, string> = {};

@@ -9,6 +9,7 @@ export const UsagePolicySchema = z.object({
     adjustment: z.boolean(),
     procedure: z.boolean(),
     minor: z.boolean().default(true),
+    adjustment2: z.boolean().default(true),
   }),
   // 견적 금액(사정전 공임+부품 합계, 원). 선견적은 견적서 첨부 시에만 검사
   minEstimate: z.object({
@@ -39,7 +40,13 @@ export const UsagePolicySchema = z.object({
 export type UsagePolicy = z.infer<typeof UsagePolicySchema>;
 
 export const DEFAULT_POLICY: UsagePolicy = {
-  toolEnabled: { assess: true, adjustment: true, procedure: true, minor: true },
+  toolEnabled: {
+    assess: true,
+    adjustment: true,
+    procedure: true,
+    minor: true,
+    adjustment2: true,
+  },
   minEstimate: { assess: null, adjustment: null },
   maxEstimate: { assess: null, adjustment: null },
   maxPhotos: 150,
