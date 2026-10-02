@@ -1,6 +1,6 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
-import { ackJob, getJobStatus } from "@/lib/ai-job";
+import { ackJob, getJobStatus, publicErrorMessage } from "@/lib/ai-job";
 import { deleteBlobs, sweepStaleBlobs } from "@/lib/blob-cleanup";
 import { completeRunByJob, failRunByJob, getRunByJob } from "@/lib/ai-usage";
 
@@ -75,8 +75,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ status: "failed", error: status.error });
     return NextResponse.json(status);
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[/api/ai-job] failed:", err);
+    return NextResponse.json(
+      { error: publicErrorMessage(err) },
+      { status: 500 },
+    );
   }
 }

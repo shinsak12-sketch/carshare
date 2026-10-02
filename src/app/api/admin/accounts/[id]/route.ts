@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, validatePassword } from "@/lib/password";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 
 type AccountAction =
@@ -10,6 +10,7 @@ type AccountAction =
   | "disable"
   | "enable"
   | "reset_password"
+  | "reset_totp"
   | "set_role";
 
 export async function PATCH(
@@ -106,22 +107,42 @@ export async function PATCH(
       return NextResponse.json({ ok: true, user: sanitize(updated) });
     }
     case "reset_password": {
-      const newPassword = body.newPassword?.trim();
-      if (!newPassword || newPassword.length < 8) {
-        return NextResponse.json(
-          { error: "새 비밀번호는 8자 이상이어야 합니다." },
-          { status: 400 },
-        );
-      }
+      const newPassword = body.newPassword?.trim() ?? "";
+      const pwError = validatePassword(newPassword, target.employeeId);
+      if (pwError)
+        return NextResponse.json({ error: pwError }, { status: 400 });
       const passwordHash = await hashPassword(newPassword);
-      await prisma.user.update({ where: { id }, data: { passwordHash } });
+      // 임시 비밀번호이므로 본인이 다음 로그인 때 반드시 바꾸게 함
+      await prisma.user.update({
+        where: { id },
+        data: { passwordHash, mustChangePassword: true },
+      });
       await prisma.session.deleteMany({ where: { userId: id } });
       void logAudit({
         ...auditBase,
         action: AuditAction.ACCOUNT_PASSWORD_RESET,
-        detail: `${target.employeeId}(${target.name}) 비밀번호 관리자 초기화`,
+        detail: `${target.employeeId}(${target.name}) 비밀번호 관리자 초기화(다음 로그인 시 변경 강제)`,
       });
       return NextResponse.json({ ok: true });
+    }
+    case "reset_totp": {
+      // 인증 앱을 잃어버린 경우 관리자가 해제. 본인이 다시 설정해야 함
+      const updated = await prisma.user.update({
+        where: { id },
+        data: {
+          totpSecret: null,
+          totpPendingSecret: null,
+          totpEnabledAt: null,
+          totpRecoveryHashes: [],
+        },
+      });
+      await prisma.session.deleteMany({ where: { userId: id } });
+      void logAudit({
+        ...auditBase,
+        action: AuditAction.TOTP_RESET_BY_ADMIN,
+        detail: `${target.employeeId}(${target.name}) 2단계 인증 관리자 해제`,
+      });
+      return NextResponse.json({ ok: true, user: sanitize(updated) });
     }
     case "set_role": {
       if (body.role !== "EMPLOYEE" && body.role !== "ADMIN") {
@@ -156,6 +177,8 @@ function sanitize(user: {
   role: string;
   status: string;
   createdAt: Date;
+  totpEnabledAt?: Date | null;
+  mustChangePassword?: boolean;
 }) {
   return {
     id: user.id,
@@ -164,5 +187,7 @@ function sanitize(user: {
     role: user.role,
     status: user.status,
     createdAt: user.createdAt,
+    totpEnabled: !!user.totpEnabledAt,
+    mustChangePassword: !!user.mustChangePassword,
   };
 }

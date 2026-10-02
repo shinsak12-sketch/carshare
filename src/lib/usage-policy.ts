@@ -1,6 +1,7 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { prisma } from "./prisma";
+import { AuditAction } from "./audit-log";
 import {
   recordBlockedRun,
   TOOL_LABEL,
@@ -196,6 +197,15 @@ export async function checkPolicy(input: PolicyInput): Promise<PolicyResult> {
 export async function enforcePolicy(
   input: PolicyInput,
 ): Promise<NextResponse | null> {
+  if (input.user.mustChangePassword)
+    return NextResponse.json(
+      {
+        error:
+          "비밀번호를 먼저 변경해야 합니다. 화면을 새로고침하면 변경 페이지로 이동합니다.",
+        code: "password_change_required",
+      },
+      { status: 403 },
+    );
   const r = await checkPolicy(input);
   if (r.ok) return null;
   if (r.kind === "confirm")
@@ -212,6 +222,18 @@ export async function enforcePolicy(
   );
 }
 
+// 비정상 사용 경고 기준(관리자 개요)
+const ALERT = {
+  hourlyRuns: 10, // 한 계정 1시간 실행 수
+  nightStart: 0, // 심야 구간(KST)
+  nightEnd: 6,
+  ipLoginFails: 10, // 한 IP 24시간 로그인 실패
+  distinctLoginIps: 3, // 한 계정 24시간 로그인 IP 수
+};
+function kstHour(d: Date): number {
+  return (d.getUTCHours() + 9) % 24;
+}
+
 // 관리자 개요의 이상 징후
 export async function getAnomalies() {
   const p = await getPolicy();
@@ -219,7 +241,21 @@ export async function getAnomalies() {
   const month = monthStart(now);
   const weekAgo = new Date(now.getTime() - 7 * 86400_000);
   const twoWeeksAgo = new Date(now.getTime() - 14 * 86400_000);
-  const [budgetAgg, thisWeek, lastWeek, dups, recentFails] = await Promise.all([
+  const hourAgo = new Date(now.getTime() - 3600_000);
+  const dayAgo = new Date(now.getTime() - 86400_000);
+  const [
+    budgetAgg,
+    thisWeek,
+    lastWeek,
+    dups,
+    recentFails,
+    hourBurst,
+    weekRuns,
+    ipFails,
+    loginIps,
+    blocked24h,
+    totpFail24h,
+  ] = await Promise.all([
     prisma.aiRun.aggregate({
       where: { createdAt: { gte: month }, status: "succeeded" },
       _sum: { costKrw: true },
@@ -256,8 +292,108 @@ export async function getAnomalies() {
       take: 5,
       select: { status: true },
     }),
+    // 1시간 내 같은 계정 폭주
+    prisma.aiRun.groupBy({
+      by: ["userId", "employeeId"],
+      where: {
+        createdAt: { gte: hourAgo },
+        status: { in: ["succeeded", "queued"] },
+      },
+      _count: { _all: true },
+    }),
+    // 심야 실행 판정용(최근 7일, 시각만)
+    prisma.aiRun.findMany({
+      where: {
+        createdAt: { gte: weekAgo },
+        status: { in: ["succeeded", "queued"] },
+      },
+      select: { createdAt: true, userId: true, employeeId: true },
+    }),
+    // 한 IP에서 로그인 실패 반복(24시간)
+    prisma.auditLog.groupBy({
+      by: ["ip"],
+      where: {
+        action: AuditAction.LOGIN_FAIL,
+        createdAt: { gte: dayAgo },
+        ip: { not: null },
+      },
+      _count: { _all: true },
+    }),
+    // 같은 계정이 여러 IP에서 로그인(24시간)
+    prisma.auditLog.groupBy({
+      by: ["actorEmployeeId", "ip"],
+      where: {
+        action: AuditAction.LOGIN_SUCCESS,
+        createdAt: { gte: dayAgo },
+        ip: { not: null },
+      },
+      _count: { _all: true },
+    }),
+    prisma.auditLog.count({
+      where: { action: AuditAction.LOGIN_BLOCKED, createdAt: { gte: dayAgo } },
+    }),
+    prisma.auditLog.count({
+      where: { action: AuditAction.TOTP_FAIL, createdAt: { gte: dayAgo } },
+    }),
   ]);
   const items: { tone: "warn" | "error"; text: string; href: string }[] = [];
+
+  // --- 비정상 사용 ---
+  for (const r of hourBurst)
+    if (r._count._all >= ALERT.hourlyRuns)
+      items.push({
+        tone: "error",
+        text: `${r.employeeId} 계정 최근 1시간 ${r._count._all}건 실행 — 자동화·계정 도용 여부 확인`,
+        href: `/admin/runs?range=today&user=${r.userId ?? ""}`,
+      });
+  const night = new Map<string, { n: number; userId: string | null }>();
+  for (const r of weekRuns) {
+    const h = kstHour(r.createdAt);
+    if (h >= ALERT.nightStart && h < ALERT.nightEnd) {
+      const cur = night.get(r.employeeId) ?? { n: 0, userId: r.userId };
+      cur.n += 1;
+      night.set(r.employeeId, cur);
+    }
+  }
+  for (const [emp, v] of night)
+    items.push({
+      tone: "warn",
+      text: `${emp} 계정 심야(${ALERT.nightStart}~${ALERT.nightEnd}시) 실행 ${v.n}건(최근 7일)`,
+      href: `/admin/runs?range=7d&user=${v.userId ?? ""}`,
+    });
+  for (const r of ipFails)
+    if (r._count._all >= ALERT.ipLoginFails)
+      items.push({
+        tone: "error",
+        text: `IP ${r.ip}에서 로그인 실패 ${r._count._all}회(24시간) — 무차별 대입 의심`,
+        href: "/admin/logs",
+      });
+  const ipsByAcct = new Map<string, Set<string>>();
+  for (const r of loginIps) {
+    if (!r.actorEmployeeId || !r.ip) continue;
+    if (!ipsByAcct.has(r.actorEmployeeId))
+      ipsByAcct.set(r.actorEmployeeId, new Set());
+    ipsByAcct.get(r.actorEmployeeId)!.add(r.ip);
+  }
+  for (const [emp, ips] of ipsByAcct)
+    if (ips.size >= ALERT.distinctLoginIps)
+      items.push({
+        tone: "warn",
+        text: `${emp} 계정이 24시간 내 ${ips.size}개 IP에서 로그인 — 계정 공유·도용 여부 확인`,
+        href: "/admin/logs",
+      });
+  if (blocked24h > 0)
+    items.push({
+      tone: "warn",
+      text: `로그인 임시 차단 ${blocked24h}회(24시간)`,
+      href: "/admin/logs",
+    });
+  if (totpFail24h >= 3)
+    items.push({
+      tone: "warn",
+      text: `2단계 인증 코드 오류 ${totpFail24h}회(24시간)`,
+      href: "/admin/logs",
+    });
   const spent = budgetAgg._sum.costKrw ?? 0;
   if (p.monthlyBudgetKrw != null) {
     const pct = Math.round((spent / p.monthlyBudgetKrw) * 100);

@@ -25,6 +25,8 @@ export default async function AccountsPage() {
           role: u.role,
           status: u.status,
           createdAt: u.createdAt.toISOString(),
+          totpEnabled: !!u.totpEnabledAt,
+          mustChangePassword: u.mustChangePassword,
         }))}
       />
     </div>

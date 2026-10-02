@@ -4,7 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function TopNav({ name, role }: { name: string; role: "EMPLOYEE" | "ADMIN" }) {
+export function TopNav({
+  name,
+  role,
+}: {
+  name: string;
+  role: "EMPLOYEE" | "ADMIN";
+}) {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -25,10 +31,18 @@ export function TopNav({ name, role }: { name: string; role: "EMPLOYEE" | "ADMIN
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 text-sm shadow-[0_1px_0_rgba(255,255,255,0.3)_inset,0_2px_6px_-2px_rgba(37,99,235,0.5)]">
             🚗
           </span>
-          <span className="truncate whitespace-nowrap text-sm font-bold text-slate-900">차량 손상 AI 진단</span>
+          <span className="truncate whitespace-nowrap text-sm font-bold text-slate-900">
+            차량 손상 AI 진단
+          </span>
         </Link>
         <div className="flex shrink-0 items-center gap-1.5 text-xs sm:gap-3 sm:text-sm">
-          <span className="whitespace-nowrap text-slate-500">{name}님</span>
+          <Link
+            href="/account/security"
+            title="비밀번호 변경 · 2단계 인증"
+            className="whitespace-nowrap rounded-full px-2 py-1.5 text-slate-500 transition-all duration-150 hover:bg-slate-100 hover:text-slate-800 active:scale-95 sm:px-3"
+          >
+            {name}님
+          </Link>
           {role === "ADMIN" && (
             <Link
               href="/admin"

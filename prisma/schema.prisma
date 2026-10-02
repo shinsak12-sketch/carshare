@@ -30,6 +30,15 @@ model User {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
+  // 보안: 관리자 초기화·초기 비밀번호면 다음 로그인 때 변경 강제
+  mustChangePassword Boolean   @default(false)
+  passwordChangedAt  DateTime?
+  // 2단계 인증(TOTP). pendingSecret은 설정 중(코드 확인 전) 임시값
+  totpSecret         String?
+  totpPendingSecret  String?
+  totpEnabledAt      DateTime?
+  totpRecoveryHashes String[]  @default([])
+
   sessions  Session[]
   auditLogs AuditLog[]
   aiRuns    AiRun[]
@@ -38,11 +47,13 @@ model User {
 }
 
 model Session {
-  id        String   @id
-  createdAt DateTime @default(now())
-  expiresAt DateTime
-  ip        String?
-  userAgent String?
+  id          String   @id
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime
+  ip          String?
+  userAgent   String?
+  // 비밀번호는 맞았지만 2단계 인증 코드를 아직 안 넣은 상태(5분). 로그인으로 치지 않음
+  pendingTotp Boolean  @default(false)
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -69,6 +80,7 @@ model AuditLog {
   @@index([createdAt])
   @@index([action])
   @@index([actorEmployeeId])
+  @@index([ip, createdAt])
 }
 
 // AI 실행 1건 = 1행. 사용량 통계·실행 이력·사용 제한의 기준.

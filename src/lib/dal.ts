@@ -7,6 +7,8 @@ import { getCurrentUser } from "./session";
 export async function requireUser() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  // 관리자 초기화·초기 비밀번호 상태면 어디로 가든 먼저 바꾸게 함
+  if (user.mustChangePassword) redirect("/change-password");
   return user;
 }
 

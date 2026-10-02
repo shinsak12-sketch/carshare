@@ -2,11 +2,19 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm shadow-[inset_0_1px_2px_rgba(15,23,42,0.06)] transition-all duration-150 outline-none focus:border-blue-500 focus:shadow-[inset_0_1px_3px_rgba(37,99,235,0.12)] focus:ring-2 focus:ring-blue-500/20";
 
-export function RequestAccessForm() {
+export function ChangePasswordForm({
+  forced,
+  ruleText,
+}: {
+  forced: boolean;
+  ruleText: string;
+}) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -15,16 +23,24 @@ export function RequestAccessForm() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
-    const formData = new FormData(e.currentTarget);
+    const fd = new FormData(e.currentTarget);
     try {
-      const res = await fetch("/api/auth/request-access", {
+      const res = await fetch("/api/auth/change-password", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: fd.get("currentPassword"),
+          newPassword: fd.get("newPassword"),
+          confirm: fd.get("confirm"),
+        }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error ?? "신청에 실패했습니다.");
+      if (!res.ok) throw new Error(data.error ?? "변경에 실패했습니다.");
       setDone(true);
+      setTimeout(() => {
+        router.push("/");
+        router.refresh();
+      }, 900);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.",
@@ -34,58 +50,47 @@ export function RequestAccessForm() {
     }
   }
 
-  if (done) {
+  if (done)
     return (
-      <div className="flex flex-col gap-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-6 text-center">
-        <p className="text-sm font-semibold text-emerald-900">
-          신청이 접수되었습니다.
-        </p>
-        <p className="text-sm text-emerald-800">
-          관리자 승인 후 신청하신 사번과 비밀번호로 로그인할 수 있습니다.
-        </p>
-        <Link
-          href="/login"
-          className="mx-auto rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:-translate-y-0.5 hover:bg-emerald-700 active:translate-y-0 active:scale-95"
-        >
-          로그인 화면으로
-        </Link>
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-6 text-center text-sm font-semibold text-emerald-900">
+        변경됐습니다. 다른 기기의 로그인은 모두 해제됐습니다. 홈으로 이동합니다…
       </div>
     );
-  }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div>
         <label className="mb-1 block text-sm font-medium text-slate-700">
-          사번
-        </label>
-        <input name="employeeId" required className={inputClass} />
-      </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">
-          이름
-        </label>
-        <input name="name" required className={inputClass} />
-      </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700">
-          비밀번호 (10자 이상, 영문+숫자)
+          현재 비밀번호{forced ? " (임시 비밀번호)" : ""}
         </label>
         <input
-          name="password"
+          name="currentPassword"
+          type="password"
+          required
+          autoComplete="current-password"
+          className={inputClass}
+        />
+      </div>
+      <div>
+        <label className="mb-1 block text-sm font-medium text-slate-700">
+          새 비밀번호
+        </label>
+        <input
+          name="newPassword"
           type="password"
           required
           minLength={10}
           autoComplete="new-password"
           className={inputClass}
         />
+        <p className="mt-1 text-[11px] text-slate-400">{ruleText}</p>
       </div>
       <div>
         <label className="mb-1 block text-sm font-medium text-slate-700">
-          비밀번호 확인
+          새 비밀번호 확인
         </label>
         <input
-          name="passwordConfirm"
+          name="confirm"
           type="password"
           required
           minLength={10}
@@ -98,14 +103,21 @@ export function RequestAccessForm() {
           {error}
         </div>
       )}
-
       <button
         type="submit"
         disabled={loading}
-        className="mt-1 rounded-full bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-[0_1px_0_rgba(255,255,255,0.25)_inset,0_6px_16px_-4px_rgba(37,99,235,0.5)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-[0_1px_0_rgba(255,255,255,0.25)_inset,0_10px_22px_-6px_rgba(37,99,235,0.55)] active:translate-y-0 active:scale-95 active:shadow-[0_2px_6px_rgba(37,99,235,0.4)_inset] disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-1 rounded-full bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-[0_1px_0_rgba(255,255,255,0.25)_inset,0_6px_16px_-4px_rgba(37,99,235,0.5)] transition-all duration-150 hover:-translate-y-0.5 hover:bg-blue-700 active:translate-y-0 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {loading ? "신청 중…" : "권한 신청"}
+        {loading ? "변경 중…" : "비밀번호 변경"}
       </button>
+      {!forced && (
+        <Link
+          href="/account/security"
+          className="text-center text-xs text-slate-500 hover:underline"
+        >
+          돌아가기
+        </Link>
+      )}
     </form>
   );
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, validatePassword } from "@/lib/password";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 
 export async function POST(req: NextRequest) {
@@ -17,12 +17,8 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  if (password.length < 8) {
-    return NextResponse.json(
-      { error: "비밀번호는 8자 이상이어야 합니다." },
-      { status: 400 },
-    );
-  }
+  const pwError = validatePassword(password, employeeId);
+  if (pwError) return NextResponse.json({ error: pwError }, { status: 400 });
   if (password !== passwordConfirm) {
     return NextResponse.json(
       { error: "비밀번호가 서로 일치하지 않습니다." },

@@ -52,7 +52,18 @@ export function usageOf(u: unknown): TokenUsage {
   };
 }
 
-function describe(err: unknown): string {
+// 사용자에게 보여도 되는 메시지(message)와 관리자 실행이력·서버 로그용 원문(detail)을 분리.
+// OpenAI 원문 오류에는 내부 설정·파라미터가 섞일 수 있어 화면엔 일반 문구만 낸다.
+export class AiJobError extends Error {
+  detail: string;
+  constructor(message: string, detail: string) {
+    super(message);
+    this.name = "AiJobError";
+    this.detail = detail;
+  }
+}
+
+function describe(err: unknown): AiJobError {
   const e = err as {
     status?: number;
     requestID?: string;
@@ -61,15 +72,31 @@ function describe(err: unknown): string {
   };
   const status = typeof e?.status === "number" ? e.status : undefined;
   const rid = e?.requestID ? ` (요청 ID ${e.requestID})` : "";
-  const msg = e?.error?.message ?? e?.message ?? String(err);
-  if (status === 429 && /insufficient_quota|billing|credit/i.test(msg))
-    return `OpenAI 크레딧이 부족합니다. 결제/충전 후 다시 시도해주세요.${rid}`;
-  if (status === 429)
-    return `AI 서버 사용량 제한(429)입니다. 잠시 후 다시 시도해주세요.${rid}`;
-  if (status && status >= 500)
-    return `AI 서버(OpenAI) 일시 오류(${status})입니다. 잠시 후 다시 시도해주세요.${rid}`;
-  if (status === 400) return `AI 요청이 거부됐습니다(400): ${msg}${rid}`;
-  return `${msg}${rid}`;
+  const raw = e?.error?.message ?? e?.message ?? String(err);
+  const detail = `${status ? `HTTP ${status} ` : ""}${raw}${rid}`;
+  let pub: string;
+  if (status === 429 && /insufficient_quota|billing|credit/i.test(raw))
+    pub = `OpenAI 크레딧이 부족합니다. 관리자에게 알려주세요.${rid}`;
+  else if (status === 429)
+    pub = `AI 서버 사용량 제한입니다. 잠시 후 다시 시도해주세요.${rid}`;
+  else if (status && status >= 500)
+    pub = `AI 서버 일시 오류입니다. 잠시 후 다시 시도해주세요.${rid}`;
+  else if (status === 400)
+    pub = `AI 요청이 거부됐습니다. 사진 수·용량을 줄여 다시 시도해주세요.${rid}`;
+  else if (status === 401 || status === 403)
+    pub = `AI 서버 인증 오류입니다. 관리자에게 알려주세요.${rid}`;
+  else pub = `AI 호출 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.${rid}`;
+  return new AiJobError(pub, detail);
+}
+
+// API 라우트 공용: 화면에 낼 문구 / 실행이력에 남길 원문
+export function publicErrorMessage(err: unknown): string {
+  if (err instanceof AiJobError) return err.message;
+  return "처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+}
+export function errorDetail(err: unknown): string {
+  if (err instanceof AiJobError) return `${err.message} | ${err.detail}`;
+  return err instanceof Error ? `${err.name}: ${err.message}` : String(err);
 }
 
 export async function startStructuredJob(
@@ -151,7 +178,7 @@ export async function startStructuredJob(
     return { jobId: resp.id };
   } catch (err) {
     console.error("[ai-job] start failed:", err);
-    throw new Error(describe(err));
+    throw describe(err);
   }
 }
 
@@ -195,7 +222,7 @@ export async function getJobStatus(jobId: string): Promise<JobStatus> {
         usage: { ...ZERO },
         notFound: true,
       };
-    throw new Error(describe(err));
+    throw describe(err);
   }
   if (resp.status === "queued" || resp.status === "in_progress")
     return { status: resp.status };

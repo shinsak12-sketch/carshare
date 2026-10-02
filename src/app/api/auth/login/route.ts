@@ -4,7 +4,8 @@ import { verifyPassword } from "@/lib/password";
 import { createSession } from "@/lib/session";
 import { AuditAction, getRequestMeta, logAudit } from "@/lib/audit-log";
 
-const MAX_FAILS = 5;
+const MAX_FAILS = 5; // 계정 기준
+const MAX_FAILS_PER_IP = 20; // IP 기준(사번 바꿔가며 시도하는 경우)
 const FAIL_WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(req: NextRequest) {
@@ -21,16 +22,42 @@ export async function POST(req: NextRequest) {
   }
 
   // 차단 여부 조회와 계정 조회는 서로 의존하지 않으므로 병렬로 보내 왕복 횟수를 줄임
-  const [recentFails, user] = await Promise.all([
+  const since = new Date(Date.now() - FAIL_WINDOW_MS);
+  const [recentFails, ipFails, user] = await Promise.all([
     prisma.auditLog.count({
       where: {
         action: AuditAction.LOGIN_FAIL,
         actorEmployeeId: employeeId,
-        createdAt: { gte: new Date(Date.now() - FAIL_WINDOW_MS) },
+        createdAt: { gte: since },
       },
     }),
+    ip
+      ? prisma.auditLog.count({
+          where: {
+            action: AuditAction.LOGIN_FAIL,
+            ip,
+            createdAt: { gte: since },
+          },
+        })
+      : Promise.resolve(0),
     prisma.user.findUnique({ where: { employeeId } }),
   ]);
+  if (ipFails >= MAX_FAILS_PER_IP) {
+    void logAudit({
+      action: AuditAction.LOGIN_BLOCKED,
+      actorEmployeeId: employeeId,
+      detail: `IP ${ip} 최근 ${FAIL_WINDOW_MS / 60000}분 내 실패 ${ipFails}회로 임시 차단`,
+      ip,
+      userAgent,
+    });
+    return NextResponse.json(
+      {
+        error:
+          "이 네트워크에서 로그인 시도가 너무 많습니다. 15분 후 다시 시도해주세요.",
+      },
+      { status: 429 },
+    );
+  }
   if (recentFails >= MAX_FAILS) {
     // 로그 적재는 응답을 늦출 이유가 없어 기다리지 않고 흘려보냄(실패해도 로그인 자체엔 무해)
     void logAudit({
@@ -76,6 +103,19 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // 2단계 인증이 켜진 계정: 비밀번호만 통과한 '대기 세션'을 만들고 코드를 받는다
+  if (user.totpSecret) {
+    await createSession(user.id, { ip, userAgent }, { pendingTotp: true });
+    void logAudit({
+      action: AuditAction.TOTP_REQUIRED,
+      actorUserId: user.id,
+      actorEmployeeId: user.employeeId,
+      ip,
+      userAgent,
+    });
+    return NextResponse.json({ ok: true, totpRequired: true });
+  }
+
   await createSession(user.id, { ip, userAgent });
   void logAudit({
     action: AuditAction.LOGIN_SUCCESS,
@@ -85,5 +125,9 @@ export async function POST(req: NextRequest) {
     userAgent,
   });
 
-  return NextResponse.json({ ok: true, role: user.role });
+  return NextResponse.json({
+    ok: true,
+    role: user.role,
+    mustChangePassword: user.mustChangePassword,
+  });
 }

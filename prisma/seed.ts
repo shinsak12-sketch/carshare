@@ -31,6 +31,8 @@ async function main() {
       passwordHash: adminPasswordHash,
       role: "ADMIN",
       status: "ACTIVE",
+      // 초기 비밀번호는 첫 로그인 때 반드시 바꾸게 함
+      mustChangePassword: true,
     },
   });
   console.log(

@@ -48,7 +48,7 @@ export async function getActiveRate(
 }
 
 export interface RunStart {
-  user: { id: string; employeeId: string };
+  user: { id: string; employeeId: string; mustChangePassword?: boolean };
   tool: AiTool;
   promptVersion: string;
   model?: string;

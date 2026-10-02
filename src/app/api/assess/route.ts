@@ -1,5 +1,9 @@
 import { after, NextRequest, NextResponse } from "next/server";
-import { startStructuredJob } from "@/lib/ai-job";
+import {
+  errorDetail,
+  publicErrorMessage,
+  startStructuredJob,
+} from "@/lib/ai-job";
 import { resolveModel } from "@/lib/ai-model";
 import { buildSystemPrompt, taggedPromptVersion } from "@/lib/output-mode";
 import {
@@ -39,9 +43,10 @@ export async function POST(req: NextRequest) {
     return await handleAssess(req);
   } catch (err) {
     console.error("[/api/assess] failed:", err);
-    const message =
-      err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      { error: publicErrorMessage(err) },
+      { status: 500 },
+    );
   }
 }
 
@@ -206,7 +211,7 @@ async function runAssess(
       model: aiModel,
     });
   } catch (err) {
-    await failRun(run.id, err instanceof Error ? err.message : String(err));
+    await failRun(run.id, errorDetail(err));
     throw err;
   }
   if ("jobId" in started) await attachJob(run.id, started.jobId);

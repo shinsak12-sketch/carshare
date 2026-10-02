@@ -14,6 +14,8 @@ interface AccountRow {
   role: Role;
   status: Status;
   createdAt: string;
+  totpEnabled: boolean;
+  mustChangePassword: boolean;
 }
 
 const statusBadge: Record<Status, string> = {
@@ -69,8 +71,8 @@ export function AccountsTable({
   }
 
   async function handleResetPassword(id: string) {
-    if (newPassword.length < 8) {
-      setError("새 비밀번호는 8자 이상이어야 합니다.");
+    if (newPassword.length < 10) {
+      setError("새 비밀번호는 10자 이상, 영문+숫자여야 합니다.");
       return;
     }
     const ok = await callAction(id, { action: "reset_password", newPassword });
@@ -144,6 +146,7 @@ export function AccountsTable({
                 <th className="px-4 py-3 font-semibold">사번 / 이름</th>
                 <th className="px-4 py-3 font-semibold">역할</th>
                 <th className="px-4 py-3 font-semibold">상태</th>
+                <th className="px-4 py-3 font-semibold">2단계</th>
                 <th className="px-4 py-3 font-semibold">가입일</th>
                 <th className="px-4 py-3 font-semibold">작업</th>
               </tr>
@@ -182,6 +185,29 @@ export function AccountsTable({
                       {statusLabel[u.status]}
                     </span>
                   </td>
+                  <td className="px-4 py-3">
+                    {u.totpEnabled ? (
+                      <span className="rounded-full bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white">
+                        켜짐
+                      </span>
+                    ) : (
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${u.role === "ADMIN" ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-500"}`}
+                        title={
+                          u.role === "ADMIN"
+                            ? "관리자는 2단계 인증 필수 — 다음 로그인 때 설정 안내"
+                            : ""
+                        }
+                      >
+                        {u.role === "ADMIN" ? "미설정 ⚠" : "꺼짐"}
+                      </span>
+                    )}
+                    {u.mustChangePassword && (
+                      <div className="mt-1 text-[10px] font-semibold text-amber-700">
+                        임시 비번 · 변경 대기
+                      </div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-xs text-slate-400">
                     {fmtKst(u.createdAt, {
                       year: "numeric",
@@ -212,13 +238,30 @@ export function AccountsTable({
                         </button>
                       )}
 
+                      {u.totpEnabled && (
+                        <button
+                          disabled={busyId === u.id}
+                          onClick={() => {
+                            if (
+                              confirm(
+                                `${u.name}(${u.employeeId})의 2단계 인증을 해제할까요? 본인이 다시 설정해야 하며 기존 로그인은 모두 끊깁니다.`,
+                              )
+                            )
+                              void callAction(u.id, { action: "reset_totp" });
+                          }}
+                          className="rounded-full border border-amber-200 px-2.5 py-1 text-[11px] font-semibold text-amber-700 transition-all duration-150 hover:bg-amber-50 active:scale-95 disabled:opacity-50"
+                          title="인증 앱을 잃어버린 경우"
+                        >
+                          2단계 해제
+                        </button>
+                      )}
                       {resetTargetId === u.id ? (
                         <div className="flex items-center gap-1">
                           <input
                             type="password"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
-                            placeholder="새 비밀번호 (8자 이상)"
+                            placeholder="임시 비밀번호 (10자+, 영문+숫자)"
                             className="w-40 rounded-full border border-slate-300 px-2.5 py-1 text-[11px] outline-none focus:border-blue-500"
                           />
                           <button
@@ -253,7 +296,7 @@ export function AccountsTable({
               {others.length === 0 && (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-4 py-8 text-center text-sm text-slate-400"
                   >
                     등록된 계정이 없습니다.

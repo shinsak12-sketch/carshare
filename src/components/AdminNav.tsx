@@ -37,7 +37,13 @@ export function AdminNav({ name }: { name: string }) {
           관리자 페이지
         </span>
         <div className="flex shrink-0 items-center gap-1.5 text-xs sm:gap-3 sm:text-sm">
-          <span className="whitespace-nowrap text-slate-500">{name}님</span>
+          <Link
+            href="/account/security"
+            title="비밀번호 변경 · 2단계 인증"
+            className="whitespace-nowrap rounded-full px-2 py-1.5 text-slate-500 transition-all duration-150 hover:bg-slate-100 hover:text-slate-800 active:scale-95 sm:px-3"
+          >
+            {name}님
+          </Link>
           <Link
             href="/"
             className="whitespace-nowrap rounded-full px-2 py-1.5 font-semibold text-blue-600 transition-all duration-150 hover:bg-blue-50 active:scale-95 sm:px-3"
