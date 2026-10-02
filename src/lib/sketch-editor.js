@@ -1,7 +1,7 @@
 /* eslint-disable */
 // 약도그림판 편집기. 순수 DOM/SVG로 만든 단일 모듈(의존성 없음).
 // React 페이지가 mountSketchEditor(root)로 붙이고, 반환된 함수로 떼어낸다.
-// 상태는 브라우저 localStorage("carshare-sketch")에만 저장(서버 미저장).
+// 상태는 브라우저 localStorage(사용자별 키)에만 저장(서버 미저장).
 
 const CSS = `.skx{
     --bg:#eef1f5; --panel:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
@@ -124,7 +124,8 @@ const MARKUP = `
     <div class="panel right" id="rightPanel"><div class="props" id="props"></div></div>
   </div>`;
 
-export function mountSketchEditor(root) {
+export function mountSketchEditor(root, storageKey = "carshare-sketch") {
+  const STORAGE_KEY = storageKey;
   root.classList.add("skx");
   root.innerHTML = "<style>" + CSS + "</style>" + MARKUP;
   const winL = [];
@@ -518,12 +519,12 @@ function doUndo(){ if(!undo.length) return; redo.push(JSON.stringify(objs)); obj
 function doRedo(){ if(!redo.length) return; undo.push(JSON.stringify(objs)); objs=JSON.parse(redo.pop()); sel=null; render(); save(); }
 $('bUndo').onclick=doUndo; $('bRedo').onclick=doRedo;
 const doc=()=>({v:2,objs,date:$('fDate').value,place:$('fPlace').value});
-function save(){ try{ localStorage.setItem('carshare-sketch',JSON.stringify(doc())); const t=$('toast'); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),600);}catch{} }
+function save(){ try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(doc())); const t=$('toast'); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),600);}catch{} }
 function applyDoc(d){ let objNo=0; objs=(d.objs||[]).map(o=>{ o.p=o.p||{};
     if(o.type==='car'&&o.w<60&&o.p.kind!=='bike'){ o.w=Math.round(o.w*1.4); o.h=Math.round(o.h*1.4); }
     if(o.type==='car'){ if(!o.p.role){ o.p.role = (o.p.label||'').startsWith('A') ? '자차' : '대물'; if(o.p.role==='대물') o.p.n=++objNo; o.p.color=''; } if(o.p.kind==='suv') o.p.kind='car'; delete o.p.ghost; delete o.p.label; }
     if(o.type==='median') o.type='guard'; if(o.type==='road'){ o.p.marks=o.p.marks||{}; o.p.bus=o.p.bus||{}; if(o.p.oneway==null) o.p.oneway=false; } if(o.type==='cross'||o.type==='tee'){ o.p.marks=o.p.marks||{}; o.p.bus=o.p.bus||{}; if(!o.p.lanes) o.p.lanes=2; if(o.h<50) o.h=90; if(!o.p.arms) o.p.arms={E:o.w,S:o.w,W:o.w,N:o.w}; } if(o.type==='round'){ o.p.marks=o.p.marks||{}; o.p.bus=o.p.bus||{}; o.p.lanes=o.p.lanes||1; o.p.armLanes=o.p.armLanes||2; } return o; }); $('fDate').value=d.date||''; $('fPlace').value=d.place||''; }
-function load(){ try{ const d=JSON.parse(localStorage.getItem('carshare-sketch')||'null'); if(d&&d.v===2){ applyDoc(d); return true; } }catch{} return false; }
+function load(){ try{ const d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'null'); if(d&&d.v===2){ applyDoc(d); return true; } }catch{} return false; }
 $('fDate').onchange=$('fPlace').onchange=save;
 $('bClear').onclick=()=>{ if(!confirm('현재 약도를 지우고 새로 시작할까요?')) return; push(); objs=[]; sel=null; render(); save(); };
 $('bJsonSave').onclick=()=>{ const a=document.createElement('a'); a.download='사고약도.json'; a.href=URL.createObjectURL(new Blob([JSON.stringify(doc(),null,1)],{type:'application/json'})); a.click(); };

@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/dal";
+import { CaseScope } from "@/components/CaseScope";
 import { TopNav } from "@/components/TopNav";
 
 export default async function AppLayout({
@@ -10,6 +11,7 @@ export default async function AppLayout({
 
   return (
     <>
+      <CaseScope userId={user.id} />
       <TopNav name={user.name} role={user.role} />
       {children}
     </>
