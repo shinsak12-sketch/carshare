@@ -215,14 +215,18 @@ export default async function AdminDashboardPage() {
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-bold text-slate-900">
-          구버전 화면 (관리자 전용)
-        </h2>
+        <h2 className="text-sm font-bold text-slate-900">관리자 전용 화면</h2>
         <p className="mt-1 text-xs text-slate-500">
-          좌우 분할 마스터-디테일 디자인. 새 디자인(견적서 표 옆 인라인 판정)과
-          비교용. 캐시는 새 화면과 분리돼 있음.
+          홈 화면에서 뺀 기능. 정비공정은 직원 화면에서 숨기고 여기서만 열림.
+          구버전은 좌우 분할 디자인으로 새 화면과 비교용이며 캐시가 분리돼 있음.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
+          <Link
+            href="/legacy/procedure/new"
+            className="rounded-full border border-orange-300 bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-800 transition-colors hover:bg-orange-100"
+          >
+            🛠️ 정비공정
+          </Link>
           <Link
             href="/legacy/adjustment/new"
             className="rounded-full border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"

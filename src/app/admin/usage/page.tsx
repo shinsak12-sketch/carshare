@@ -11,7 +11,6 @@ const TOOLS: (AiTool | "")[] = [
   "",
   "assess",
   "adjustment",
-  "adjustment2",
   "procedure",
   "minor",
 ];
