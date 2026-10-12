@@ -90,8 +90,8 @@ export default function Home() {
         className="pointer-events-none absolute -top-24 left-1/2 h-[560px] w-[560px] -translate-x-1/2 rounded-full bg-gradient-to-br from-blue-200/40 via-orange-100/30 to-transparent blur-3xl lg:h-[720px] lg:w-[720px]"
       />
 
-      <div className="relative flex w-full max-w-xl flex-col items-center gap-10 lg:gap-12">
-        <div className="text-center">
+      <div className="relative flex w-full max-w-xl flex-col gap-10 lg:gap-12">
+        <div className="pl-1">
           <h1 className="text-lg font-bold text-slate-900 lg:text-xl">
             차량 손상 AI 진단
           </h1>
@@ -101,19 +101,14 @@ export default function Home() {
         </div>
 
         {ROWS.map((row, i) => (
-          <section
-            key={row.title}
-            className="flex w-full flex-col items-center gap-5"
-          >
+          <section key={row.title} className="flex w-full flex-col gap-5">
             {i > 0 && (
-              <div className="flex w-full items-center gap-3 px-4">
-                <span className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
-              </div>
+              <span className="h-px w-full bg-gradient-to-r from-slate-200 via-slate-200 to-transparent" />
             )}
-            <span className="text-[11px] font-semibold tracking-widest text-slate-400">
+            <span className="pl-1 text-[11px] font-semibold tracking-widest text-slate-400">
               {row.title}
             </span>
-            <div className="flex flex-wrap justify-center gap-x-10 gap-y-8 sm:gap-x-12 lg:gap-x-16">
+            <div className="grid grid-cols-3 justify-items-center gap-x-6 gap-y-8 sm:gap-x-10 lg:gap-x-14">
               {row.apps.map((app) => (
                 <Tile key={app.href} app={app} />
               ))}
