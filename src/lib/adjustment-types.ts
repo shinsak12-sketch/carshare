@@ -37,10 +37,23 @@ export interface AdjustmentItem {
   // 경미손상 적용대상 부품이고 수리 전 손상 상태가 사진에서 확인될 때만 채움.
   damage_type: DamageType | null;
   verdict: AdjustmentVerdict;
+  // 이 판정이 맞을 확률(0~100). adj4.3부터. 근거 종류로 매긴 값이라 정렬·필터용.
+  confidence?: number;
+  // 시간 과다로 과다청구한 항목만 인정 시간(숫자). 금액 비교 계산에 씀. adj4.3부터.
+  adjusted_hours?: number | null;
   reasoning: string;
   adjustment_note: string;
+  // 담당자 수정(브라우저 캐시). AI 원판정은 verdict에 그대로 두고 화면·금액은 이 값을 씀.
+  override?: VerdictOverride;
   // adj4.1부터 출력하지 않음(금액 비교가 정확하지 않아 제거). 예전 결과 표시용으로만 남김.
   cost_comparison?: CostComparison | null;
+}
+
+// 담당자가 AI 판정을 바꾼 기록. cascaded = 같은 group의 메인을 바꿀 때 따라 바뀐 것.
+export interface VerdictOverride {
+  verdict: "인정" | "불인정";
+  at: number;
+  cascaded: boolean;
 }
 
 export interface CostComparison {
@@ -52,6 +65,8 @@ export interface CostComparison {
 // 1단계(정비사) 결과 — 수리 계획. adj4.0부터. 예전 결과에는 없음.
 export interface RepairPlan {
   vehicle_structure: string; // 예: "캡오버 트럭(봉고3)"
+  // 차종 구조 판정이 맞을 확률(0~100). adj4.3부터. 틀리면 경로 전체가 틀리므로 따로 표시.
+  structure_confidence?: number;
   damage_summary: string;
   main_works: {
     part_name: string;

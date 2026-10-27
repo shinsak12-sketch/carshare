@@ -11,6 +11,9 @@ import { uploadPhotos } from "@/lib/upload-photos";
 import { JobFailedError, postToolForm, runAiJob } from "@/lib/ai-job-client";
 import type { AdjustmentResult } from "@/lib/adjustment-types";
 import { buildAdjustmentReportText } from "@/lib/format-adjustment-report";
+import { applyOverrides, setOverride } from "@/lib/adjustment-overrides";
+import { computeAmounts } from "@/lib/adjustment-amounts";
+import type { VerdictOverride } from "@/lib/adjustment-types";
 import {
   buildAdjustmentDiagnostics,
   type ItemDiagnostic,
@@ -55,7 +58,20 @@ export default function NewAdjustmentPage() {
   // 사진 그리드 접기(100장 넘게 붙으면 표가 아래로 밀리니까)
   const [photosOpen, setPhotosOpen] = useState(true);
 
-  const result = active?.result ?? null;
+  // 담당자 수정(override)을 AI 결과에 입힌 것. 화면·금액·복사 텍스트는 전부 이걸 본다.
+  const result =
+    active?.result && active
+      ? applyOverrides(active.result, active.overrides)
+      : null;
+  // 손해사정 전후 금액 비교(견적서 표 + 판정 + 수가)
+  const amounts =
+    result && isEstimateTree(active?.estimateTree)
+      ? computeAmounts(
+          active!.estimateTree as EstimateTree,
+          result,
+          active?.laborRate ?? null,
+        )
+      : null;
   // 결과 → 판정 트리 + 견적서 행(line_no) → 판정 색인. 색인은 견적서 표 옆에
   // 판정 열로 붙여 보여주기 위한 것. (수동 useMemo 없이 React Compiler에 맡김)
   const diagnostics = result ? buildAdjustmentDiagnostics(result) : null;
@@ -154,6 +170,7 @@ export default function NewAdjustmentPage() {
           ? {
               ...c,
               result: r,
+              overrides: {},
               jobId: null,
               jobImageUrls: [],
               caseInfo: {
@@ -402,11 +419,22 @@ export default function NewAdjustmentPage() {
     }
   }
 
+  // 담당자가 판정을 바꾸면 override 맵만 갱신(AI 원판정은 result에 그대로)
+  function handleOverride(
+    lineNo: string | number,
+    verdict: VerdictOverride["verdict"] | null,
+  ) {
+    if (!active?.result) return;
+    updateActive({
+      overrides: setOverride(active.result, active.overrides, lineNo, verdict),
+    });
+  }
+
   async function handleCopyReport() {
-    if (!active?.result || !active.caseInfo) return;
+    if (!result || !active?.caseInfo) return;
     try {
       await navigator.clipboard.writeText(
-        buildAdjustmentReportText(active.caseInfo, active.result),
+        buildAdjustmentReportText(active.caseInfo, result, amounts),
       );
       setReportCopied(true);
       setTimeout(() => setReportCopied(false), 1500);
@@ -785,8 +813,14 @@ export default function NewAdjustmentPage() {
                           tree={active.estimateTree as EstimateTree}
                           judgments={result ? judgmentMap : null}
                           consistency={diagnostics?.consistency ?? null}
+                          amounts={amounts}
+                          laborRate={active.laborRate ?? null}
+                          onLaborRateChange={(rate) =>
+                            updateActive({ laborRate: rate })
+                          }
                           onHoverPhotos={setHighlightedPhotos}
                           onOpenPhoto={openEvidencePhoto}
+                          onOverride={result ? handleOverride : undefined}
                         />
                       </div>
                     ) : (

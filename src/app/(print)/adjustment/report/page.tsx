@@ -4,6 +4,9 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PrintReport } from "@/components/PrintReport";
 import { buildAdjustmentDiagnostics } from "@/lib/adjustment-review-items";
+import { applyOverrides } from "@/lib/adjustment-overrides";
+import { computeAmounts } from "@/lib/adjustment-amounts";
+import { isEstimateTree } from "@/lib/estimate-tree";
 import {
   loadCases,
   loadFiles,
@@ -39,6 +42,10 @@ function Inner() {
       </p>
     );
 
+  const result = applyOverrides(c.result, c.overrides);
+  const amounts = isEstimateTree(c.estimateTree)
+    ? computeAmounts(c.estimateTree, result, c.laborRate ?? null)
+    : null;
   return (
     <PrintReport
       title="AI 손해사정 검토 보고서"
@@ -51,9 +58,10 @@ function Inner() {
         { label: "청구 견적서", value: c.estimateName ?? "" },
       ]}
       memo={c.memo}
-      diagnostics={buildAdjustmentDiagnostics(c.result)}
-      plan={c.result.repair_plan ?? null}
+      diagnostics={buildAdjustmentDiagnostics(result)}
+      plan={result.repair_plan ?? null}
       estimateTree={c.estimateTree}
+      amounts={amounts}
       photos={photos}
       createdAt={c.createdAt}
     />

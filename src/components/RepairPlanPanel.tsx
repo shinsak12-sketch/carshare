@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { RepairPlan } from "@/lib/adjustment-types";
-import { InferredBadge } from "@/components/DiagnosticsPanel";
+import { ConfidenceBadge, InferredBadge } from "@/components/DiagnosticsPanel";
 
 // 1단계(정비사) 결과 — 수리 계획. 항목별 판정(2단계)이 이 계획 위에서 내려졌다는 걸
 // 담당자가 먼저 보게 한다. 접근·분해 경로는 메인 작업별로 묶어서 접었다 펼침.
@@ -30,6 +30,12 @@ export function RepairPlanPanel({
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600">
           {plan.vehicle_structure}
         </span>
+        {typeof plan.structure_confidence === "number" && (
+          <ConfidenceBadge
+            value={plan.structure_confidence}
+            title="차종 구조 판정이 맞을 확률 — 틀리면 접근·분해 경로 전체가 틀림"
+          />
+        )}
         <span className="text-[11px] text-slate-500">
           메인 {plan.main_works.length} · 경로 {plan.access_path.length} ·
           불필요 {plan.rejected.length}

@@ -3,6 +3,9 @@ import {
   buildAdjustmentDiagnostics,
   type ItemDiagnostic,
 } from "./adjustment-review-items";
+import type { AmountSummary } from "./adjustment-amounts";
+
+const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
 
 const GLYPH = { error: "✖", warn: "⚠", pass: "✔" } as const;
 
@@ -15,7 +18,13 @@ function rowText(d: ItemDiagnostic, isMain: boolean): string[] {
   const role = !isMain && it.roleLabel !== "메인" ? `[${it.roleLabel}] ` : "";
   const no = d.lineNo != null ? String(d.lineNo).padStart(3) : "   ";
   const basis = !follows && it.basis === "추론" ? " [추론]" : "";
-  const head = `${indent}${mark} ${no}  ${role}${it.itemName} · ${it.claimedAction}${hours}  → ${follows ? "연동" : it.verdict}${basis}`;
+  const conf =
+    !follows && typeof it.confidence === "number" ? ` ${it.confidence}%` : "";
+  const over =
+    it.override && it.aiVerdict
+      ? ` (${it.override.cascaded ? "연쇄" : "담당자 수정"}: AI ${it.aiVerdict})`
+      : "";
+  const head = `${indent}${mark} ${no}  ${role}${it.itemName} · ${it.claimedAction}${hours}  → ${follows ? "연동" : it.verdict}${conf}${basis}${over}`;
   if (follows)
     return it.note ? [head, `${indent}        → ${it.note}`] : [head];
   const refs = it.photoRefs.length
@@ -41,6 +50,7 @@ function rowText(d: ItemDiagnostic, isMain: boolean): string[] {
 export function buildAdjustmentReportText(
   caseInfo: AdjustmentCaseInfo,
   result: AdjustmentResult,
+  amounts?: AmountSummary | null,
 ): string {
   const lines: string[] = ["AI 손해사정 검토 (보조 의견)", ""];
 
@@ -53,7 +63,25 @@ export function buildAdjustmentReportText(
 
   const { consistency, branches, counts } = buildAdjustmentDiagnostics(result);
   lines.push(`✖ ${counts.error}  ⚠ ${counts.warn}  ✔ ${counts.pass}`);
+  const overridden = result.items.filter(
+    (it) => it.override && !it.override.cascaded,
+  ).length;
+  if (overridden > 0) lines.push(`담당자 수정 ${overridden}건 반영`);
   lines.push("");
+
+  if (amounts) {
+    lines.push("[금액 비교]");
+    lines.push(
+      `청구 ${won(amounts.claimedTotal)} (공임 ${won(amounts.claimedLabor)} · 부품 ${won(amounts.claimedPart)})`,
+    );
+    lines.push(
+      `AI 사정 ${won(amounts.assessedTotal)} (공임 ${won(amounts.assessedLabor)} · 부품 ${won(amounts.assessedPart)})`,
+    );
+    lines.push(
+      `삭감 ${won(amounts.cut)} (${Math.round(amounts.cutRate * 100)}%)${amounts.held > 0 ? ` · 보류(협의·조사) ${won(amounts.held)}` : ""}${amounts.pendingHours > 0 ? ` · 금액 확인 ${amounts.pendingHours}건(조정 시간 미확정)` : ""}`,
+    );
+    lines.push("");
+  }
 
   if (consistency) {
     lines.push(`⚠  --  ${consistency.title}`);

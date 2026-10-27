@@ -10,6 +10,7 @@ import { isEstimateTree, type EstimateTree } from "@/lib/estimate-tree";
 import { judgmentKey } from "@/components/EstimateTree";
 import { fmtKst } from "@/lib/kst";
 import type { RepairPlan } from "@/lib/adjustment-types";
+import type { AmountRow, AmountSummary } from "@/lib/adjustment-amounts";
 
 // 손해사정·선견적 공용 인쇄 보고서. 결과는 브라우저 캐시(IndexedDB)에서 읽어 오고
 // 서버에는 아무것도 보내지 않는다. 브라우저 인쇄 대화상자에서 "PDF로 저장".
@@ -24,6 +25,7 @@ export interface PrintReportProps {
   estimateTree?: EstimateTree | null;
   opinion?: string | null; // 선견적 회신문(편집 반영)
   plan?: RepairPlan | null; // 손해사정 1단계 수리 계획
+  amounts?: AmountSummary | null; // 손해사정 전후 금액 비교(담당자 수정 반영)
   lists?: { label: string; items: string[] }[]; // 선견적 부가 목록
   photos: File[];
   createdAt: number;
@@ -190,6 +192,58 @@ export function PrintReport(p: PrintReportProps) {
           </div>
         ))}
       </div>
+      {p.amounts && (
+        <div className="mt-2 grid grid-cols-4 gap-2 rounded-lg border border-slate-200 p-2.5">
+          <div>
+            <div className="text-[9px] font-bold text-slate-400">청구 금액</div>
+            <div className="font-mono text-[12px] font-bold tabular-nums">
+              {won(p.amounts.claimedTotal)}
+            </div>
+            <div className="text-[9px] text-slate-500">
+              공임 {won(p.amounts.claimedLabor)} · 부품{" "}
+              {won(p.amounts.claimedPart)}
+            </div>
+          </div>
+          <div>
+            <div className="text-[9px] font-bold" style={{ color: accent }}>
+              AI 사정 금액
+            </div>
+            <div
+              className="font-mono text-[12px] font-bold tabular-nums"
+              style={{ color: accent }}
+            >
+              {won(p.amounts.assessedTotal)}
+            </div>
+            <div className="text-[9px] text-slate-500">
+              공임 {won(p.amounts.assessedLabor)} · 부품{" "}
+              {won(p.amounts.assessedPart)}
+            </div>
+          </div>
+          <div>
+            <div className="text-[9px] font-bold text-red-600">삭감</div>
+            <div className="font-mono text-[12px] font-bold tabular-nums text-red-600">
+              {won(p.amounts.cut)}{" "}
+              <span className="text-[10px]">
+                ({Math.round(p.amounts.cutRate * 100)}%)
+              </span>
+            </div>
+            {p.amounts.pendingHours > 0 && (
+              <div className="text-[9px] text-sky-700">
+                금액 확인 {p.amounts.pendingHours}건(조정 시간 미확정)
+              </div>
+            )}
+          </div>
+          <div>
+            <div className="text-[9px] font-bold text-amber-700">
+              보류(협의·조사)
+            </div>
+            <div className="font-mono text-[12px] font-bold tabular-nums text-amber-700">
+              {won(p.amounts.held)}
+            </div>
+            <div className="text-[9px] text-slate-500">담당자 확정 후 반영</div>
+          </div>
+        </div>
+      )}
       {consistency && (
         <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
           <div className="text-[10px] font-bold text-amber-800">
@@ -206,6 +260,8 @@ export function PrintReport(p: PrintReportProps) {
             1단계 수리 계획{" "}
             <span className="font-semibold text-slate-400">
               {p.plan.vehicle_structure}
+              {typeof p.plan.structure_confidence === "number" &&
+                ` · 구조 판정 신뢰도 ${p.plan.structure_confidence}%`}
             </span>
           </h2>
           <p className="mb-1.5">{p.plan.damage_summary}</p>
@@ -286,6 +342,7 @@ export function PrintReport(p: PrintReportProps) {
           <ItemTable
             branches={problems}
             amountByLine={amountByLine}
+            assessedByLine={p.amounts?.rows}
             accent={accent}
           />
         )}
@@ -302,6 +359,7 @@ export function PrintReport(p: PrintReportProps) {
           <ItemTable
             branches={passed}
             amountByLine={amountByLine}
+            assessedByLine={p.amounts?.rows}
             accent={accent}
             compact
           />
@@ -363,22 +421,26 @@ export function PrintReport(p: PrintReportProps) {
 function ItemTable({
   branches,
   amountByLine,
+  assessedByLine,
   accent,
   compact = false,
 }: {
   branches: AdjustmentDiagnostics["branches"];
   amountByLine: Map<string, { labor: number | null; part: number | null }>;
+  assessedByLine?: Map<string, AmountRow>;
   accent: string;
   compact?: boolean;
 }) {
+  const hasAssessed = !!assessedByLine && assessedByLine.size > 0;
   return (
     <table className="w-full table-fixed border-collapse text-[10.5px]">
       <colgroup>
         <col style={{ width: "5%" }} />
-        <col style={{ width: "28%" }} />
+        <col style={{ width: hasAssessed ? "25%" : "28%" }} />
         <col style={{ width: "8%" }} />
-        <col style={{ width: "10%" }} />
-        <col style={{ width: "40%" }} />
+        {hasAssessed && <col style={{ width: "8%" }} />}
+        <col style={{ width: "11%" }} />
+        <col style={{ width: hasAssessed ? "34%" : "40%" }} />
         <col style={{ width: "9%" }} />
       </colgroup>
       <thead>
@@ -386,6 +448,7 @@ function ItemTable({
           <th className="py-1 pr-1 text-right">NO</th>
           <th className="py-1 pr-2">항목 · 청구 작업</th>
           <th className="py-1 pr-2 text-right">청구 공임</th>
+          {hasAssessed && <th className="py-1 pr-2 text-right">AI 사정</th>}
           <th className="py-1 pr-2">판정</th>
           <th className="py-1">판단 내용</th>
           <th className="py-1 text-right">근거 사진</th>
@@ -409,6 +472,12 @@ function ItemTable({
                   ? amountByLine.get(judgmentKey(d.lineNo))
                   : undefined
               }
+              assessed={
+                hasAssessed && d.lineNo != null
+                  ? assessedByLine!.get(judgmentKey(d.lineNo))
+                  : undefined
+              }
+              showAssessed={hasAssessed}
               accent={accent}
               compact={compact}
             />
@@ -426,6 +495,8 @@ function Row({
   groupLabel,
   groupSeverity,
   amount,
+  assessed,
+  showAssessed,
   accent,
   compact,
 }: {
@@ -435,18 +506,20 @@ function Row({
   groupLabel: string;
   groupSeverity: DiagnosticSeverity;
   amount?: { labor: number | null; part: number | null };
+  assessed?: AmountRow;
+  showAssessed?: boolean;
   accent: string;
   compact: boolean;
 }) {
   const it = d.view;
-  const follows = it.followsParent && !isMain;
+  const follows = it.followsParent && !isMain && !it.override;
   const color = follows ? "#94a3b8" : (VERDICT_COLOR[it.verdict] ?? "#334155");
   return (
     <>
       {first && (
         <tr className="break-inside-avoid">
           <td
-            colSpan={6}
+            colSpan={showAssessed ? 7 : 6}
             className="border-t border-slate-300 pt-1.5 pb-0.5 text-[10px] font-black"
             style={{ color: SEV_COLOR[groupSeverity] }}
           >
@@ -484,6 +557,28 @@ function Row({
         <td className="py-1 pr-2 text-right font-mono tabular-nums text-slate-600">
           {won(amount?.labor)}
         </td>
+        {showAssessed && (
+          <td
+            className="py-1 pr-2 text-right font-mono tabular-nums"
+            style={{
+              color:
+                assessed && assessed.assessed !== assessed.claimed
+                  ? "#dc2626"
+                  : "#334155",
+            }}
+            title={assessed?.note || undefined}
+          >
+            {assessed && assessed.status !== "미판정"
+              ? won(assessed.assessed)
+              : ""}
+            {assessed?.status === "보류" && (
+              <span className="ml-0.5 text-[8px] text-amber-700">보류</span>
+            )}
+            {assessed?.status === "확인" && (
+              <span className="ml-0.5 text-[8px] text-sky-700">확인</span>
+            )}
+          </td>
+        )}
         <td className="py-1 pr-2">
           <span
             className="inline-block rounded-full px-1.5 py-px text-[9px] font-bold text-white"
@@ -491,9 +586,23 @@ function Row({
           >
             {follows ? "↳ 연동" : it.verdict}
           </span>
+          {it.override && it.aiVerdict && (
+            <span
+              className="ml-0.5 inline-block rounded-full border border-fuchsia-400 px-1 py-px text-[8px] font-bold text-fuchsia-800"
+              title="담당자가 AI 판정을 바꿈"
+            >
+              {it.override.cascaded ? "연쇄" : "담당자"}{" "}
+              <span className="line-through opacity-60">{it.aiVerdict}</span>
+            </span>
+          )}
           {!follows && it.basis === "추론" && (
             <span className="ml-0.5 inline-block rounded-full border border-dashed border-violet-400 px-1 py-px text-[8px] font-bold text-violet-700">
               추론
+            </span>
+          )}
+          {!follows && typeof it.confidence === "number" && (
+            <span className="ml-0.5 inline-block rounded-full border border-slate-300 px-1 py-px font-mono text-[8px] font-bold text-slate-600">
+              {it.confidence}%
             </span>
           )}
         </td>

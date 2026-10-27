@@ -73,6 +73,61 @@ export function InferredBadge({ small = false }: { small?: boolean }) {
   );
 }
 
+// 신뢰도(0~100) 배지. 90↑ 초록, 70~89 회색, 50~69 호박, 50↓ 빨강 — 낮은 것부터 보게.
+export function confidenceTone(v: number) {
+  if (v >= 90) return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (v >= 70) return "border-slate-200 bg-slate-50 text-slate-600";
+  if (v >= 50) return "border-amber-300 bg-amber-50 text-amber-800";
+  return "border-red-300 bg-red-50 text-red-700";
+}
+export function ConfidenceBadge({
+  value,
+  small = false,
+  title,
+}: {
+  value: number;
+  small?: boolean;
+  title?: string;
+}) {
+  return (
+    <span
+      title={title ?? "AI가 매긴 이 판정이 맞을 확률(근거 종류 기준)"}
+      className={`inline-flex shrink-0 items-center rounded-full border font-mono font-bold tabular-nums ${confidenceTone(value)} ${
+        small ? "px-1.5 py-px text-[9px]" : "px-2 py-0.5 text-[10px]"
+      }`}
+    >
+      {value}%
+    </span>
+  );
+}
+
+// 담당자가 바꾼 판정 표시 — AI 원판정을 취소선으로 같이 보여줌
+export function OverrideBadge({
+  aiVerdict,
+  cascaded,
+  small = false,
+}: {
+  aiVerdict: VerdictLabel;
+  cascaded: boolean;
+  small?: boolean;
+}) {
+  return (
+    <span
+      title={
+        cascaded
+          ? "같은 부위 메인 항목의 담당자 수정에 따라 바뀜"
+          : "담당자가 AI 판정을 바꿈(브라우저에만 저장)"
+      }
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full border border-fuchsia-300 bg-fuchsia-50 font-bold text-fuchsia-800 ${
+        small ? "px-1.5 py-px text-[9px]" : "px-2 py-0.5 text-[10px]"
+      }`}
+    >
+      {cascaded ? "연쇄" : "담당자"}
+      <span className="font-normal line-through opacity-60">{aiVerdict}</span>
+    </span>
+  );
+}
+
 export function VerdictBadge({
   verdict,
   small = false,

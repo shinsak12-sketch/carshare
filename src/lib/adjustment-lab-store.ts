@@ -1,5 +1,6 @@
 import type { AdjustmentCaseInfo, AdjustmentResult } from "./adjustment-types";
 import type { EstimateTree } from "./estimate-tree";
+import type { OverrideMap } from "./adjustment-overrides";
 import {
   caseTitleOf,
   createCaseStore,
@@ -27,6 +28,10 @@ export interface StoredCase {
   jobId?: string | null;
   jobImageUrls?: string[];
   caseInfo: AdjustmentCaseInfo | null;
+  // 담당자가 바꾼 판정(line_no 키). AI 원판정은 result에 그대로.
+  overrides?: OverrideMap;
+  // 금액 비교에 쓸 수가(원/H). 비우면 견적서 금액 그대로.
+  laborRate?: number | null;
 }
 
 const store = createCaseStore<StoredCase>("carshare-adjustment-lab");

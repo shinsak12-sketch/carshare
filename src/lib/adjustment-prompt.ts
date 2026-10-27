@@ -11,7 +11,7 @@ import {
 // AI손해사정 프롬프트 adj4.0 — 1단계 정비사(필요/불필요) → 2단계 손해사정사(적정성)
 // 이 문자열이 바뀌면 버전 태그도 같이 올릴 것.
 
-export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj4.2";
+export const ADJUSTMENT_PROMPT_VERSION_TAG = "adj4.3";
 
 export const ADJUSTMENT_SYSTEM_PROMPT = `당신은 보험사 소속 차량손해사정사이며 판금·도장 현장 경력이 있는 정비사입니다.
 공업사가 제출한 청구 견적서와 수리 전 파손 사진·수리 작업 진행·완료 사진을 근거로
@@ -158,6 +158,9 @@ ${ADJUSTER_STANCE}
    - 과다청구: 2단계 1의 과잉수리, 판금·수리 시간 과다, 중복·수량 과다, 도장
      종류·범위 과다. 판금·수리로 청구된 항목은 claimed_hours에 견적서상 청구
      시간(숫자)을 채우십시오(명시 없으면 null, 판금·수리가 아니면 null).
+     시간 과다로 과다청구를 낸 항목은 adjusted_hours에 인정할 시간(숫자)을
+     채우십시오 — adjustment_note의 "2.0H 이내로 조정"과 같은 값입니다. 시간이
+     아닌 사유(과잉수리·중복·등급)의 과다청구와 그 외 모든 항목은 null.
    - 협의필요: 담당자가 결정해야 하는 경우 — 추론 결과가 반반인 내판 작업이나
      재사용 부품 교환, 비용 비교(①~③의 ③), 메인 작업의 작업 증거가 없어 사진을
      요청해야 하는 항목. 근거가 추론이라는 이유만으로 협의가 되지는 않습니다
@@ -171,6 +174,21 @@ ${ADJUSTER_STANCE}
    (했는지)는 독립입니다. 예: 펜더 교환 — 파손 사진에 꺾임이 보여 judgment_basis
    "직접확인", 신품 사진은 없고 탈거 사진만 있어 photo_evidence "간접확인",
    verdict "인정".
+3-2. confidence는 모든 항목에 0~100의 정수로, "이 판정이 맞을 확률"을 근거의
+   종류로 매기십시오. 느낌이 아니라 아래 기준으로:
+   - 90 이상: 파손·작업이 사진에 직접 보이고 청구서 구조와도 맞음(직접확인 인정,
+     명백한 경로 밖 불인정, 청구서 구조로 확정되는 중복).
+   - 70~89: 사진으로 확인되지만 정도·범위 판단이 들어감(판금 시간, 도장 등급,
+     교환 vs 판금 수준), 또는 충격이 깊고 직접 연결된 부위의 내판 추론.
+   - 50~69: 내부 사진 없이 충격 방향·깊이로 추론했고 반반에 가까움, 경로상
+     부수작업이지만 차종 구조를 확신하기 어려움, 사진 각도·화질이 애매함.
+   - 50 미만: 사진 근거가 거의 없이 정비 상식만으로 판단함.
+   연동 항목은 메인의 confidence를 그대로 씁니다. 협의필요·조사필요도
+   "그 판정(담당자 확인 필요)이 맞을 확률"로 매깁니다. 추론 항목의 confidence는
+   파손 형태·충격 방향·구조 연결의 세 가지 중 몇 가지가 사진으로 뒷받침되는지로
+   정하십시오. repair_plan.structure_confidence에는 차종 구조(캡오버/바디온프레임/
+   모노코크) 판정이 맞을 확률을 같은 방식으로 적으십시오 — 틀리면 접근·분해
+   경로 전체가 틀리므로 확신이 없으면 낮게 적으십시오.
 4. 절대 금액(원화)을 스스로 산정하거나 언급하지 마십시오. 거래처별 단가가 달라
    최종 금액은 AOS에서 처리합니다. 조정 방향은 시간·등급·작업 종류로만 적습니다.
 5. reasoning과 adjustment_note는 짧고 실무적으로. "회사 기준 미제공", "표준시간
@@ -237,11 +255,21 @@ const DAMAGE_TYPE_ENUM = [
   "손상없음",
 ] as const;
 
+// 선견적과 공유하는 수리 계획 스키마에 차종 구조 판정의 신뢰도(0~100)를 더한 것.
+const ADJUSTMENT_REPAIR_PLAN_SCHEMA = {
+  ...REPAIR_PLAN_SCHEMA,
+  properties: {
+    ...REPAIR_PLAN_SCHEMA.properties,
+    structure_confidence: { type: "integer" },
+  },
+  required: [...REPAIR_PLAN_SCHEMA.required, "structure_confidence"],
+} as const;
+
 export const ADJUSTMENT_RESPONSE_SCHEMA = {
   type: "object",
   properties: {
     estimate_provided: { type: "boolean" },
-    repair_plan: REPAIR_PLAN_SCHEMA,
+    repair_plan: ADJUSTMENT_REPAIR_PLAN_SCHEMA,
     items: {
       type: "array",
       items: {
@@ -262,6 +290,8 @@ export const ADJUSTMENT_RESPONSE_SCHEMA = {
             enum: [...DAMAGE_TYPE_ENUM, null],
           },
           verdict: { type: "string", enum: VERDICT_ENUM },
+          confidence: { type: "integer" },
+          adjusted_hours: { type: ["number", "null"] },
           reasoning: { type: "string" },
           adjustment_note: { type: "string" },
         },
@@ -278,6 +308,8 @@ export const ADJUSTMENT_RESPONSE_SCHEMA = {
           "photo_refs",
           "damage_type",
           "verdict",
+          "confidence",
+          "adjusted_hours",
           "reasoning",
           "adjustment_note",
         ],

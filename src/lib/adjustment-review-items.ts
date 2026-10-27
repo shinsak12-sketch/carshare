@@ -3,7 +3,9 @@ import type {
   AdjustmentResult,
   CostComparison,
   ItemRole,
+  VerdictOverride,
 } from "./adjustment-types";
+import { effectiveVerdict } from "./adjustment-overrides";
 import { isMinorDamageType, type VerdictLabel } from "./review-items";
 
 // 린터 출력처럼 문제 항목만 앞에 세우기 위한 심각도.
@@ -32,6 +34,11 @@ export interface DiagItemView {
   evidenceLabel: string | null;
   // "추론"이면 사진에 직접 안 보이는 부위를 충격 경로로 추론한 판정 → 배지로 구분
   basis?: "직접확인" | "추론";
+  // 이 판정이 맞을 확률(0~100, adj4.3부터). 없으면 예전 결과.
+  confidence?: number;
+  // 담당자가 바꾼 판정이면 verdict는 바뀐 값, aiVerdict에 AI 원판정
+  override?: VerdictOverride;
+  aiVerdict?: VerdictLabel;
   photoRefs: number[];
   damageType?: string;
   costComparison: CostComparison | null;
@@ -145,7 +152,13 @@ function toView(item: AdjustmentItem): DiagItemView {
     itemName: item.item_name,
     claimedAction: item.claimed_action,
     claimedHours: item.claimed_hours,
-    verdict: item.verdict,
+    verdict: effectiveVerdict(item),
+    aiVerdict: item.override ? item.verdict : undefined,
+    override: item.override,
+    confidence:
+      typeof item.confidence === "number"
+        ? Math.max(0, Math.min(100, Math.round(item.confidence)))
+        : undefined,
     followsParent: item.follows_parent,
     reasoning: item.reasoning,
     note: item.adjustment_note,
