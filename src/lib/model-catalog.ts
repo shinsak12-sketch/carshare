@@ -1,6 +1,7 @@
 // 관리자가 고를 수 있는 모델 목록. prisma·next 의존 없는 순수 상수(seed·클라이언트 공용).
 // 단가는 OpenAI 공개 요금표 기준 예측치 — 실제 청구와 다르면 단가 화면에서 수정.
 // gpt-5.6-sol·gpt-5는 실제 청구서로 검증됨(2026-09-17). Sol은 입력이 캐시 쓰기 단가로 청구.
+// gpt-6.1-sol은 2026-10 공개 요금표 기준(청구서 검증 전).
 
 import { DEFAULT_MODEL, DEFAULT_RATE, type RateLike } from "./pricing-defaults";
 
@@ -22,12 +23,26 @@ const KRW = DEFAULT_RATE.usdToKrw;
 export const MODEL_CATALOG: ModelSpec[] = [
   {
     id: DEFAULT_MODEL,
-    label: "GPT-5.6 Sol",
+    label: "GPT-6.1 Sol",
     tier: "top",
     reasoning: true,
     rate: { ...DEFAULT_RATE },
+    verified: false,
+    note: "현재 기본. GPT-5.6 Sol의 후속(2026-10). 단가는 5.6 Sol의 절반 수준. 추론 강도 low·medium·high·xhigh·max. 청구서로 단가 확인 전.",
+  },
+  {
+    id: "gpt-5.6-sol",
+    label: "GPT-5.6 Sol",
+    tier: "top",
+    reasoning: true,
+    rate: {
+      inputUsdPerM: 5.0,
+      cachedInputUsdPerM: 0.5,
+      outputUsdPerM: 20,
+      usdToKrw: KRW,
+    },
     verified: true,
-    note: "현재 기본. 사진의 미세 손상(램프 크랙 등) 판독이 가장 정확. 실제 청구서로 단가 확인됨.",
+    note: "이전 기본(2026-09~10). 사진의 미세 손상(램프 크랙 등) 판독 정확. 실제 청구서로 단가 확인됨. 할인가가 2026-11-21에 끝나면 정가($5/$30)로 오름.",
   },
   {
     id: "gpt-5",
@@ -115,7 +130,7 @@ export function findModelSpec(id: string): ModelSpec | undefined {
 export function isReasoningModel(id: string): boolean {
   const spec = findModelSpec(id);
   if (spec) return spec.reasoning;
-  return /^(gpt-5|o\d)/.test(id);
+  return /^(gpt-[5-9]|o\d)/.test(id);
 }
 
 export function defaultRateFor(id: string): RateLike {

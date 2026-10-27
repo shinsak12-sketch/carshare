@@ -48,7 +48,7 @@ async function main() {
       data: {
         model: DEFAULT_MODEL,
         updatedBy: "seed",
-        note: "초기 단가(2026-09 실제 청구 1건으로 역산). 청구서와 다르면 수정",
+        note: "초기 단가(2026-10 공개 요금표, 입력은 캐시 쓰기 단가 기준). 청구서와 다르면 수정",
         ...DEFAULT_RATE,
       },
     });
