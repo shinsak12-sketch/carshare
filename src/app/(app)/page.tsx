@@ -13,7 +13,7 @@ interface AppRow {
   apps: AppTile[];
 }
 
-// 1행은 AI 판정 도구, 2행은 보조 도구. 기능이 늘면 해당 행에 항목만 추가.
+// 1행은 AI 판정 도구, 2행은 새 디자인 시험 화면, 3행은 보조 도구. 기능이 늘면 해당 행에 항목만 추가.
 // 정비공정·구버전 화면은 관리자 개요(/admin)에서만 열림.
 const ROWS: AppRow[] = [
   {
@@ -36,6 +36,18 @@ const ROWS: AppRow[] = [
         label: "AI손해사정",
         icon: "⚖️",
         gradient: "from-purple-500 to-purple-700",
+      },
+    ],
+  },
+  {
+    // 새 디자인 시험 화면. 기존 AI손해사정과 같은 건·같은 판정 로직, 화면만 다름.
+    title: "새 화면 (시험)",
+    apps: [
+      {
+        href: "/adjustment-v2/new",
+        label: "손해사정 v2",
+        icon: "⚖️",
+        gradient: "from-emerald-600 to-teal-800",
       },
     ],
   },

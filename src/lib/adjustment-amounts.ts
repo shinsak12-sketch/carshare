@@ -1,5 +1,9 @@
 import type { AdjustmentItem, AdjustmentResult } from "./adjustment-types";
-import type { EstimateLine, EstimateTree } from "./estimate-tree";
+import {
+  workKindOf,
+  type EstimateLine,
+  type EstimateTree,
+} from "./estimate-tree";
 import { effectiveVerdict, overrideKey } from "./adjustment-overrides";
 import type { VerdictLabel } from "./review-items";
 
@@ -11,6 +15,53 @@ import type { VerdictLabel } from "./review-items";
 //   과다청구(시간 외) → 청구액 유지 + "확인" / 협의·조사 → 청구액 유지 + "보류"(삭감에 안 셈)
 // - 부품비 행은 판정 대상이 아니므로 같은 부위의 메인 항목을 따라간다
 //   (메인 불인정이면 부품비도 0). 담당자 수정(override)도 그대로 반영.
+
+// 수가(원/H). 숫자 하나면 전체 공임에, 맵이면 작업 종류별(키 "전체" = 나머지 기본값).
+export type LaborRates = Record<string, number>;
+export type LaborRateInput = number | LaborRates | null | undefined;
+export const RATE_ALL = "전체";
+
+export function rateFor(input: LaborRateInput, kind: string): number | null {
+  if (input == null) return null;
+  if (typeof input === "number") return input > 0 ? input : null;
+  const v = input[kind] ?? input[RATE_ALL];
+  return typeof v === "number" && v > 0 ? v : null;
+}
+
+// 견적서에서 역산한 작업 종류별 수가(시간이 있는 공임·도장 줄의 공임 합 ÷ 시간 합)
+export interface KindRate {
+  kind: string;
+  lines: number;
+  hours: number;
+  labor: number;
+  estimateRate: number | null;
+}
+export function estimateRatesByKind(
+  tree: EstimateTree | null | undefined,
+): KindRate[] {
+  if (!tree) return [];
+  const m = new Map<string, KindRate>();
+  for (const l of tree.rows) {
+    if (l.kind === "부품" || l.hours == null || l.hours <= 0) continue;
+    const kind = workKindOf(l);
+    const k = m.get(kind) ?? {
+      kind,
+      lines: 0,
+      hours: 0,
+      labor: 0,
+      estimateRate: null,
+    };
+    k.lines += 1;
+    k.hours += l.hours;
+    k.labor += l.before.labor ?? 0;
+    m.set(kind, k);
+  }
+  return [...m.values()].map((k) => ({
+    ...k,
+    hours: Math.round(k.hours * 100) / 100,
+    estimateRate: k.hours > 0 ? Math.round(k.labor / k.hours) : null,
+  }));
+}
 
 export type AmountStatus =
   | "인정"
@@ -90,12 +141,11 @@ function findMainForPart(
 export function computeAmounts(
   tree: EstimateTree | null | undefined,
   result: AdjustmentResult | null | undefined,
-  laborRate: number | null | undefined,
+  laborRate: LaborRateInput,
 ): AmountSummary | null {
   if (!tree || !result) return null;
   const items = result.items;
   const byKey = new Map(items.map((it) => [overrideKey(it.line_no), it]));
-  const rate = laborRate && laborRate > 0 ? laborRate : null;
 
   const rows = new Map<string, AmountRow>();
   let claimedLabor = 0;
@@ -155,6 +205,7 @@ export function computeAmounts(
 
     // 공임·도장·기타
     const materials = line.before.part ?? 0;
+    const rate = rateFor(laborRate, workKindOf(line));
     const labor =
       rate && line.hours != null
         ? round(line.hours * rate)

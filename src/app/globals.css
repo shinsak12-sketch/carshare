@@ -81,3 +81,14 @@ body {
     content: "";
   }
 }
+
+/* 손해사정 v2 화면 전용 — 글꼴과 고정폭 숫자 */
+.v2 {
+  font-family:
+    var(--font-v2-sans), "Apple SD Gothic Neo", "Malgun Gothic", system-ui,
+    sans-serif;
+}
+.v2 .num {
+  font-family: var(--font-v2-mono), ui-monospace, Menlo, monospace;
+  font-variant-numeric: tabular-nums;
+}

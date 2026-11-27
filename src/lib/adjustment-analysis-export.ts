@@ -1,4 +1,4 @@
-import type { StoredCase } from "./adjustment-lab-store";
+import { ratesOf, type StoredCase } from "./adjustment-lab-store";
 import type { AdjustmentItem } from "./adjustment-types";
 import { computeAmounts } from "./adjustment-amounts";
 import { applyOverrides, overrideKey } from "./adjustment-overrides";
@@ -109,6 +109,7 @@ function exportCase(c: StoredCase, index: number) {
     estimate_file: c.estimateName,
     memo: c.memo || "",
     labor_rate: c.laborRate ?? null,
+    labor_rates: c.laborRates ?? null,
     run: c.runMeta
       ? {
           model: c.runMeta.model ?? null,
@@ -127,8 +128,8 @@ function exportCase(c: StoredCase, index: number) {
   if (!raw) return null;
   const final = applyOverrides(raw, c.overrides);
   const tree = isEstimateTree(c.estimateTree) ? c.estimateTree : null;
-  const aiAmt = computeAmounts(tree, raw, c.laborRate ?? null);
-  const finalAmt = computeAmounts(tree, final, c.laborRate ?? null);
+  const aiAmt = computeAmounts(tree, raw, ratesOf(c));
+  const finalAmt = computeAmounts(tree, final, ratesOf(c));
 
   const itemByKey = new Map(
     final.items.map((it) => [overrideKey(it.line_no), it] as const),

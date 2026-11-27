@@ -1,6 +1,7 @@
 import type { AdjustmentCaseInfo, AdjustmentResult } from "./adjustment-types";
 import type { EstimateTree } from "./estimate-tree";
 import type { OverrideMap } from "./adjustment-overrides";
+import type { LaborRateInput, LaborRates } from "./adjustment-amounts";
 import type { RunMeta } from "./ai-job-client";
 import {
   caseTitleOf,
@@ -33,6 +34,8 @@ export interface StoredCase {
   overrides?: OverrideMap;
   // 금액 비교에 쓸 수가(원/H). 비우면 견적서 금액 그대로.
   laborRate?: number | null;
+  // v2 화면: 작업 종류별 수가(키 "전체" = 기본값). 있으면 laborRate보다 우선.
+  laborRates?: LaborRates;
   // 이 결과를 낸 실행의 모델·프롬프트 버전·비용·소요시간(분석용 내보내기에 담음)
   runMeta?: RunMeta | null;
 }
@@ -63,3 +66,10 @@ export const deleteCase = store.deleteCase;
 export const saveFiles = store.saveFiles;
 export const loadFiles = store.loadFiles;
 export const caseTitle = caseTitleOf;
+
+// 금액 계산에 쓸 수가 — 작업별 맵이 있으면 그것, 없으면 단일 수가
+export function ratesOf(c: StoredCase): LaborRateInput {
+  return c.laborRates && Object.keys(c.laborRates).length > 0
+    ? c.laborRates
+    : (c.laborRate ?? null);
+}

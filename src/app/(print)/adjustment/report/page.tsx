@@ -11,6 +11,7 @@ import { isEstimateTree } from "@/lib/estimate-tree";
 import {
   loadCases,
   loadFiles,
+  ratesOf,
   type StoredCase,
 } from "@/lib/adjustment-lab-store";
 
@@ -45,7 +46,7 @@ function Inner() {
 
   const result = applyOverrides(c.result, c.overrides);
   const amounts = isEstimateTree(c.estimateTree)
-    ? computeAmounts(c.estimateTree, result, c.laborRate ?? null)
+    ? computeAmounts(c.estimateTree, result, ratesOf(c))
     : null;
   return (
     <PrintReport
