@@ -1,6 +1,7 @@
 import type { AdjustmentCaseInfo, AdjustmentResult } from "./adjustment-types";
 import type { EstimateTree } from "./estimate-tree";
 import type { OverrideMap } from "./adjustment-overrides";
+import type { RunMeta } from "./ai-job-client";
 import {
   caseTitleOf,
   createCaseStore,
@@ -32,6 +33,8 @@ export interface StoredCase {
   overrides?: OverrideMap;
   // 금액 비교에 쓸 수가(원/H). 비우면 견적서 금액 그대로.
   laborRate?: number | null;
+  // 이 결과를 낸 실행의 모델·프롬프트 버전·비용·소요시간(분석용 내보내기에 담음)
+  runMeta?: RunMeta | null;
 }
 
 const store = createCaseStore<StoredCase>("carshare-adjustment-lab");

@@ -23,6 +23,20 @@ export interface EstimateTree {
   rowCount: number;
 }
 
+// 표 배지·분석 집계에 쓰는 작업 구분(교환/탈착/판금/수리/도장/부품/기타)
+export function workKindOf(line: EstimateLine): string {
+  if (line.kind === "부품") return "부품";
+  if (line.kind === "도장") return "도장";
+  const a = line.action.trim();
+  if (!a) return "기타";
+  if (/^(교환|탈착|판금|수리|도장)$/.test(a)) return a;
+  if (a.includes("탈부착") || a.includes("탈착")) return "탈착";
+  if (a.includes("교환")) return "교환";
+  if (a.includes("판금")) return "판금";
+  if (a.includes("수리")) return "수리";
+  return a;
+}
+
 export function buildEstimateTree(rows: EstimateRow[]): EstimateTree {
   const lines: EstimateLine[] = rows.map((r) => {
     const isPart =

@@ -3,6 +3,18 @@
 
 export type JobStartResponse<T> = { jobId: string } | { result: T };
 
+// 서버가 실행 기록에서 뽑아 준 메타(없을 수 있음 — Groq 동기 호출 등)
+export interface RunMeta {
+  model?: string;
+  promptVersion?: string;
+  costKrw?: number | null;
+  durationMs?: number | null;
+  inputTokens?: number;
+  outputTokens?: number;
+  reasoningTokens?: number;
+  photoCount?: number;
+}
+
 // 서버가 "이 작업은 끝났고 실패"라고 확정한 경우. 이어받기 정보를 지워도 되는 유일한 실패.
 // 그 외(네트워크·일시 오류)는 jobId를 남겨 두면 새로고침으로 이어받을 수 있다.
 export class JobFailedError extends Error {
@@ -35,7 +47,7 @@ export async function runAiJob<T>(
   onJobId?: (jobId: string) => void,
   label = "AI 판단 중",
   // 결과를 받으면 먼저 저장(호출자 책임)하고, 저장이 예외 없이 끝난 뒤에만 OpenAI 저장본 삭제를 요청
-  onResult?: (result: T) => void,
+  onResult?: (result: T, meta?: RunMeta | null) => void,
 ): Promise<T> {
   if ("result" in start) {
     onResult?.(start.result);
@@ -52,7 +64,13 @@ export async function runAiJob<T>(
     );
     await new Promise((r) => setTimeout(r, interval));
     interval = Math.min(interval + 500, 6000);
-    let data: { status?: string; result?: T; error?: string; code?: string };
+    let data: {
+      status?: string;
+      result?: T;
+      meta?: RunMeta | null;
+      error?: string;
+      code?: string;
+    };
     try {
       const res = await fetch("/api/ai-job", {
         method: "POST",
@@ -76,7 +94,7 @@ export async function runAiJob<T>(
       continue;
     }
     if (data.status === "completed" && data.result !== undefined) {
-      onResult?.(data.result); // 여기서 예외가 나면 ack 없이 던져져 결과는 OpenAI에 남는다
+      onResult?.(data.result, data.meta ?? null); // 여기서 예외가 나면 ack 없이 던져져 결과는 OpenAI에 남는다
       ackAiJob(jobId);
       return data.result;
     }

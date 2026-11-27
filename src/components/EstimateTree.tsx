@@ -1,7 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { EstimateLine, EstimateTree as Tree } from "@/lib/estimate-tree";
+import {
+  workKindOf,
+  type EstimateLine,
+  type EstimateTree as Tree,
+} from "@/lib/estimate-tree";
 import type {
   AdjustmentDiagnostics,
   DiagnosticSeverity,
@@ -56,18 +60,7 @@ export const judgmentKey = (lineNo: string | number | null | undefined) =>
   lineNo == null ? "" : String(lineNo).replace(/^U/i, "").trim();
 
 // 배지에 쓸 작업 구분
-function badgeOf(line: EstimateLine): string {
-  if (line.kind === "부품") return "부품";
-  if (line.kind === "도장") return "도장";
-  const a = line.action.trim();
-  if (!a) return "기타";
-  if (/^(교환|탈착|판금|수리|도장)$/.test(a)) return a;
-  if (a.includes("탈부착") || a.includes("탈착")) return "탈착";
-  if (a.includes("교환")) return "교환";
-  if (a.includes("판금")) return "판금";
-  if (a.includes("수리")) return "수리";
-  return a;
-}
+const badgeOf = workKindOf;
 
 function displayName(line: EstimateLine): string {
   // "리어범퍼 교환" + 작업 "도장" → "리어범퍼 교환도장"

@@ -54,12 +54,25 @@ export async function POST(req: NextRequest) {
             "이 작업의 결과는 이미 다른 탭에서 받아 저장됐습니다. 페이지를 새로고침하면 결과가 보입니다.",
         });
     }
+    // 실행 메타(모델·프롬프트 버전·비용·소요시간) — 분석용 내보내기에 같이 담으려고 브라우저에 돌려줌
+    let meta: Record<string, unknown> | null = null;
     if (status.status === "completed" || status.status === "failed") {
       // 사용량 기록 확정(토큰·비용). 결과 본문은 저장하지 않고 판정 집계만.
       try {
-        if (status.status === "completed")
-          await completeRunByJob(id, status.usage, status.result);
-        else await failRunByJob(id, status.error, status.usage);
+        if (status.status === "completed") {
+          const run = await completeRunByJob(id, status.usage, status.result);
+          if (run)
+            meta = {
+              model: run.model,
+              promptVersion: run.promptVersion,
+              costKrw: run.costKrw,
+              durationMs: run.durationMs,
+              inputTokens: run.inputTokens,
+              outputTokens: run.outputTokens,
+              reasoningTokens: run.reasoningTokens,
+              photoCount: run.photoCount,
+            };
+        } else await failRunByJob(id, status.error, status.usage);
       } catch (e) {
         console.error("[/api/ai-job] usage record failed:", e);
       }
@@ -68,9 +81,13 @@ export async function POST(req: NextRequest) {
         await sweepStaleBlobs("/api/ai-job");
       });
     }
-    // usage는 서버 기록용 — 브라우저엔 상태·결과만 돌려줌
+    // 토큰 원본은 서버 기록용 — 브라우저엔 상태·결과와 실행 메타 요약만 돌려줌
     if (status.status === "completed")
-      return NextResponse.json({ status: "completed", result: status.result });
+      return NextResponse.json({
+        status: "completed",
+        result: status.result,
+        meta,
+      });
     if (status.status === "failed")
       return NextResponse.json({ status: "failed", error: status.error });
     return NextResponse.json(status);

@@ -8,11 +8,17 @@ import { RepairPlanPanel } from "@/components/RepairPlanPanel";
 import { EstimateTreeView, judgmentKey } from "@/components/EstimateTree";
 import { isEstimateTree, type EstimateTree } from "@/lib/estimate-tree";
 import { uploadPhotos } from "@/lib/upload-photos";
-import { JobFailedError, postToolForm, runAiJob } from "@/lib/ai-job-client";
+import {
+  JobFailedError,
+  postToolForm,
+  runAiJob,
+  type RunMeta,
+} from "@/lib/ai-job-client";
 import type { AdjustmentResult } from "@/lib/adjustment-types";
 import { buildAdjustmentReportText } from "@/lib/format-adjustment-report";
 import { applyOverrides, setOverride } from "@/lib/adjustment-overrides";
 import { computeAmounts } from "@/lib/adjustment-amounts";
+import { buildAnalysisExport } from "@/lib/adjustment-analysis-export";
 import type { VerdictOverride } from "@/lib/adjustment-types";
 import {
   buildAdjustmentDiagnostics,
@@ -63,6 +69,7 @@ export default function NewAdjustmentPage() {
     active?.result && active
       ? applyOverrides(active.result, active.overrides)
       : null;
+  const resultCaseCount = cases.filter((c) => c.result).length;
   // 손해사정 전후 금액 비교(견적서 표 + 판정 + 수가)
   const amounts =
     result && isEstimateTree(active?.estimateTree)
@@ -163,7 +170,11 @@ export default function NewAdjustmentPage() {
   }, [activeId]);
 
   // 결과를 원래 건에 저장(분석 도중 다른 탭으로 옮겼어도 원래 건에). 새로고침 후 이어받을 때도 씀
-  function storeResult(caseId: string, r: AdjustmentResult) {
+  function storeResult(
+    caseId: string,
+    r: AdjustmentResult,
+    meta?: RunMeta | null,
+  ) {
     setCases((prev) => {
       const next = prev.map((c) =>
         c.id === caseId
@@ -171,6 +182,7 @@ export default function NewAdjustmentPage() {
               ...c,
               result: r,
               overrides: {},
+              runMeta: meta ?? null,
               jobId: null,
               jobImageUrls: [],
               caseInfo: {
@@ -218,7 +230,7 @@ export default function NewAdjustmentPage() {
           setLoadingStep,
           undefined,
           "AI 손해사정 중(이어받기)",
-          (r) => storeResult(caseId, r),
+          (r, meta) => storeResult(caseId, r, meta),
         )
           .catch((err) => {
             // 다른 탭이 이미 받아 저장한 건 — 이 탭은 저장된 결과를 다시 읽기만
@@ -406,7 +418,7 @@ export default function NewAdjustmentPage() {
         setLoadingStep,
         (jobId) => markJob(caseId, jobId, imageUrls),
         "AI 손해사정 중",
-        (r) => storeResult(caseId, r),
+        (r, meta) => storeResult(caseId, r, meta),
       );
       void r;
     } catch (err) {
@@ -441,6 +453,29 @@ export default function NewAdjustmentPage() {
     } catch {
       // 클립보드 권한 없는 브라우저 — 조용히 무시
     }
+  }
+
+  // 분석용 내보내기 — 수요 보고서 분석에 쓸 건별·항목별 금액/판정 데이터(JSON).
+  // scope "all"이면 결과가 있는 모든 탭을 한 파일로.
+  function handleExportAnalysis(scope: "one" | "all") {
+    const targets =
+      scope === "all" ? cases.filter((c) => c.result) : active ? [active] : [];
+    if (targets.length === 0) return;
+    const payload = buildAnalysisExport(targets, cases);
+    const blob = new Blob([JSON.stringify(payload, null, 1)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const d = new Date();
+    const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}`;
+    a.href = url;
+    a.download =
+      scope === "all"
+        ? `손해사정_분석_${ymd}_${payload.cases.length}건.json`
+        : `손해사정_분석_${caseTitle(active!, 0).replace(/\s+/g, "_")}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   // [임시·테스트용] GPT 결과 원본(JSON) 내보내기 — 토큰 안 쓰고 화면 비교 테스트하려고
@@ -588,6 +623,26 @@ export default function NewAdjustmentPage() {
               >
                 🖨 보고서 · PDF
               </a>
+            )}
+            {result && (
+              <button
+                type="button"
+                onClick={() => handleExportAnalysis("one")}
+                title="이 건의 항목별 청구·사정 금액과 판정을 분석용 JSON으로 저장"
+                className="shrink-0 rounded-full border border-fuchsia-300 bg-fuchsia-50 px-3.5 py-1.5 text-xs font-bold text-fuchsia-800 shadow-sm transition-all hover:-translate-y-0.5 hover:bg-fuchsia-100 active:scale-95"
+              >
+                📊 분석 내보내기
+              </button>
+            )}
+            {resultCaseCount > 1 && (
+              <button
+                type="button"
+                onClick={() => handleExportAnalysis("all")}
+                title="결과가 있는 모든 탭을 한 파일로 — 건별 요약과 전체 집계 포함"
+                className="shrink-0 rounded-full bg-fuchsia-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-[0_6px_14px_-6px_rgba(162,28,175,0.7)] transition-all hover:-translate-y-0.5 hover:bg-fuchsia-800 active:scale-95"
+              >
+                📊 전체 {resultCaseCount}건 분석 내보내기
+              </button>
             )}
             {result && (
               <button
