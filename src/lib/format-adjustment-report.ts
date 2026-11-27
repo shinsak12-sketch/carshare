@@ -4,6 +4,7 @@ import {
   type ItemDiagnostic,
 } from "./adjustment-review-items";
 import type { AmountSummary } from "./adjustment-amounts";
+import { rateOf, type AmountReport } from "./adjustment-amount-report";
 
 const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
 
@@ -51,6 +52,7 @@ export function buildAdjustmentReportText(
   caseInfo: AdjustmentCaseInfo,
   result: AdjustmentResult,
   amounts?: AmountSummary | null,
+  report?: AmountReport | null,
 ): string {
   const lines: string[] = ["AI 손해사정 검토 (보조 의견)", ""];
 
@@ -80,6 +82,26 @@ export function buildAdjustmentReportText(
     lines.push(
       `삭감 ${won(amounts.cut)} (${Math.round(amounts.cutRate * 100)}%)${amounts.held > 0 ? ` · 보류(협의·조사) ${won(amounts.held)}` : ""}${amounts.pendingHours > 0 ? ` · 금액 확인 ${amounts.pendingHours}건(조정 시간 미확정)` : ""}`,
     );
+    if (report) {
+      const row = (l: {
+        key: string;
+        claimed: number;
+        assessed: number;
+        cut: number;
+        held: number;
+        pending: number;
+      }) =>
+        `  ${l.key}: 청구 ${won(l.claimed)} → 사정 ${won(l.assessed)} · 삭감 ${won(l.cut)}(${rateOf(l.cut, l.claimed)}%)${l.held + l.pending > 0 ? ` · 보류·확인 ${won(l.held + l.pending)}` : ""}`;
+      lines.push("[공임 — 작업별]");
+      for (const l of report.labor) lines.push(row(l));
+      lines.push(row(report.laborTotal));
+      if (report.materials.claimed > 0) lines.push(row(report.materials));
+      lines.push(row(report.parts));
+      if (report.byReason.length) {
+        lines.push("[삭감·보류 사유별]");
+        for (const l of report.byReason) lines.push(row(l));
+      }
+    }
     lines.push("");
   }
 

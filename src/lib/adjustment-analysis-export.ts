@@ -1,7 +1,14 @@
 import type { StoredCase } from "./adjustment-lab-store";
 import type { AdjustmentItem } from "./adjustment-types";
-import { computeAmounts, type AmountRow } from "./adjustment-amounts";
+import { computeAmounts } from "./adjustment-amounts";
 import { applyOverrides, overrideKey } from "./adjustment-overrides";
+import {
+  buildAmountReport,
+  cutReasonOf,
+  mergeAmountReports,
+  withRates as lineRates,
+  type AmountReport,
+} from "./adjustment-amount-report";
 import { caseTitleOf } from "./case-store";
 import { isEstimateTree, workKindOf, type EstimateLine } from "./estimate-tree";
 
@@ -22,6 +29,7 @@ const GUIDE = [
   "lines[]는 견적서 한 줄 = 한 원소. 부품 줄은 AI 판정 대상이 아니라 같은 부위 메인 항목의 판정을 따라감(linked_to).",
   "lines[].est_after = 견적서 PDF의 '사정후' 열 값. 종결 견적서를 넣었다면 실제 사정 결과이고, 청구 단계 견적서면 비어 있거나 청구액과 같음.",
   "lines[].cut_reason은 판정·문구에서 기계적으로 붙인 추정 분류임. 정확한 사유는 reasoning·note 원문으로 판단할 것.",
+  "amount_report = 금액 상세 보고. labor[]는 작업 종류별 순공임(교환·탈착·판금·수리·교정·도장…), materials는 도장 재료비, parts는 부품비. 각 줄에 claimed·assessed·cut·held·pending과 삭감률. top_cuts는 삭감액 큰 줄, held_items는 보류·확인 줄(잠재 삭감).",
   "confidence는 AI가 근거 종류로 매긴 판정 신뢰도(0~100). breakdown.by_confidence로 '신뢰도 높은 삭감'만 따로 볼 수 있음.",
   "실제 종결 내역과 비교할 때: 건은 label 또는 plate_tail(차량번호 뒤 4자리)로 맞추고, 줄은 no(견적서 순번)로 맞출 것.",
 ];
@@ -71,51 +79,6 @@ const toObj = (map: Map<string, Bucket>) =>
       .sort((a, b) => b[1].cut - a[1].cut || b[1].claimed - a[1].claimed)
       .map(([k, v]) => [k, withRates(v)]),
   );
-
-// 삭감 사유 추정 분류 — 판정과 문구 키워드로만. 분석 쪽에서 원문으로 다시 볼 수 있게 원문도 같이 내보냄.
-function cutReasonOf(
-  row: AmountRow,
-  item: AdjustmentItem | null,
-  isPart: boolean,
-): string {
-  if (
-    row.claimed === row.assessed &&
-    row.status !== "보류" &&
-    row.status !== "확인"
-  )
-    return "";
-  if (isPart) return "부품(메인 판정 연동)";
-  if (!item) return "";
-  if (item.override?.cascaded) return "담당자 수정 연쇄";
-  if (item.override) return "담당자 수정";
-  const text = `${item.reasoning} ${item.adjustment_note}`;
-  const v = row.verdict;
-  if (v === "불인정") {
-    if (item.follows_parent) return "메인 불인정 연동";
-    if (/중복/.test(text)) return "중복 청구";
-    if (/무관|경로|반대|기존 손상|사고와/.test(text))
-      return "사고 무관·경로 밖";
-    if (item.judgment_basis === "추론") return "추론상 불필요(내판·구조부)";
-    return "불인정(기타)";
-  }
-  if (v === "과다청구") {
-    if (row.status === "조정") return "판금·수리 시간 과다";
-    if (/중복|수량/.test(text)) return "중복·수량 과다";
-    if (/도장|Lv|등급|보수도장/.test(text) && item.role === "도장")
-      return "도장 등급·범위 과다";
-    if (/교환/.test(text) && /판금|수리|복원|보수/.test(text))
-      return "과잉수리(교환→수리)";
-    if (/시간|H\b/.test(text)) return "시간 과다(금액 미확정)";
-    return "과다청구(기타)";
-  }
-  if (v === "협의필요") {
-    if (item.judgment_basis === "추론") return "협의(추론 반반)";
-    if (/사진|증빙|확인/.test(text)) return "협의(증빙·사진 요청)";
-    return "협의(기타)";
-  }
-  if (v === "조사필요") return "조사(판독 불가)";
-  return "";
-}
 
 const confBand = (c: number | undefined) =>
   typeof c !== "number"
@@ -228,6 +191,8 @@ function exportCase(c: StoredCase, index: number) {
       ...head,
       totals: null,
       breakdown: null,
+      amount_report: null,
+      _reports: null,
       lines: raw.items.map((it) => ({
         no: String(it.line_no),
         name: it.item_name,
@@ -317,6 +282,24 @@ function exportCase(c: StoredCase, index: number) {
     };
   };
 
+  const reportOut = (r: AmountReport | null) =>
+    r
+      ? {
+          labor: r.labor.map(lineRates),
+          labor_total: lineRates(r.laborTotal),
+          materials: lineRates(r.materials),
+          parts: lineRates(r.parts),
+          parts_by_status: r.partsByStatus.map(lineRates),
+          total: lineRates(r.total),
+          by_reason: r.byReason.map(lineRates),
+          by_group: r.byGroup.map(lineRates),
+          top_cuts: r.topCuts.slice(0, 15),
+          held_items: r.heldItems.slice(0, 15),
+        }
+      : null;
+  const reportAi = buildAmountReport(tree, raw, aiAmt);
+  const reportFinal = buildAmountReport(tree, final, finalAmt);
+
   let estAfterTotal = 0;
   let estAfterSeen = false;
   const lines = tree.rows.map((line) => {
@@ -390,6 +373,9 @@ function exportCase(c: StoredCase, index: number) {
       ai: breakdownOf(aiAmt, false),
       final: breakdownOf(finalAmt, true),
     },
+    amount_report: { ai: reportOut(reportAi), final: reportOut(reportFinal) },
+    // 합산용 원본(파일에는 summary.amount_report로만 나감)
+    _reports: { ai: reportAi, final: reportFinal },
     plan: raw.repair_plan
       ? {
           main_works: raw.repair_plan.main_works.map((w) => ({
@@ -461,6 +447,23 @@ export function buildAnalysisExport(cases: StoredCase[], allCases = cases) {
     .map((c) => c.run?.duration_sec)
     .filter((v): v is number => typeof v === "number");
 
+  const mergedReport = (which: "ai" | "final") => {
+    const list = withAmt
+      .map((c) => c._reports?.[which])
+      .filter((r): r is AmountReport => !!r);
+    if (list.length === 0) return null;
+    const m = mergeAmountReports(list);
+    return {
+      labor: m.labor.map(lineRates),
+      labor_total: m.laborTotal ? lineRates(m.laborTotal) : null,
+      materials: m.materials ? lineRates(m.materials) : null,
+      parts: m.parts ? lineRates(m.parts) : null,
+      parts_by_status: m.partsByStatus.map(lineRates),
+      total: m.total ? lineRates(m.total) : null,
+      by_reason: m.byReason.map(lineRates),
+    };
+  };
+
   return {
     schema: ANALYSIS_EXPORT_SCHEMA,
     exported_at: new Date().toISOString(),
@@ -490,6 +493,7 @@ export function buildAnalysisExport(cases: StoredCase[], allCases = cases) {
         overrides: c.overrides.filter((o) => !o.cascaded).length,
         ai_cost_krw: c.run?.cost_krw ?? null,
       })),
+      amount_report: { ai: mergedReport("ai"), final: mergedReport("final") },
       breakdown: {
         ai: {
           by_work_kind: mergeBreakdown("ai", "by_work_kind"),
@@ -509,6 +513,10 @@ export function buildAnalysisExport(cases: StoredCase[], allCases = cases) {
         },
       },
     },
-    cases: exported,
+    cases: exported.map((c) => {
+      const out: Record<string, unknown> = { ...c };
+      delete out._reports;
+      return out;
+    }),
   };
 }

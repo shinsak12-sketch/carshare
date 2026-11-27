@@ -11,6 +11,11 @@ import { judgmentKey } from "@/components/EstimateTree";
 import { fmtKst } from "@/lib/kst";
 import type { RepairPlan } from "@/lib/adjustment-types";
 import type { AmountRow, AmountSummary } from "@/lib/adjustment-amounts";
+import {
+  rateOf,
+  type AmountLine,
+  type AmountReport,
+} from "@/lib/adjustment-amount-report";
 
 // 손해사정·선견적 공용 인쇄 보고서. 결과는 브라우저 캐시(IndexedDB)에서 읽어 오고
 // 서버에는 아무것도 보내지 않는다. 브라우저 인쇄 대화상자에서 "PDF로 저장".
@@ -26,6 +31,7 @@ export interface PrintReportProps {
   opinion?: string | null; // 선견적 회신문(편집 반영)
   plan?: RepairPlan | null; // 손해사정 1단계 수리 계획
   amounts?: AmountSummary | null; // 손해사정 전후 금액 비교(담당자 수정 반영)
+  amountReport?: AmountReport | null; // 금액 상세(공임 작업별·재료·부품)
   lists?: { label: string; items: string[] }[]; // 선견적 부가 목록
   photos: File[];
   createdAt: number;
@@ -244,6 +250,7 @@ export function PrintReport(p: PrintReportProps) {
           </div>
         </div>
       )}
+      {p.amountReport && <AmountTable r={p.amountReport} />}
       {consistency && (
         <div className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2">
           <div className="text-[10px] font-bold text-amber-800">
@@ -415,6 +422,91 @@ export function PrintReport(p: PrintReportProps) {
         담당자가 판단합니다. 결과·사진은 서버에 저장되지 않습니다.
       </div>
     </div>
+  );
+}
+
+// 금액 상세 — 공임(작업별)·도장 재료·부품의 청구/사정/삭감
+function AmountTable({ r }: { r: AmountReport }) {
+  const tr = (
+    l: AmountLine,
+    opts: { strong?: boolean; indent?: boolean } = {},
+  ) => (
+    <tr
+      key={`${opts.indent ? "s" : "m"}-${l.key}`}
+      className={`border-b border-slate-100 ${opts.strong ? "bg-slate-50 font-bold" : ""}`}
+    >
+      <td className={`py-0.5 pr-2 ${opts.indent ? "pl-3 text-slate-600" : ""}`}>
+        {l.key}
+      </td>
+      <td className="py-0.5 pr-2 text-right font-mono tabular-nums text-slate-500">
+        {l.n}
+      </td>
+      <td className="py-0.5 pr-2 text-right font-mono tabular-nums">
+        {won(l.claimed)}
+      </td>
+      <td className="py-0.5 pr-2 text-right font-mono tabular-nums">
+        {won(l.assessed)}
+      </td>
+      <td
+        className="py-0.5 pr-2 text-right font-mono tabular-nums"
+        style={{ color: l.cut > 0 ? "#dc2626" : "#94a3b8" }}
+      >
+        {won(l.cut)}
+      </td>
+      <td
+        className="py-0.5 pr-2 text-right font-mono tabular-nums"
+        style={{ color: l.cut > 0 ? "#dc2626" : "#94a3b8" }}
+      >
+        {rateOf(l.cut, l.claimed)}%
+      </td>
+      <td className="py-0.5 text-right font-mono tabular-nums text-amber-700">
+        {l.held + l.pending > 0 ? won(l.held + l.pending) : ""}
+      </td>
+    </tr>
+  );
+  const head = (label: string) => (
+    <thead>
+      <tr className="border-b-2 border-slate-800 text-left text-[9px] text-slate-600">
+        <th className="py-0.5 pr-2">{label}</th>
+        <th className="py-0.5 pr-2 text-right">줄</th>
+        <th className="py-0.5 pr-2 text-right">청구</th>
+        <th className="py-0.5 pr-2 text-right">사정</th>
+        <th className="py-0.5 pr-2 text-right">삭감</th>
+        <th className="py-0.5 pr-2 text-right">율</th>
+        <th className="py-0.5 text-right">보류·확인</th>
+      </tr>
+    </thead>
+  );
+  return (
+    <section className="mt-3 break-inside-avoid">
+      <h2 className="mb-1 text-[12px] font-black">금액 상세</h2>
+      <div className="grid grid-cols-2 gap-4">
+        <table className="w-full border-collapse text-[10px]">
+          {head("공임 · 재료 · 부품")}
+          <tbody>
+            {r.labor.map((l) => tr(l, { indent: true }))}
+            {tr(r.laborTotal, { strong: true })}
+            {r.materials.claimed > 0 && tr(r.materials, { strong: true })}
+            {tr(r.parts, { strong: true })}
+            {tr(r.total, { strong: true })}
+          </tbody>
+        </table>
+        <table className="w-full border-collapse text-[10px]">
+          {head("삭감 · 보류 사유")}
+          <tbody>
+            {r.byReason.length > 0 ? (
+              r.byReason.map((l) => tr(l))
+            ) : (
+              <tr>
+                <td colSpan={7} className="py-1 text-slate-400">
+                  삭감·보류 항목 없음
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 

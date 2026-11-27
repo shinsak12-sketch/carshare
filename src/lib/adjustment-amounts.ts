@@ -26,6 +26,12 @@ export interface AmountRow {
   verdict: VerdictLabel | null;
   claimed: number; // 공임(+재료) 또는 부품비
   assessed: number;
+  // 금액 상세 보고용 분리값. 공임 행: labor=순공임, materials=도장 재료 등 / 부품 행: part만.
+  split: {
+    labor: { claimed: number; assessed: number };
+    materials: { claimed: number; assessed: number };
+    part: { claimed: number; assessed: number };
+  };
   note: string;
   overridden: boolean;
   // 부품 행이 따라간 메인 항목의 line_no 키
@@ -116,6 +122,11 @@ export function computeAmounts(
         note: "",
         overridden: false,
         linkedTo: main ? overrideKey(main.line_no) : undefined,
+        split: {
+          labor: { claimed: 0, assessed: 0 },
+          materials: { claimed: 0, assessed: 0 },
+          part: { claimed, assessed: claimed },
+        },
       };
       if (main) {
         const v = effectiveVerdict(main);
@@ -136,6 +147,7 @@ export function computeAmounts(
           row.status = "인정";
         }
       }
+      row.split.part.assessed = row.assessed;
       assessedPart += row.assessed;
       rows.set(key, row);
       continue;
@@ -158,6 +170,11 @@ export function computeAmounts(
       assessed: claimed,
       note: "",
       overridden: false,
+      split: {
+        labor: { claimed: labor, assessed: labor },
+        materials: { claimed: materials, assessed: materials },
+        part: { claimed: 0, assessed: 0 },
+      },
     };
     if (item) {
       judged += 1;
@@ -187,6 +204,14 @@ export function computeAmounts(
         row.status = "보류";
         held += claimed;
       }
+    }
+    // 불인정은 공임·재료 모두 0, 시간 조정은 공임만 줄고 재료는 그대로
+    if (row.status === "불인정") {
+      row.split.labor.assessed = 0;
+      row.split.materials.assessed = 0;
+    } else {
+      row.split.materials.assessed = materials;
+      row.split.labor.assessed = row.assessed - materials;
     }
     assessedLabor += row.assessed;
     rows.set(key, row);

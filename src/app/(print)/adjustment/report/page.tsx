@@ -6,6 +6,7 @@ import { PrintReport } from "@/components/PrintReport";
 import { buildAdjustmentDiagnostics } from "@/lib/adjustment-review-items";
 import { applyOverrides } from "@/lib/adjustment-overrides";
 import { computeAmounts } from "@/lib/adjustment-amounts";
+import { buildAmountReport } from "@/lib/adjustment-amount-report";
 import { isEstimateTree } from "@/lib/estimate-tree";
 import {
   loadCases,
@@ -62,6 +63,11 @@ function Inner() {
       plan={result.repair_plan ?? null}
       estimateTree={c.estimateTree}
       amounts={amounts}
+      amountReport={
+        isEstimateTree(c.estimateTree)
+          ? buildAmountReport(c.estimateTree, result, amounts)
+          : null
+      }
       photos={photos}
       createdAt={c.createdAt}
     />

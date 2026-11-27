@@ -19,6 +19,7 @@ import { buildAdjustmentReportText } from "@/lib/format-adjustment-report";
 import { applyOverrides, setOverride } from "@/lib/adjustment-overrides";
 import { computeAmounts } from "@/lib/adjustment-amounts";
 import { buildAnalysisExport } from "@/lib/adjustment-analysis-export";
+import { buildAmountReport } from "@/lib/adjustment-amount-report";
 import type { VerdictOverride } from "@/lib/adjustment-types";
 import {
   buildAdjustmentDiagnostics,
@@ -78,6 +79,11 @@ export default function NewAdjustmentPage() {
           result,
           active?.laborRate ?? null,
         )
+      : null;
+  // 금액 상세 보고(공임 작업별·도장 재료·부품)
+  const amountReport =
+    amounts && result && isEstimateTree(active?.estimateTree)
+      ? buildAmountReport(active!.estimateTree as EstimateTree, result, amounts)
       : null;
   // 결과 → 판정 트리 + 견적서 행(line_no) → 판정 색인. 색인은 견적서 표 옆에
   // 판정 열로 붙여 보여주기 위한 것. (수동 useMemo 없이 React Compiler에 맡김)
@@ -446,7 +452,12 @@ export default function NewAdjustmentPage() {
     if (!result || !active?.caseInfo) return;
     try {
       await navigator.clipboard.writeText(
-        buildAdjustmentReportText(active.caseInfo, result, amounts),
+        buildAdjustmentReportText(
+          active.caseInfo,
+          result,
+          amounts,
+          amountReport,
+        ),
       );
       setReportCopied(true);
       setTimeout(() => setReportCopied(false), 1500);
@@ -869,6 +880,7 @@ export default function NewAdjustmentPage() {
                           judgments={result ? judgmentMap : null}
                           consistency={diagnostics?.consistency ?? null}
                           amounts={amounts}
+                          amountReport={amountReport}
                           laborRate={active.laborRate ?? null}
                           onLaborRateChange={(rate) =>
                             updateActive({ laborRate: rate })

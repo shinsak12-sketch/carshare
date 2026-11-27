@@ -13,6 +13,8 @@ import type {
 } from "@/lib/adjustment-review-items";
 import { TYPE_BADGE_CLASS } from "@/lib/review-items";
 import type { AmountRow, AmountSummary } from "@/lib/adjustment-amounts";
+import type { AmountReport } from "@/lib/adjustment-amount-report";
+import { AmountReportPanel } from "./AmountReportPanel";
 import type { VerdictOverride } from "@/lib/adjustment-types";
 import {
   ConfidenceBadge,
@@ -436,6 +438,7 @@ export function EstimateTreeView({
   judgments,
   consistency,
   amounts,
+  amountReport,
   laborRate,
   onLaborRateChange,
   onHoverPhotos,
@@ -448,6 +451,8 @@ export function EstimateTreeView({
   consistency?: AdjustmentDiagnostics["consistency"];
   // 손해사정 전후 금액 비교(판정 모드에서만). 있으면 AI 사정액 열과 합계가 붙는다.
   amounts?: AmountSummary | null;
+  // 금액 상세 보고(공임 작업별·재료·부품). 있으면 요약 줄에 "금액 상세" 버튼이 붙는다.
+  amountReport?: AmountReport | null;
   laborRate?: number | null;
   onLaborRateChange?: (rate: number | null) => void;
   onHoverPhotos?: (refs: number[]) => void;
@@ -475,6 +480,8 @@ export function EstimateTreeView({
   const [inferredOnly, setInferredOnly] = useState(false);
   // "낮은 신뢰도만": confidence가 기준 미만인 판정만
   const [lowConfOnly, setLowConfOnly] = useState(false);
+  // 금액 상세 패널 펼침
+  const [amountOpen, setAmountOpen] = useState(false);
   const [syncedTree, setSyncedTree] = useState<Tree>(tree);
   if (syncedTree !== tree) {
     setSyncedTree(tree);
@@ -688,6 +695,21 @@ export function EstimateTreeView({
               금액 확인 {amounts.pendingHours}건
             </span>
           )}
+          {amountReport && (
+            <button
+              type="button"
+              onClick={() => setAmountOpen((v) => !v)}
+              aria-expanded={amountOpen}
+              title="청구·사정·삭감을 공임(작업 종류별)·도장 재료·부품으로 나눠 보기"
+              className={`rounded-full border px-3 py-1.5 text-[11px] font-bold transition-all active:scale-95 ${
+                amountOpen
+                  ? "border-fuchsia-700 bg-fuchsia-700 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.25)]"
+                  : "border-fuchsia-300 bg-white text-fuchsia-800 shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_4px_10px_-6px_rgba(162,28,175,0.5)] hover:-translate-y-0.5 hover:bg-fuchsia-50"
+              }`}
+            >
+              {amountOpen ? "금액 상세 닫기 ▲" : "금액 상세 ▾"}
+            </button>
+          )}
           <span className="ml-auto flex items-center gap-1.5 text-slate-500">
             <span className="font-semibold">수가</span>
             <input
@@ -707,6 +729,9 @@ export function EstimateTreeView({
             <span>원/H</span>
           </span>
         </div>
+      )}
+      {judged && amountReport && amountOpen && (
+        <AmountReportPanel report={amountReport} />
       )}
       {judged && consistency && (
         <div className="flex gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2.5">
